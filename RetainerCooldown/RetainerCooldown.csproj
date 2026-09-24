@@ -1,0 +1,8 @@
+<Project Sdk="Dalamud.NET.Sdk/15.0.0">
+  <PropertyGroup>
+    <Version>0.1.0</Version>
+    <Description>A tiny retainer venture cooldown HUD using only Dalamud and FFXIVClientStructs RetainerManager.</Description>
+    <PackageProjectUrl>https://example.invalid/RetainerCooldown</PackageProjectUrl>
+    <Authors>Kotanna</Authors>
+  </PropertyGroup>
+</Project>

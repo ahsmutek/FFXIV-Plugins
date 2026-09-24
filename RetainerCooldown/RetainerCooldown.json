@@ -1,0 +1,8 @@
+{
+  "Author": "Kotanna",
+  "Name": "Retainer Cooldown",
+  "Punchline": "A tiny venture cooldown icon for your retainers.",
+  "Description": "Shows the next retainer venture completion as a cooldown-style HUD icon. Uses only Dalamud and FFXIVClientStructs RetainerManager.",
+  "ApplicableVersion": "any",
+  "Tags": ["retainer", "venture", "hud", "timer"]
+}
