@@ -16,7 +16,7 @@ internal sealed class ConfigWindow : Window
     public ConfigWindow(Plugin plugin) : base("Retainer Cooldown Settings###RetainerCooldownConfig")
     {
         this.plugin = plugin;
-        Size = new Vector2(420, 430);
+        Size = new Vector2(480, 520);
         SizeCondition = ImGuiCond.FirstUseEver;
     }
 
@@ -70,7 +70,7 @@ internal sealed class ConfigWindow : Window
         var changed = false;
         var iconId = (int)plugin.Config.IconId;
 
-        var preview = ImGui.GetTextLineHeightWithSpacing() * 1.6f;
+        const float preview = 64f;
         if (plugin.TryGetIcon(plugin.Config.IconId, out var cur) && cur != null)
         {
             ImGui.Image(cur.Handle, new Vector2(preview));
@@ -93,8 +93,8 @@ internal sealed class ConfigWindow : Window
         ImGui.SameLine();
         ImGui.TextDisabled($"{browseStart}\u2013{browseStart + PageSpan - 1}");
 
-        ImGui.BeginChild("iconGrid", new Vector2(0, 150), true);
-        const float cell = 32f;
+        ImGui.BeginChild("iconGrid", new Vector2(0, 240), true);
+        const float cell = 48f;
         var cols = Math.Max(1, (int)(ImGui.GetContentRegionAvail().X / (cell + 8f)));
         var shown = 0;
         for (var id = (uint)browseStart; id < browseStart + PageSpan; id++)
