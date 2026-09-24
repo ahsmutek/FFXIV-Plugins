@@ -17,6 +17,17 @@ public sealed class Configuration : IPluginConfiguration
     public static readonly float[] IconSizePresets =
         { 32f, 40f, 48f, 56f, 64f, 72f, 80f, 88f, 96f, 112f, 128f };
 
+    // Assumed venture durations (minutes) for the radial fill; the game doesn't
+    // expose the real start time. 60 = Quick Exploration.
+    public static readonly (string Label, int Minutes)[] VentureLengthPresets =
+    {
+        ("30m", 30),
+        ("45m", 45),
+        ("1h", 60),
+        ("90m", 90),
+        ("2h", 120),
+    };
+
     public int Version { get; set; } = 1;
     public float IconSize { get; set; } = 64f;
     // Game icon rendered as the slot face (65049 = Ventures). Configurable.

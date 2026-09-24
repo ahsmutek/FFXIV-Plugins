@@ -45,6 +45,12 @@ internal sealed class ConfigWindow : Window
         changed |= DrawIconPicker();
 
         var duration = plugin.Config.VentureDurationMinutes;
+        ImGui.TextUnformatted("Venture length:");
+        foreach (var (label, minutes) in Configuration.VentureLengthPresets)
+        {
+            ImGui.SameLine();
+            if (ImGui.Button(label)) { plugin.Config.VentureDurationMinutes = minutes; duration = minutes; changed = true; }
+        }
         if (ImGui.SliderInt("Radial duration", ref duration, 10, 1440, "%d min")) { plugin.Config.VentureDurationMinutes = duration; changed = true; }
         ImGui.TextWrapped("RetainerManager exposes the exact completion timestamp but not the venture's starting duration. Set this to 60 for Quick Exploration.");
 
