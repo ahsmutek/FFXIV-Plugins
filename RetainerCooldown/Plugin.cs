@@ -29,6 +29,7 @@ public sealed class Plugin : IDalamudPlugin
         this.pi = pi;
         this.textures = textures;
         Config = pi.GetPluginConfig() as Configuration ?? new Configuration();
+        if (MigrateConfig()) Save();
         hud = new HudWindow(this);
         configWindow = new ConfigWindow(this);
         windows.AddWindow(hud);
@@ -43,6 +44,21 @@ public sealed class Plugin : IDalamudPlugin
 
     private ICommandManager CommandManager { get; }
     internal void Save() => pi.SavePluginConfig(Config);
+
+    // Saved configs from before the icon and duration presets keep their old values.
+    private bool MigrateConfig()
+    {
+        var changed = false;
+        if (Config.IconId is 65049 or 70125) { Config.IconId = Configuration.DefaultIconId; changed = true; }
+        if (Config.CompleteIconId is 0 or 65049 or 70126) { Config.CompleteIconId = Configuration.DefaultCompleteIconId; changed = true; }
+
+        var known = false;
+        foreach (var (_, minutes) in Configuration.VentureLengthPresets)
+            if (minutes == Config.VentureDurationMinutes) { known = true; break; }
+        if (!known) { Config.VentureDurationMinutes = 60; changed = true; }
+
+        return changed;
+    }
 
     // Resolve a game icon texture; false until loaded or if the ID is invalid.
     // TryGetIconPath avoids the IconNotFoundException that GetFromGameIcon throws.

@@ -9,8 +9,8 @@ FFXIV cooldown icon.
   with the classic radial cooldown darkening sweep on top.
 - **Centered timer** – exact remaining time from `VentureComplete`, drawn like the
   game's cooldown numbers.
-- **All-complete indicator** – a pulsing green outline when every venture is done
-  (no text).
+- **All-complete icon** – swaps to a second icon you choose when every venture is done
+  (no timer, no outline).
 - **Fastest / latest** – choose whether the icon tracks the venture that completes
   soonest or last.
 - **Draggable & persistent** – unlock to drag the icon anywhere; its position and all
@@ -44,5 +44,5 @@ Then load `bin\Debug\RetainerCooldown.dll` as a Dalamud dev plugin
 
 `RetainerManager.Retainer` exposes `VentureId` and `VentureComplete`, but not the
 venture start time/duration. The radial sweep therefore uses a configurable assumed
-duration (default 60 minutes / Quick Exploration). The displayed remaining time is
+duration, chosen from 30m, 40m, 50m, 1h, 90m, or 2h (default 1h / Quick Exploration). The displayed remaining time is
 still based directly on the game's completion timestamp, so it is always exact.

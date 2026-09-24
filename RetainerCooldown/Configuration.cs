@@ -22,16 +22,22 @@ public sealed class Configuration : IPluginConfiguration
     public static readonly (string Label, int Minutes)[] VentureLengthPresets =
     {
         ("30m", 30),
-        ("45m", 45),
+        ("40m", 40),
+        ("50m", 50),
         ("1h", 60),
         ("90m", 90),
         ("2h", 120),
     };
 
+    public const uint DefaultIconId = 70131;
+    public const uint DefaultCompleteIconId = 70132;
+
     public int Version { get; set; } = 1;
     public float IconSize { get; set; } = 64f;
-    // Game icon rendered as the slot face (65049 = Ventures). Configurable.
-    public uint IconId { get; set; } = 65049;
+    // Game icon rendered as the slot face while a venture is still running.
+    public uint IconId { get; set; } = DefaultIconId;
+    // Replaces IconId when every active venture is complete.
+    public uint CompleteIconId { get; set; } = DefaultCompleteIconId;
     public int VentureDurationMinutes { get; set; } = 60;
     public bool Locked { get; set; } = false;
     public bool ShowTimerText { get; set; } = true;

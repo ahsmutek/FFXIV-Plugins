@@ -12,12 +12,23 @@ internal sealed class ConfigWindow : Window
 
     private readonly Plugin plugin;
     private int browseStart = -1;
+    // Which slot the ID field and grid write to.
+    private bool editingComplete;
+    // Icon IDs when the window was opened, so a pick can be undone.
+    private uint savedIconId;
+    private uint savedCompleteIconId;
 
     public ConfigWindow(Plugin plugin) : base("Retainer Cooldown Settings###RetainerCooldownConfig")
     {
         this.plugin = plugin;
         Size = new Vector2(480, 520);
         SizeCondition = ImGuiCond.FirstUseEver;
+    }
+
+    public override void OnOpen()
+    {
+        savedIconId = plugin.Config.IconId;
+        savedCompleteIconId = plugin.Config.CompleteIconId;
     }
 
     public override void Draw()
@@ -44,15 +55,18 @@ internal sealed class ConfigWindow : Window
 
         changed |= DrawIconPicker();
 
-        var duration = plugin.Config.VentureDurationMinutes;
-        ImGui.TextUnformatted("Venture length:");
-        foreach (var (label, minutes) in Configuration.VentureLengthPresets)
+        var lengths = Configuration.VentureLengthPresets;
+        var durationIndex = 0;
+        for (var i = 0; i < lengths.Length; i++)
+            if (lengths[i].Minutes == plugin.Config.VentureDurationMinutes) { durationIndex = i; break; }
+        var lengthLabels = new string[lengths.Length];
+        for (var i = 0; i < lengths.Length; i++) lengthLabels[i] = lengths[i].Label;
+        if (ImGui.Combo("Radial duration", ref durationIndex, lengthLabels, lengthLabels.Length))
         {
-            ImGui.SameLine();
-            if (ImGui.Button(label)) { plugin.Config.VentureDurationMinutes = minutes; duration = minutes; changed = true; }
+            plugin.Config.VentureDurationMinutes = lengths[durationIndex].Minutes;
+            changed = true;
         }
-        if (ImGui.SliderInt("Radial duration", ref duration, 10, 1440, "%d min")) { plugin.Config.VentureDurationMinutes = duration; changed = true; }
-        ImGui.TextWrapped("RetainerManager exposes the exact completion timestamp but not the venture's starting duration. Set this to 60 for Quick Exploration.");
+        ImGui.TextWrapped("The game reports when a venture finishes, not how long it was. Pick the length that matches the venture so the radial fill lines up. 1h is Quick Exploration.");
 
         var locked = plugin.Config.Locked;
         if (ImGui.Checkbox("Lock HUD", ref locked)) { plugin.Config.Locked = locked; changed = true; }
@@ -64,23 +78,33 @@ internal sealed class ConfigWindow : Window
         if (changed) plugin.Save();
     }
 
-    // Icon face selector: live preview, numeric entry, and a clickable grid.
+    // Icon face selector: two slots (running / all complete), numeric entry, and a clickable grid.
     private bool DrawIconPicker()
     {
         var changed = false;
-        var iconId = (int)plugin.Config.IconId;
+        DrawIconSlot(false, "In progress");
+        ImGui.SameLine(0, 16f);
+        DrawIconSlot(true, "All complete");
 
-        const float preview = 64f;
-        if (plugin.TryGetIcon(plugin.Config.IconId, out var cur) && cur != null)
+        var iconDirty = plugin.Config.IconId != savedIconId || plugin.Config.CompleteIconId != savedCompleteIconId;
+        if (iconDirty)
         {
-            ImGui.Image(cur.Handle, new Vector2(preview));
-            ImGui.SameLine();
+            ImGui.SameLine(0, 16f);
+            if (ImGui.Button("Cancel"))
+            {
+                plugin.Config.IconId = savedIconId;
+                plugin.Config.CompleteIconId = savedCompleteIconId;
+                changed = true;
+            }
         }
 
+        var iconId = (int)(editingComplete ? plugin.Config.CompleteIconId : plugin.Config.IconId);
         ImGui.SetNextItemWidth(120f);
-        if (ImGui.InputInt("Icon ID", ref iconId))
+        if (ImGui.InputInt(editingComplete ? "Complete icon ID" : "Icon ID", ref iconId))
         {
-            plugin.Config.IconId = (uint)Math.Max(0, iconId);
+            var id = (uint)Math.Max(0, iconId);
+            if (editingComplete) plugin.Config.CompleteIconId = id;
+            else plugin.Config.IconId = id;
             changed = true;
         }
 
@@ -102,12 +126,14 @@ internal sealed class ConfigWindow : Window
             if (!plugin.TryGetIcon(id, out var w) || w == null) continue;
 
             ImGui.PushID(id.ToString());
-            var selected = id == plugin.Config.IconId;
+            var selectedId = editingComplete ? plugin.Config.CompleteIconId : plugin.Config.IconId;
+            var selected = id == selectedId;
             if (selected)
                 ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(.9f, .75f, .3f, .8f));
             if (ImGui.ImageButton(w.Handle, new Vector2(cell)))
             {
-                plugin.Config.IconId = id;
+                if (editingComplete) plugin.Config.CompleteIconId = id;
+                else plugin.Config.IconId = id;
                 changed = true;
             }
             if (selected) ImGui.PopStyleColor();
@@ -124,5 +150,32 @@ internal sealed class ConfigWindow : Window
         ImGui.EndChild();
 
         return changed;
+    }
+
+    // Selectable preview for one HUD icon slot. Clicking it points the picker at that slot.
+    private void DrawIconSlot(bool complete, string label)
+    {
+        var iconId = complete ? plugin.Config.CompleteIconId : plugin.Config.IconId;
+        var selected = editingComplete == complete;
+
+        ImGui.BeginGroup();
+        ImGui.PushID(label);
+        if (selected)
+            ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(.9f, .75f, .3f, .8f));
+
+        var clicked = plugin.TryGetIcon(iconId, out var wrap) && wrap != null
+            ? ImGui.ImageButton(wrap.Handle, new Vector2(64f))
+            : ImGui.Button("##empty", new Vector2(64f));
+
+        if (selected) ImGui.PopStyleColor();
+        if (clicked)
+        {
+            editingComplete = complete;
+            browseStart = (int)(iconId - iconId % PageSpan);
+        }
+
+        ImGui.TextUnformatted(label);
+        ImGui.PopID();
+        ImGui.EndGroup();
     }
 }

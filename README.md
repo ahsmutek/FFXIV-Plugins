@@ -8,7 +8,7 @@ Final Fantasy XIV. Each plugin lives in its own folder.
 ### [Retainer Cooldown](RetainerCooldown/)
 A tiny HUD icon showing your next retainer venture as a native-looking FFXIV
 cooldown, with an exact remaining-time readout, a radial cooldown sweep, and a
-green "all done" indicator. Draggable, configurable, and dependency-free (reads
+separate icon when every venture is done. Draggable, configurable, and dependency-free (reads
 only `RetainerManager`). Command: `/retcd`.
 
 ## Building

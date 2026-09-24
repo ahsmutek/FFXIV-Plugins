@@ -48,15 +48,10 @@ internal sealed class HudWindow : Window
         var dl = ImGui.GetWindowDrawList();
         var center = p + new Vector2(size / 2);
 
-        DrawFace(dl, p, size);
-
         var allComplete = ventures.Length > 0 && ventures.All(x => x.Complete);
-        if (allComplete)
-        {
-            // Every venture is done: green outline instead of a timer.
-            DrawReadyOutline(dl, p, size);
-        }
-        else
+        DrawFace(dl, p, size, allComplete ? plugin.Config.CompleteIconId : plugin.Config.IconId);
+
+        if (!allComplete)
         {
             // Track the next still-running venture (fastest or latest).
             var running = ventures.Where(x => !x.Complete);
@@ -70,9 +65,9 @@ internal sealed class HudWindow : Window
             {
                 var duration = Math.Max(1, plugin.Config.VentureDurationMinutes * 60.0);
                 var fractionRemaining = (float)Math.Clamp(rem.TotalSeconds / duration, 0, 1);
-                // Authentic FFXIV cooldown: darken the remaining sweep; the icon
-                // brightens as it completes.
-                DrawCooldownSweep(dl, center, size * 0.72f, fractionRemaining);
+                // Mask the pie to the rounded icon so it neither spills past the
+                // face nor gets cut into a square.
+                DrawCooldownSweep(dl, p, size, fractionRemaining);
 
                 if (plugin.Config.ShowTimerText)
                     DrawCenteredText(dl, FormatTime(rem), center, size * 0.30f,
@@ -113,20 +108,15 @@ internal sealed class HudWindow : Window
 
     // Slot face: the real game icon texture, framed like a hotbar slot.
     // Falls back to a drawn silver plate until the texture finishes loading.
-    private void DrawFace(ImDrawListPtr dl, Vector2 p, float size)
+    private void DrawFace(ImDrawListPtr dl, Vector2 p, float size, uint iconId)
     {
         var max = p + new Vector2(size);
         var rounding = size * 0.18f;
 
-        if (plugin.TryGetIcon(plugin.Config.IconId, out IDalamudTextureWrap? icon) && icon != null)
+        if (plugin.TryGetIcon(iconId, out IDalamudTextureWrap? icon) && icon != null)
             dl.AddImageRounded(icon.Handle, p, max, Vector2.Zero, Vector2.One, 0xFFFFFFFF, rounding);
         else
             DrawSlot(dl, p, size);
-
-        // Dark outer edge + light inner bevel to match FFXIV slots.
-        dl.AddRect(p, max, ImGui.GetColorU32(new Vector4(.10f, .10f, .12f, .90f)), rounding, ImDrawFlags.None, 2f);
-        dl.AddRect(p + Vector2.One, max - Vector2.One,
-            ImGui.GetColorU32(new Vector4(1f, 1f, 1f, .25f)), rounding - 1, ImDrawFlags.None, 1f);
     }
 
     // Light silver metallic slot (fallback when the game icon isn't ready yet).
@@ -143,33 +133,110 @@ internal sealed class HudWindow : Window
             ImGui.GetColorU32(new Vector4(.50f, .51f, .56f, .40f)), rounding, ImDrawFlags.RoundCornersBottom);
     }
 
-    // Pulsing green outline shown when every venture is complete.
-    private static void DrawReadyOutline(ImDrawListPtr dl, Vector2 p, float size)
-    {
-        var rounding = size * 0.18f;
-        var pulse = .70f + .30f * (float)((Math.Sin(ImGui.GetTime() * 3) + 1) / 2);
-        var col = ImGui.GetColorU32(new Vector4(.25f, 1f, .40f, pulse));
-        dl.AddRect(p - Vector2.One, p + new Vector2(size) + Vector2.One, col, rounding,
-            ImDrawFlags.None, MathF.Max(2.5f, size * 0.06f));
-    }
-
-    // Radial darkening sweep (FFXIV cooldown look): shades the remaining fraction
-    // clockwise from the top; shrinks as the venture nears completion.
-    private static void DrawCooldownSweep(ImDrawListPtr dl, Vector2 center, float radius, float fraction)
+    // Radial darkening sweep clipped to the rounded icon. The pie is larger than
+    // the face; clipping keeps the shadow off the corners and off the frame.
+    private static void DrawCooldownSweep(ImDrawListPtr dl, Vector2 origin, float size, float fraction)
     {
         if (fraction <= 0) return;
-        var col = ImGui.GetColorU32(new Vector4(0f, 0f, 0f, .70f));
-        var start = -MathF.PI / 2;
-        var span = MathF.PI * 2 * fraction;
-        var segments = Math.Max(3, (int)MathF.Ceiling(64 * fraction));
+        var center = origin + new Vector2(size / 2);
+        var col = ImGui.GetColorU32(new Vector4(0f, 0f, 0f, .55f));
+        var rounding = size * 0.18f;
+
+        Span<Vector2> clip = stackalloc Vector2[32];
+        var clipCount = BuildRoundedRect(origin, size, rounding, 8, clip);
+
+        var start = -MathF.PI / 2f;
+        var span = MathF.PI * 2f * fraction;
+        var segments = Math.Max(8, (int)MathF.Ceiling(48 * fraction));
+        var radius = size;
+        Span<Vector2> poly = stackalloc Vector2[40];
+        Span<Vector2> next = stackalloc Vector2[40];
+
+        var flags = dl.Flags;
+        dl.Flags = flags & ~ImDrawListFlags.AntiAliasedFill;
         for (var i = 0; i < segments; i++)
         {
             var a1 = start + span * i / segments;
             var a2 = start + span * (i + 1) / segments;
-            dl.AddTriangleFilled(center,
-                center + new Vector2(MathF.Cos(a1), MathF.Sin(a1)) * radius,
-                center + new Vector2(MathF.Cos(a2), MathF.Sin(a2)) * radius, col);
+            poly[0] = center;
+            poly[1] = center + new Vector2(MathF.Cos(a1), MathF.Sin(a1)) * radius;
+            poly[2] = center + new Vector2(MathF.Cos(a2), MathF.Sin(a2)) * radius;
+            var count = ClipPolygon(poly, 3, clip[..clipCount], next);
+            if (count >= 3)
+                dl.AddConvexPolyFilled(ref poly[0], count, col);
         }
+        dl.Flags = flags;
+    }
+
+    // Clockwise-on-screen rounded rect. Cross >= 0 is inside with Y growing down.
+    private static int BuildRoundedRect(Vector2 origin, float size, float radius, int cornerSegs, Span<Vector2> dst)
+    {
+        var max = origin + new Vector2(size);
+        var n = 0;
+        n = AddArc(dst, n, new Vector2(max.X - radius, origin.Y + radius), radius, -MathF.PI / 2f, 0f, cornerSegs);
+        n = AddArc(dst, n, new Vector2(max.X - radius, max.Y - radius), radius, 0f, MathF.PI / 2f, cornerSegs);
+        n = AddArc(dst, n, new Vector2(origin.X + radius, max.Y - radius), radius, MathF.PI / 2f, MathF.PI, cornerSegs);
+        n = AddArc(dst, n, new Vector2(origin.X + radius, origin.Y + radius), radius, MathF.PI, MathF.PI * 1.5f, cornerSegs);
+        return n;
+    }
+
+    private static int AddArc(Span<Vector2> dst, int n, Vector2 c, float radius, float a0, float a1, int segs)
+    {
+        for (var i = 0; i < segs; i++)
+        {
+            var t = a0 + (a1 - a0) * i / segs;
+            dst[n++] = c + new Vector2(MathF.Cos(t), MathF.Sin(t)) * radius;
+        }
+        return n;
+    }
+
+    // Sutherland–Hodgman. `count` is the live vertex count in `subject`.
+    private static int ClipPolygon(Span<Vector2> subject, int count, Span<Vector2> clip, Span<Vector2> scratch)
+    {
+        for (var e = 0; e < clip.Length; e++)
+        {
+            if (count == 0) return 0;
+            var a = clip[e];
+            var b = clip[(e + 1) % clip.Length];
+            var outCount = 0;
+            var prev = subject[count - 1];
+            var prevIn = Inside(prev, a, b);
+            for (var i = 0; i < count; i++)
+            {
+                var cur = subject[i];
+                var curIn = Inside(cur, a, b);
+                if (curIn)
+                {
+                    if (!prevIn) scratch[outCount++] = Intersect(prev, cur, a, b);
+                    scratch[outCount++] = cur;
+                }
+                else if (prevIn)
+                {
+                    scratch[outCount++] = Intersect(prev, cur, a, b);
+                }
+                prev = cur;
+                prevIn = curIn;
+            }
+            for (var i = 0; i < outCount; i++) subject[i] = scratch[i];
+            count = outCount;
+        }
+        return count;
+    }
+
+    private static bool Inside(Vector2 p, Vector2 a, Vector2 b)
+    {
+        var cross = (b.X - a.X) * (p.Y - a.Y) - (b.Y - a.Y) * (p.X - a.X);
+        return cross >= 0f;
+    }
+
+    private static Vector2 Intersect(Vector2 p, Vector2 q, Vector2 a, Vector2 b)
+    {
+        var r = q - p;
+        var s = b - a;
+        var denom = r.X * s.Y - r.Y * s.X;
+        if (MathF.Abs(denom) < 0.0001f) return q;
+        var t = ((a.X - p.X) * s.Y - (a.Y - p.Y) * s.X) / denom;
+        return p + r * t;
     }
 
     // Centered text with a dark outline, like the game's cooldown numbers.
@@ -208,7 +275,8 @@ internal sealed class HudWindow : Window
 
         if (retainers.Length == 0)
         {
-            ImGui.TextColored(new Vector4(.7f, .7f, .74f, 1f), "No retainer data.");
+            ImGui.TextColored(new Vector4(.7f, .7f, .74f, 1f), "No retainer data yet.");
+            ImGui.TextWrapped("Open a summoning bell once this session. The game only sends the retainer list after that.");
         }
         else
         {
