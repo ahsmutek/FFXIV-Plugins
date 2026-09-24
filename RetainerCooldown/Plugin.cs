@@ -24,6 +24,11 @@ public sealed class Plugin : IDalamudPlugin
 
     internal Configuration Config { get; }
 
+    // Last list that still had a running venture. The bell clears RetainerManager
+    // for a moment while it reloads, which would otherwise drop the shade.
+    private RetainerSnapshot[] retainerCache = [];
+    private long retainerGapSince;
+
     public Plugin(IDalamudPluginInterface pi, ICommandManager commands, ITextureProvider textures)
     {
         this.pi = pi;
@@ -91,10 +96,11 @@ public sealed class Plugin : IDalamudPlugin
 
     internal unsafe RetainerSnapshot[] ReadRetainers()
     {
-        var manager = RetainerManager.Instance();
-        if (manager == null || !manager->IsReady) return [];
-
         var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        var manager = RetainerManager.Instance();
+        if (manager == null || !manager->IsReady)
+            return RefreshRemaining(retainerCache, now);
+
         var result = new List<RetainerSnapshot>();
         var retainers = manager->Retainers;
         for (var i = 0; i < retainers.Length; i++)
@@ -110,7 +116,39 @@ public sealed class Plugin : IDalamudPlugin
                 r.VentureId != 0 && r.VentureComplete <= now));
         }
 
-        return result.ToArray();
+        var fresh = result.ToArray();
+        if (!HasRunning(fresh) && HasRunning(retainerCache))
+        {
+            if (retainerGapSince == 0) retainerGapSince = now;
+            // A real "all done" or empty list sticks; a bell reload does not.
+            if (now - retainerGapSince < 1) return RefreshRemaining(retainerCache, now);
+        }
+        else
+        {
+            retainerGapSince = 0;
+        }
+
+        retainerCache = fresh;
+        return fresh;
+    }
+
+    private static bool HasRunning(RetainerSnapshot[] rows) =>
+        rows.Any(r => r.VentureId != 0 && !r.Complete);
+
+    private static RetainerSnapshot[] RefreshRemaining(RetainerSnapshot[] rows, long now)
+    {
+        if (rows.Length == 0) return rows;
+        var copy = new RetainerSnapshot[rows.Length];
+        for (var i = 0; i < rows.Length; i++)
+        {
+            var r = rows[i];
+            copy[i] = r with
+            {
+                Remaining = r.VentureId == 0 ? null : TimeSpan.FromSeconds(Math.Max(0, (long)r.CompleteAt - now)),
+                Complete = r.VentureId != 0 && r.CompleteAt <= now,
+            };
+        }
+        return copy;
     }
 }
 
