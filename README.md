@@ -3,6 +3,15 @@
 A collection of my [Dalamud](https://github.com/goatcorp/Dalamud) plugins for
 Final Fantasy XIV. Each plugin lives in its own folder.
 
+These were all made for my own personal use. They're shared as-is, without support
+or guarantees, and aren't published to any plugin repository.
+
+Using third-party tools is against the FINAL FANTASY XIV Terms of Service; use these
+at your own risk. They read game data that can change with any patch, so they may
+break without notice.
+
+Not affiliated with or endorsed by Square Enix. FINAL FANTASY XIV © SQUARE ENIX CO., LTD.
+
 ## Plugins
 
 ### [Retainer Cooldown](RetainerCooldown/)
@@ -28,3 +37,12 @@ dotnet build -c Debug
 Then load the built DLL from `bin\Debug\` as a Dalamud dev plugin
 (`/xlsettings` → Experimental → Dev Plugin Locations). See each plugin's own
 README for details.
+
+## License
+
+Copyright © 2026 anna-wro. Licensed under the
+[GNU Affero General Public License v3.0 or later](LICENSE), the same license as
+Dalamud. You're free to use, modify and share these plugins, but anything you
+distribute that's based on them must also be released under the AGPL with its
+source code. They come as-is, without warranty, and I'm not liable for anything that
+happens from using them.
