@@ -1,0 +1,13 @@
+{
+  "Author": "anna-wro",
+  "Name": "Chocobo Barding",
+  "Punchline": "Put a full barding set on your chocobo with one command.",
+  "Description": "Use /cbarding \"Sophic Barding\" to equip head, body and legs at once, e.g. from a job macro. Only barding you own can be equipped. /cbdebug logs Companion events for debugging.",
+  "ApplicableVersion": "any",
+  "Tags": [
+    "chocobo",
+    "barding",
+    "companion",
+    "macro"
+  ]
+}

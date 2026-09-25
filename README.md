@@ -11,6 +11,12 @@ cooldown, with an exact remaining-time readout, a radial cooldown sweep, and a
 separate icon when every venture is done. Draggable, configurable, and dependency-free (reads
 only `RetainerManager`). Command: `/retcd`.
 
+### [Chocobo Barding](ChocoboBarding/)
+Puts a full barding set on your chocobo companion with one command, so a job
+macro can switch barding along with your gearset. Works with the Companion window
+closed, only equips barding you own, and uses the game's normal Appearance-tab
+event (no hooks or memory writes). Command: `/cbarding "Sophic Barding"`.
+
 ## Building
 
 Each plugin is a standard Dalamud project. From a plugin's folder:
