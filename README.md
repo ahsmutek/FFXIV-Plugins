@@ -21,10 +21,12 @@ separate icon when every venture is done. Draggable, configurable, and dependenc
 only `RetainerManager`). Command: `/retcd`.
 
 ### [Chocobo Barding](ChocoboBarding/)
-Puts a full barding set on your chocobo companion with one command, so a job
-macro can switch barding along with your gearset. Works with the Companion window
+Puts barding on your chocobo companion with one command, so a job macro can switch
+barding along with your gearset. Equip a full set or pick a different piece per slot,
+with a window that builds the macro line for you. Works with the Companion window
 closed, only equips barding you own, and uses the game's normal Appearance-tab
-event (no hooks or memory writes). Command: `/cbarding "Sophic Barding"`.
+event (no hooks or memory writes). Command: `/cbarding "Sophic"` or
+`/cbarding "Suzaku" "Windswept" "Ice"`.
 
 ## Building
 

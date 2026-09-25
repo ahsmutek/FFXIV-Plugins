@@ -1,25 +1,15 @@
-using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using Dalamud.Game.Agent;
-using Dalamud.Game.Agent.AgentArgTypes;
 using Dalamud.Game.Command;
 using Dalamud.Interface.Windowing;
 using Dalamud.IoC;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
-using Lumina.Excel.Sheets;
 
 namespace ChocoboBarding;
 
 public sealed class Plugin : IDalamudPlugin
 {
-    private const string CommandName = "/cbdebug";
     private const string BardingCommandName = "/cbarding";
-
-    [PluginService]
-    private static IAgentLifecycle AgentLifecycle { get; set; } = null!;
 
     [PluginService]
     private static ICommandManager CommandManager { get; set; } = null!;
@@ -42,36 +32,32 @@ public sealed class Plugin : IDalamudPlugin
     [PluginService]
     private static ITextureProvider Textures { get; set; } = null!;
 
+    [PluginService]
+    private static IFramework Framework { get; set; } = null!;
+
+#if DEBUG
+    [PluginService]
+    private static IAgentLifecycle AgentLifecycle { get; set; } = null!;
+
+    private readonly DebugProbe debugProbe;
+#endif
+
     private readonly WindowSystem windows = new("ChocoboBarding");
     private readonly BardingWindow bardingWindow;
-
-    private bool enabled = true;
+    private readonly BardingQueue queue;
 
     public Plugin()
     {
-        AgentLifecycle.RegisterListener(
-            AgentEvent.PreReceiveEvent,
-            AgentId.Buddy,
-            OnBuddyEvent);
-
-        AgentLifecycle.RegisterListener(
-            AgentEvent.PreReceiveEventWithResult,
-            AgentId.Buddy,
-            OnBuddyEvent);
-
-        CommandManager.AddHandler(
-            CommandName,
-            new CommandInfo(OnCommand)
-            {
-                HelpMessage = "Log Buddy/Companion agent events to /xllog. Usage: /cbdebug [on|off|status|unlocks|help]"
-            });
-
         CommandManager.AddHandler(
             BardingCommandName,
             new CommandInfo(OnBardingCommand)
             {
-                HelpMessage = "Put a full barding set on your chocobo. Usage: /cbarding \"Sophic Barding\" (no name opens the barding list)"
+                HelpMessage = "Put barding on your chocobo. /cbarding \"Sophic\" sets the full set; " +
+                              "/cbarding \"Head\" \"Body\" \"Legs\" sets each slot (- keeps a slot, none removes it). " +
+                              "No name opens the barding list."
             });
+
+        queue = new BardingQueue(Framework, Log);
 
         bardingWindow = new BardingWindow(Data, Unlocks, Textures);
         windows.AddWindow(bardingWindow);
@@ -79,14 +65,18 @@ public sealed class Plugin : IDalamudPlugin
         PluginInterface.UiBuilder.OpenConfigUi += bardingWindow.Toggle;
         PluginInterface.UiBuilder.OpenMainUi += bardingWindow.Toggle;
 
-        Log.Information("Chocobo Barding loaded. Logging Buddy agent ReceiveEvent calls.");
+#if DEBUG
+        debugProbe = new DebugProbe(AgentLifecycle, CommandManager, Log, Chat, Data, Unlocks);
+#endif
     }
 
     public void Dispose()
     {
-        AgentLifecycle.UnregisterListener(OnBuddyEvent);
-        CommandManager.RemoveHandler(CommandName);
+#if DEBUG
+        debugProbe.Dispose();
+#endif
         CommandManager.RemoveHandler(BardingCommandName);
+        queue.Dispose();
         PluginInterface.UiBuilder.Draw -= windows.Draw;
         PluginInterface.UiBuilder.OpenConfigUi -= bardingWindow.Toggle;
         PluginInterface.UiBuilder.OpenMainUi -= bardingWindow.Toggle;
@@ -101,139 +91,67 @@ public sealed class Plugin : IDalamudPlugin
             return;
         }
 
-        if (Barding.Find(Data, args) is not { } row)
+        var tokens = Barding.Tokenize(args);
+        if (tokens.Count is not (1 or 3))
         {
-            var suggestions = Barding.Suggest(Data, Unlocks, args);
-            Chat.PrintError(suggestions.Length > 0
-                ? $"[Chocobo Barding] No barding named \"{args.Trim('"', ' ')}\". Did you mean: {string.Join(", ", suggestions)}?"
-                : $"[Chocobo Barding] No barding named \"{args.Trim('"', ' ')}\".");
+            Chat.PrintError("[Chocobo Barding] Use 1 name (full set) or 3 (head, body, legs), e.g. /cbarding \"Suzaku\" \"Windswept\" -");
             return;
+        }
+
+        // Check every slot before changing anything.
+        var choices = new List<SlotChoice>();
+        var described = new List<string>();
+        foreach (var token in tokens)
+        {
+            var slotLabel = tokens.Count == 3 ? $"{Barding.SlotNames[choices.Count]}: " : string.Empty;
+            if (!TryResolve(token, slotLabel, out var choice, out var description))
+                return;
+
+            choices.Add(choice);
+            described.Add(description);
+        }
+
+        if (choices.Count == 1)
+        {
+            choices.AddRange([choices[0], choices[0]]);
+            described.AddRange([described[0], described[0]]);
+        }
+
+        queue.Replace(choices);
+        Log.Information($"Requested head={described[0]}, body={described[1]}, legs={described[2]}.");
+    }
+
+    private static bool TryResolve(string token, string slotLabel, out SlotChoice choice, out string description)
+    {
+        choice = SlotChoice.Keep;
+        description = token;
+
+        if (token == Barding.KeepToken)
+            return true;
+
+        if (token.Equals(Barding.RemoveToken, System.StringComparison.OrdinalIgnoreCase))
+        {
+            choice = SlotChoice.Remove;
+            return true;
+        }
+
+        if (Barding.Find(Data, token) is not { } row)
+        {
+            var suggestions = Barding.Suggest(Data, Unlocks, token);
+            Chat.PrintError(suggestions.Length > 0
+                ? $"[Chocobo Barding] {slotLabel}No barding named \"{token}\". Did you mean: {string.Join(", ", suggestions)}?"
+                : $"[Chocobo Barding] {slotLabel}No barding named \"{token}\".");
+            return false;
         }
 
         if (!Unlocks.IsBuddyEquipUnlocked(row))
         {
-            Chat.PrintError($"[Chocobo Barding] You don't own {row.Name.ExtractText()}.");
-            return;
+            Chat.PrintError($"[Chocobo Barding] {slotLabel}You don't own {row.Name.ExtractText()}.");
+            return false;
         }
 
-        if (!Barding.Apply(row.RowId))
-        {
-            Chat.PrintError("[Chocobo Barding] Companion agent is not available.");
-            return;
-        }
-
-        Log.Information($"Requested {row.Name.ExtractText()} (BuddyEquip #{row.RowId}) for all slots.");
-    }
-
-    private void OnCommand(string command, string args)
-    {
-        switch (args.Trim().ToLowerInvariant())
-        {
-            case "":
-            case "status":
-                Chat.Print($"[CB Debug] Logging is {(enabled ? "ON" : "OFF")}.");
-                break;
-
-            case "on":
-                enabled = true;
-                Chat.Print("[CB Debug] Logging ON.");
-                break;
-
-            case "off":
-                enabled = false;
-                Chat.Print("[CB Debug] Logging OFF.");
-                break;
-
-            case "unlocks":
-                var owned = Barding.Owned(Data, Unlocks).Select(row => $"#{row.RowId} {row.Name.ExtractText()}").ToList();
-                Log.Information($"[CBDebug] Owned barding ({owned.Count}): {string.Join(", ", owned)}");
-                Chat.Print($"[CB Debug] {owned.Count} owned barding written to /xllog.");
-                break;
-
-            case "help":
-                Chat.Print("[CB Debug] 1) /xllog  2) Companion → Appearance  3) change one barding piece  4) copy the [CBDebug] log lines.");
-                break;
-
-            default:
-                Chat.Print("[CB Debug] Usage: /cbdebug [on|off|status|unlocks|help]");
-                break;
-        }
-    }
-
-    private static string FormatValue(object? value)
-    {
-        return value switch
-        {
-            null => "<null>",
-            string s => $"\"{s}\"",
-            byte[] bytes => $"byte[{bytes.Length}] {Convert.ToHexString(bytes)}",
-            _ => value.ToString() ?? "<null>"
-        };
-    }
-
-    private void OnBuddyEvent(AgentEvent type, AgentArgs args)
-    {
-        if (!enabled || args is not AgentReceiveEventArgs e)
-            return;
-
-        var sb = new StringBuilder();
-        sb.Append("[CBDebug] ")
-          .Append(type)
-          .Append(" | Agent=")
-          .Append(args.AgentId)
-          .Append(" | EventKind=")
-          .Append(e.EventKind)
-          .Append(" | ValueCount=")
-          .Append(e.ValueCount);
-
-        var index = 0;
-        var values = new List<object?>();
-        foreach (var value in e.AtkValueEnumerable)
-        {
-            sb.AppendLine();
-            sb.Append("  [")
-              .Append(index++)
-              .Append("] ")
-              .Append(value.ValueType)
-              .Append(" = ");
-
-            if (value.IsNull)
-            {
-                sb.Append("<null ptr>");
-                continue;
-            }
-
-            try
-            {
-                var raw = value.GetValue();
-                values.Add(raw);
-                sb.Append(FormatValue(raw));
-            }
-            catch (NotImplementedException)
-            {
-                sb.Append("<unsupported value type>");
-            }
-            catch (Exception ex)
-            {
-                sb.Append("<read failed: ")
-                  .Append(ex.GetType().Name)
-                  .Append('>');
-            }
-        }
-
-        // Event 20 = barding picked: [slot, BuddyEquip row]
-        if (values is [20, int slot, int rowId])
-        {
-            var row = Data.GetExcelSheet<BuddyEquip>().GetRowOrDefault((uint)rowId);
-            sb.AppendLine();
-            sb.Append("  => slot ")
-              .Append(slot)
-              .Append(", BuddyEquip #")
-              .Append(rowId)
-              .Append(" = ")
-              .Append(row is { } r ? $"\"{r.Name.ExtractText()}\"" : "<not found>");
-        }
-
-        Log.Information(sb.ToString());
+        choice = SlotChoice.Set(row.RowId);
+        description = $"{row.Name.ExtractText()} (#{row.RowId})";
+        return true;
     }
 }
