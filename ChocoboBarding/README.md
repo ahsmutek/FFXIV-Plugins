@@ -8,6 +8,9 @@ command, so a job macro can switch barding along with your gearset.
 - **One command, full set** – `/cbarding "Sophic Barding"` equips head, body and legs.
   The `Barding` suffix is optional and names are case-insensitive (`/cbarding sophic`).
 - **Works with the Companion window closed** – ready for macros.
+- **Barding list** – `/cbarding` with no name (or the plugin's Settings / Open button)
+  shows every barding you own with its head/body/legs icons, macro line and a Copy
+  button.
 - **Owned barding only** – barding you don't own is refused, and suggestions for a
   mistyped name only list barding you own.
 - **Safe to repeat** – slots already wearing the piece are skipped (re-selecting a worn
@@ -21,6 +24,8 @@ command, so a job macro can switch barding along with your gearset.
 ```text
 /cbarding "Sophic Barding"
 ```
+
+Run `/cbarding` on its own to open the list of barding you own and copy a macro line.
 
 In a job macro:
 

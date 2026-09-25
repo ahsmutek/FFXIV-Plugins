@@ -5,6 +5,7 @@ using System.Text;
 using Dalamud.Game.Agent;
 using Dalamud.Game.Agent.AgentArgTypes;
 using Dalamud.Game.Command;
+using Dalamud.Interface.Windowing;
 using Dalamud.IoC;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
@@ -35,6 +36,15 @@ public sealed class Plugin : IDalamudPlugin
     [PluginService]
     private static IUnlockState Unlocks { get; set; } = null!;
 
+    [PluginService]
+    private static IDalamudPluginInterface PluginInterface { get; set; } = null!;
+
+    [PluginService]
+    private static ITextureProvider Textures { get; set; } = null!;
+
+    private readonly WindowSystem windows = new("ChocoboBarding");
+    private readonly BardingWindow bardingWindow;
+
     private bool enabled = true;
 
     public Plugin()
@@ -60,8 +70,14 @@ public sealed class Plugin : IDalamudPlugin
             BardingCommandName,
             new CommandInfo(OnBardingCommand)
             {
-                HelpMessage = "Put a full barding set on your chocobo. Usage: /cbarding \"Sophic Barding\""
+                HelpMessage = "Put a full barding set on your chocobo. Usage: /cbarding \"Sophic Barding\" (no name opens the barding list)"
             });
+
+        bardingWindow = new BardingWindow(Data, Unlocks, Textures);
+        windows.AddWindow(bardingWindow);
+        PluginInterface.UiBuilder.Draw += windows.Draw;
+        PluginInterface.UiBuilder.OpenConfigUi += bardingWindow.Toggle;
+        PluginInterface.UiBuilder.OpenMainUi += bardingWindow.Toggle;
 
         Log.Information("Chocobo Barding loaded. Logging Buddy agent ReceiveEvent calls.");
     }
@@ -71,13 +87,17 @@ public sealed class Plugin : IDalamudPlugin
         AgentLifecycle.UnregisterListener(OnBuddyEvent);
         CommandManager.RemoveHandler(CommandName);
         CommandManager.RemoveHandler(BardingCommandName);
+        PluginInterface.UiBuilder.Draw -= windows.Draw;
+        PluginInterface.UiBuilder.OpenConfigUi -= bardingWindow.Toggle;
+        PluginInterface.UiBuilder.OpenMainUi -= bardingWindow.Toggle;
+        windows.RemoveAllWindows();
     }
 
     private void OnBardingCommand(string command, string args)
     {
         if (string.IsNullOrWhiteSpace(args))
         {
-            Chat.Print("[Chocobo Barding] Usage: /cbarding \"Sophic Barding\"");
+            bardingWindow.Toggle();
             return;
         }
 
