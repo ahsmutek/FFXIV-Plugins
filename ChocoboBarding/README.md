@@ -24,8 +24,9 @@ so a job macro can switch barding along with your gearset.
   - **Full sets** – every barding you own with its head/body/legs icons, macro line and
     a Copy button, with a filter box.
 
-  The **Jobs** tab has a row per job with a Full set dropdown and Head/Body/Legs
-  dropdowns. Your current job is highlighted.
+  The **Jobs** tab has a row per job, shown by its short name (SMN, WHM…; hover for the
+  full name), with a Full set dropdown and Head/Body/Legs dropdowns. Your current job is
+  highlighted.
 - **Owned barding only** – barding you don't own is refused, and suggestions for a
   mistyped name only list barding you own. Nothing changes unless every slot is valid.
 - **Human pace** – pieces change one at a time: each change waits until the game shows
@@ -58,6 +59,15 @@ In a job macro:
 ```text
 /gearset change "Summoner"
 /cbarding "Sophic"
+```
+
+Summon your chocobo and dress it for your current job:
+
+```text
+/micon "Gysahl Greens" item
+/cbarding greens
+/wait 1
+/cbarding job
 ```
 
 ## Build

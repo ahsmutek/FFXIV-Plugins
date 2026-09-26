@@ -23,10 +23,11 @@ only `RetainerManager`). Command: `/retcd`.
 ### [Chocobo Barding](ChocoboBarding/)
 Puts barding on your chocobo companion with one command, so a job macro can switch
 barding along with your gearset. Equip a full set or pick a different piece per slot,
-with a window that builds the macro line for you. Works with the Companion window
-closed, only equips barding you own, and uses the game's normal Appearance-tab
-event (no hooks or memory writes). Command: `/cbarding "Sophic"` or
-`/cbarding "Suzaku" "Windswept" "Ice"`.
+with a window that builds the macro line for you, or pick a barding per job and put
+it on with `/cbarding job`. `/cbarding greens` uses Gysahl Greens from a macro. Works
+with the Companion window closed, only equips barding you own, and uses the game's
+normal Appearance-tab event (no hooks or memory writes). Command: `/cbarding "Sophic"`
+or `/cbarding "Suzaku" "Windswept" "Ice"`.
 
 ### [Flick Wheel](FlickWheel/)
 A controller radial menu for switching jobs and opening anything else (formerly Job

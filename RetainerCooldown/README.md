@@ -19,6 +19,8 @@ FFXIV cooldown icon.
 - **Icon picker** – browse and click game icons directly in settings, or enter an ID.
 - **Size presets** – snap the icon to fixed sizes (32–128px) to match your hotbars.
 - **Hover tooltip** – styled list of every retainer's venture state.
+- **Optional extras** – hide the timer text, or hide the icon entirely while no ventures
+  are running.
 - No IPC/plugin dependencies; reads only
   `FFXIVClientStructs.FFXIV.Client.Game.RetainerManager`.
 
