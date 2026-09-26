@@ -57,74 +57,34 @@ internal static class JobLayout
         ["GATHERLOG"] = 7, // Gathering Log
     };
 
-
-    // Muted versions of the game's role colors, dark enough for the gold glyphs to read on.
-    private static readonly Dictionary<JobGroup, Vector4> DefaultColors = new()
+    // Palette hue per group (see Palette.Hues) until you pick another: close to the game's
+    // role colors, with the three DPS kinds told apart.
+    private static readonly Dictionary<JobGroup, int> DefaultHues = new()
     {
-        [JobGroup.Tank] = new(.16f, .26f, .52f, .88f),
-        [JobGroup.Healer] = new(.17f, .38f, .16f, .88f),
-        [JobGroup.Melee] = new(.48f, .14f, .14f, .88f),
-        [JobGroup.PhysicalRanged] = new(.50f, .24f, .10f, .88f),
-        [JobGroup.Caster] = new(.42f, .13f, .33f, .88f),
-        [JobGroup.Hand] = new(.33f, .22f, .45f, .88f),
-        [JobGroup.Land] = new(.14f, .36f, .34f, .88f),
-        [JobGroup.Limited] = new(.30f, .31f, .36f, .88f),
-        [JobGroup.Logs] = new(.48f, .14f, .14f, .88f),
+        [JobGroup.Tank] = 11,           // Blue
+        [JobGroup.Healer] = 6,          // Green
+        [JobGroup.Melee] = 0,           // Red
+        [JobGroup.PhysicalRanged] = 2,  // Orange
+        [JobGroup.Caster] = 15,         // Magenta
+        [JobGroup.Limited] = 17,        // Grey
+        [JobGroup.Hand] = 13,           // Violet
+        [JobGroup.Land] = 8,            // Teal
+        [JobGroup.Logs] = 0,            // Red
     };
 
-    // Whole-wheel palettes for the settings window. The first one is the default.
-    public static readonly (string Name, Dictionary<JobGroup, Vector4> Colors)[] ColorPresets =
-    [
-        ("Muted", DefaultColors),
-        ("Vivid", new()
-        {
-            [JobGroup.Tank] = new(.20f, .36f, .80f, .92f),
-            [JobGroup.Healer] = new(.20f, .56f, .22f, .92f),
-            [JobGroup.Melee] = new(.72f, .16f, .16f, .92f),
-            [JobGroup.PhysicalRanged] = new(.78f, .38f, .10f, .92f),
-            [JobGroup.Caster] = new(.62f, .16f, .52f, .92f),
-            [JobGroup.Limited] = new(.42f, .44f, .52f, .92f),
-            [JobGroup.Logs] = new(.72f, .16f, .16f, .92f),
-            [JobGroup.Hand] = new(.46f, .30f, .68f, .92f),
-            [JobGroup.Land] = new(.14f, .54f, .50f, .92f),
-        }),
-        ("Soft", new()
-        {
-            [JobGroup.Tank] = new(.36f, .46f, .68f, .82f),
-            [JobGroup.Healer] = new(.36f, .56f, .38f, .82f),
-            [JobGroup.Melee] = new(.66f, .38f, .38f, .82f),
-            [JobGroup.PhysicalRanged] = new(.68f, .50f, .34f, .82f),
-            [JobGroup.Caster] = new(.60f, .38f, .56f, .82f),
-            [JobGroup.Limited] = new(.50f, .52f, .56f, .82f),
-            [JobGroup.Logs] = new(.66f, .38f, .38f, .82f),
-            [JobGroup.Hand] = new(.52f, .44f, .64f, .82f),
-            [JobGroup.Land] = new(.34f, .58f, .54f, .82f),
-        }),
-        ("Classic roles", new()
-        {
-            [JobGroup.Tank] = new(.20f, .32f, .66f, .90f),
-            [JobGroup.Healer] = new(.20f, .46f, .20f, .90f),
-            [JobGroup.Melee] = new(.56f, .16f, .16f, .90f),
-            [JobGroup.PhysicalRanged] = new(.56f, .16f, .16f, .90f),
-            [JobGroup.Caster] = new(.56f, .16f, .16f, .90f),
-            [JobGroup.Limited] = new(.56f, .16f, .16f, .90f),
-            [JobGroup.Logs] = new(.56f, .16f, .16f, .90f),
-            [JobGroup.Hand] = new(.36f, .30f, .24f, .90f),
-            [JobGroup.Land] = new(.36f, .30f, .24f, .90f),
-        }),
-        ("Dark", new()
-        {
-            [JobGroup.Tank] = new(.10f, .13f, .20f, .88f),
-            [JobGroup.Healer] = new(.10f, .17f, .11f, .88f),
-            [JobGroup.Melee] = new(.20f, .09f, .09f, .88f),
-            [JobGroup.PhysicalRanged] = new(.20f, .13f, .08f, .88f),
-            [JobGroup.Caster] = new(.18f, .08f, .15f, .88f),
-            [JobGroup.Limited] = new(.14f, .14f, .16f, .88f),
-            [JobGroup.Logs] = new(.20f, .09f, .09f, .88f),
-            [JobGroup.Hand] = new(.14f, .11f, .19f, .88f),
-            [JobGroup.Land] = new(.08f, .16f, .15f, .88f),
-        }),
-    ];
+    // "Use job colors": the game's own role colors, every DPS red.
+    private static readonly Dictionary<JobGroup, int> JobColorHues = new()
+    {
+        [JobGroup.Tank] = 11,           // Blue
+        [JobGroup.Healer] = 6,          // Green
+        [JobGroup.Melee] = 0,           // Red
+        [JobGroup.PhysicalRanged] = 0,
+        [JobGroup.Caster] = 0,
+        [JobGroup.Limited] = 17,        // Grey
+        [JobGroup.Hand] = 13,           // Violet
+        [JobGroup.Land] = 3,            // Amber
+        [JobGroup.Logs] = 0,            // Red
+    };
 
     // Every slot the wheel has, locked jobs included.
     public static int SlotCount(WheelKind kind) =>
@@ -183,6 +143,16 @@ internal static class JobLayout
     public static string[] Defaults(JobGroup group) =>
         CombatGroups.Concat(CraftingGroups).First(g => g.Group == group).Jobs;
 
+    // The group's palette hue: the job color when that option is on, else the one picked
+    // for the group, else its default. -1 means a custom color (RoleColors).
+    public static int HueOf(JobGroup group, Configuration config) =>
+        config.UseJobColors ? JobColorHues[group]
+        : config.RoleHues.TryGetValue(group, out var hue) ? hue
+        : config.RoleColors.ContainsKey(group) ? -1
+        : DefaultHues[group];
+
     public static Vector4 ColorOf(JobGroup group, Configuration config) =>
-        config.RoleColors.TryGetValue(group, out var abgr) ? ImGui.ColorConvertU32ToFloat4(abgr) : DefaultColors[group];
+        HueOf(group, config) is var hue and >= 0
+            ? Palette.Color(hue, config.RoleStyle)
+            : Palette.FromAbgr(config.RoleColors[group]);
 }

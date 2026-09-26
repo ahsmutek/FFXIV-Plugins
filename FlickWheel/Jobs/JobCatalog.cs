@@ -122,6 +122,10 @@ internal sealed class JobCatalog(IDataManager data, IUnlockState unlocks, IPlaye
     public static string DisplayName(ClassJob job) =>
         CultureInfo.CurrentCulture.TextInfo.ToTitleCase(job.Name.ExtractText());
 
+    // The short name (SMN, GLA…) of a class or job row, in the client's language.
+    public string Abbreviation(uint classJobId) =>
+        data.GetExcelSheet<ClassJob>().TryGetRow(classJobId, out var row) ? row.Abbreviation.ExtractText() : string.Empty;
+
     private static bool HasParent(ClassJob job) =>
         job.ClassJobParent.IsValid && job.ClassJobParent.RowId != 0 && job.ClassJobParent.RowId != job.RowId;
 

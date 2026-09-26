@@ -84,11 +84,7 @@ internal sealed class JobsModule : IWheelModule
         var changed = false;
         ImGui.TextWrapped("Groups are listed clockwise; use the arrows to move a group. Drag a job sideways to move it within its group (left to right is clockwise). Use Pin to top to choose the group centered at the top. With tanks pinned, healers are also kept at the bottom unless they sit right next to tanks.");
         ImGui.Spacing();
-        overlay.DrawPreviewControls();
-
-        ImGui.Spacing();
-        ImGui.TextDisabled("Color presets");
-        changed |= DrawColorPresets();
+        changed |= DrawColors();
 
         foreach (var kind in Kinds)
         {
@@ -120,36 +116,37 @@ internal sealed class JobsModule : IWheelModule
         return changed;
     }
 
-    // One button per palette with a strip of its colors; clicking recolors every group.
-    // The first preset is the default, so picking it clears the custom colors.
-    private bool DrawColorPresets()
+    // How strong the colors are (Muted, Vivid…), whether every group takes its role's
+    // job color, and a reset back to the default colors.
+    private bool DrawColors()
     {
         var changed = false;
-        var groups = Kinds.SelectMany(JobLayout.GroupsOf).ToArray();
-        const float buttonWidth = 110f;
-        for (var p = 0; p < JobLayout.ColorPresets.Length; p++)
+        ImGui.TextDisabled("Colors");
+        var style = config.RoleStyle;
+        if (GroupEditor.StyleButtons(ref style))
         {
-            var (name, colors) = JobLayout.ColorPresets[p];
-            ImGui.PushID(name);
-            if (ImGui.Button(name, new Vector2(buttonWidth, 0)))
+            config.RoleStyle = style;
+            changed = true;
+        }
+
+        var jobColors = config.UseJobColors;
+        if (ImGui.Checkbox("Use job colors", ref jobColors))
+        {
+            config.UseJobColors = jobColors;
+            changed = true;
+        }
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip("Color groups by role like the game: tanks blue, healers green, DPS red.\nTurn off to pick each group's color.");
+
+        if (!config.UseJobColors && (config.RoleHues.Count > 0 || config.RoleColors.Count > 0))
+        {
+            ImGui.SameLine();
+            if (ImGui.SmallButton("Default colors"))
             {
+                config.RoleHues.Clear();
                 config.RoleColors.Clear();
-                if (p > 0)
-                {
-                    foreach (var (group, color) in colors)
-                        config.RoleColors[group] = ImGui.ColorConvertFloat4ToU32(color);
-                }
                 changed = true;
             }
-
-            foreach (var group in groups)
-            {
-                ImGui.SameLine(0, 2f);
-                ImGui.ColorButton($"##{group}", colors[group],
-                                  ImGuiColorEditFlags.NoTooltip | ImGuiColorEditFlags.NoPicker | ImGuiColorEditFlags.NoDragDrop,
-                                  new Vector2(ImGui.GetFrameHeight()));
-            }
-            ImGui.PopID();
         }
 
         return changed;
@@ -167,12 +164,28 @@ internal sealed class JobsModule : IWheelModule
             changed |= MoveGroup(kind, groups, index, step);
         ImGui.SameLine();
 
-        var color = JobLayout.ColorOf(group, config);
-        if (ImGui.ColorEdit4("##color", ref color, ImGuiColorEditFlags.NoInputs | ImGuiColorEditFlags.AlphaBar))
+        // Palette swatch: a palette hue, or a custom color (which starts from the current one).
+        // With job colors on, the role decides, so the swatch only shows it.
+        var hue = JobLayout.HueOf(group, config);
+        var custom = Palette.Abgr(JobLayout.ColorOf(group, config));
+        ImGui.BeginDisabled(config.UseJobColors);
+        var picked = GroupEditor.ColorSwatch(ref hue, ref custom, config.RoleStyle);
+        ImGui.EndDisabled();
+        if (picked)
         {
-            config.RoleColors[group] = ImGui.ColorConvertFloat4ToU32(color);
+            if (hue >= 0)
+            {
+                config.RoleHues[group] = hue;
+                config.RoleColors.Remove(group);
+            }
+            else
+            {
+                config.RoleColors[group] = custom;
+                config.RoleHues.Remove(group);
+            }
             changed = true;
         }
+        var color = JobLayout.ColorOf(group, config);
         ImGui.SameLine();
         ImGui.AlignTextToFramePadding();
         ImGui.TextUnformatted(Label(group));
@@ -183,13 +196,15 @@ internal sealed class JobsModule : IWheelModule
             changed = true;
         }
 
-        var customized = config.RoleColors.ContainsKey(group) || config.JobOrder.ContainsKey(group);
+        var customized = config.RoleColors.ContainsKey(group) || config.RoleHues.ContainsKey(group) ||
+                         config.JobOrder.ContainsKey(group);
         if (customized)
         {
             ImGui.SameLine();
             if (ImGui.SmallButton("Reset"))
             {
                 config.RoleColors.Remove(group);
+                config.RoleHues.Remove(group);
                 config.JobOrder.Remove(group);
                 changed = true;
             }
@@ -234,6 +249,10 @@ internal sealed class JobsModule : IWheelModule
 
     private static string Label(JobGroup group) => GroupLabels.First(g => g.Group == group).Label;
 
+    // Short name of whatever is shown (a class before its job is unlocked, e.g. GLA).
+    private string ShortName(WheelJob job) =>
+        catalog.Abbreviation(job.RowId) is { Length: > 0 } name ? name : job.Abbreviation;
+
     private bool DrawGearsets()
     {
         var changed = false;
@@ -251,6 +270,16 @@ internal sealed class JobsModule : IWheelModule
         for (var i = 0; i < gearsets.Count; i++)
             options[i + 1] = $"#{gearsets[i].Index + 1} {gearsets[i].Name}";
 
+        // Where the gear set dropdowns line up: after the icon and the widest short name,
+        // measured with the current font so it fits at any UI scale.
+        var spacing = ImGui.GetStyle().ItemSpacing.X;
+        // Log entries have no gear set row, so they don't count toward the widest name.
+        var widestName = jobs.Where(j => j.CommandId == 0)
+                             .Select(j => ImGui.CalcTextSize(ShortName(j)).X)
+                             .DefaultIfEmpty(0f)
+                             .Max();
+        var dropdownX = ImGui.GetCursorPosX() + ImGui.GetFrameHeight() + spacing + widestName + spacing;
+
         foreach (var (group, label) in GroupLabels)
         {
             var inGroup = jobs.Where(j => j.Group == group && j.CommandId == 0).ToList();
@@ -262,12 +291,18 @@ internal sealed class JobsModule : IWheelModule
             foreach (var job in inGroup)
             {
                 ImGui.PushID(job.Abbreviation);
-                var handle = icons.Handle(job.IconId, false);
-                ImGui.Image(handle, new Vector2(ImGui.GetFrameHeight()));
+                // The glyph on its group's band color, as on the wheel.
+                var size = new Vector2(ImGui.GetFrameHeight());
+                var min = ImGui.GetCursorScreenPos();
+                ImGui.GetWindowDrawList().AddRectFilled(min, min + size, ImGui.GetColorU32(JobLayout.ColorOf(job.Group, config)), 3f);
+                ImGui.Image(icons.Handle(job.IconId, false), size);
                 ImGui.SameLine();
                 ImGui.AlignTextToFramePadding();
-                ImGui.TextUnformatted(job.Name);
-                ImGui.SameLine(200f);
+                // Short name of whatever is shown (a class before its job is unlocked); full name on hover.
+                ImGui.TextUnformatted(ShortName(job));
+                if (ImGui.IsItemHovered())
+                    ImGui.SetTooltip(job.Name);
+                ImGui.SameLine(dropdownX);
 
                 config.GearsetOverrides.TryGetValue(job.Abbreviation, out var number);
                 var selected = gearsets.FindIndex(g => g.Index == number - 1) + 1;

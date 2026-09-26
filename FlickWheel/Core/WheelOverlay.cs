@@ -62,7 +62,8 @@ internal sealed class WheelOverlay(WheelInput input, WheelSet wheels, IconCache 
         }
     }
 
-    // Preview checkbox plus which wheel it shows; used on several settings tabs.
+    // Preview checkbox plus which wheel it shows, on the General settings tab. Editing a
+    // wheel on its own tab switches the preview to that wheel.
     public void DrawPreviewControls()
     {
         var preview = Preview;

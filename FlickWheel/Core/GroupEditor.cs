@@ -34,6 +34,94 @@ internal static class GroupEditor
     }
 
     /// <summary>
+    /// One button per palette style (Muted, Vivid…) with a strip of every palette color in
+    /// that style, so whole styles can be compared. True when a different style was picked.
+    /// </summary>
+    public static bool StyleButtons(ref int style)
+    {
+        const float buttonWidth = 90f;
+        var changed = false;
+        var swatch = new Vector2(ImGui.GetFrameHeight());
+        for (var s = 0; s < Palette.Styles.Length; s++)
+        {
+            ImGui.PushID(s);
+            var selected = style == s;
+            if (selected)
+                ImGui.PushStyleColor(ImGuiCol.Button, ImGui.GetColorU32(ImGuiCol.ButtonActive));
+            if (ImGui.Button(Palette.Styles[s].Name, new Vector2(buttonWidth, 0)) && !selected)
+            {
+                style = s;
+                changed = true;
+            }
+            if (selected)
+                ImGui.PopStyleColor();
+
+            for (var h = 0; h < Palette.Hues.Length; h++)
+            {
+                ImGui.SameLine(0, h == 0 ? 6f : 1f);
+                ImGui.ColorButton($"##{h}", Palette.Color(h, s),
+                                  ImGuiColorEditFlags.NoTooltip | ImGuiColorEditFlags.NoPicker |
+                                  ImGuiColorEditFlags.NoDragDrop | ImGuiColorEditFlags.NoAlpha, swatch);
+            }
+            ImGui.PopID();
+        }
+
+        return changed;
+    }
+
+    /// <summary>
+    /// The group's color as a swatch; clicking it opens a grid of palette hues in the
+    /// given style, plus a full picker for a custom color. True when the color changed.
+    /// </summary>
+    public static bool ColorSwatch(ref int hue, ref uint custom, int style)
+    {
+        const int perRow = 6;
+        const ImGuiColorEditFlags swatchFlags = ImGuiColorEditFlags.NoTooltip | ImGuiColorEditFlags.NoAlpha |
+                                                ImGuiColorEditFlags.NoDragDrop;
+        var changed = false;
+        var color = hue >= 0 ? Palette.Color(hue, style) : Palette.FromAbgr(custom);
+        if (ImGui.ColorButton("##swatch", color, swatchFlags, new Vector2(ImGui.GetFrameHeight())))
+            ImGui.OpenPopup("##palette");
+
+        if (!ImGui.BeginPopup("##palette"))
+            return false;
+
+        for (var i = 0; i < Palette.Hues.Length; i++)
+        {
+            if (i % perRow != 0)
+                ImGui.SameLine(0, 4f);
+            ImGui.PushID(i);
+            if (ImGui.ColorButton("##hue", Palette.Color(i, style), swatchFlags, new Vector2(28f)))
+            {
+                hue = i;
+                changed = true;
+                ImGui.CloseCurrentPopup();
+            }
+            if (i == hue)
+                ImGui.GetWindowDrawList().AddRect(ImGui.GetItemRectMin() - new Vector2(2f), ImGui.GetItemRectMax() + new Vector2(2f),
+                                                  0xFFFFFFFF, 3f, ImDrawFlags.None, 2f);
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip(Palette.Hues[i].Name);
+            ImGui.PopID();
+        }
+
+        ImGui.Spacing();
+        ImGui.Separator();
+        ImGui.TextDisabled(hue < 0 ? "Custom (in use)" : "Custom");
+        var picked = color;
+        ImGui.SetNextItemWidth(200f);
+        if (ImGui.ColorPicker4("##custom", ref picked, ImGuiColorEditFlags.AlphaBar | ImGuiColorEditFlags.NoSidePreview))
+        {
+            hue = -1;
+            custom = Palette.Abgr(picked);
+            changed = true;
+        }
+
+        ImGui.EndPopup();
+        return changed;
+    }
+
+    /// <summary>
     /// A row of the group's icons on its band color. Drag one sideways to move it; the
     /// result is the move to make (from index, to index), or null. <paramref name="context"/>
     /// is drawn as a right-click menu for an icon, if given.

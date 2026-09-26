@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
+using Dalamud.Interface.Utility;
 
 namespace FlickWheel;
 
@@ -62,7 +63,7 @@ internal sealed class ShortcutsModule : IWheelModule
             new ShortcutGroup
             {
                 Name = "Travel",
-                Color = Abgr(.14f, .36f, .34f, .88f),
+                Hue = 8, // Teal
                 Entries =
                 [
                     new ShortcutEntry { Kind = ShortcutKind.GeneralAction, RowId = 7 }, // Teleport
@@ -73,7 +74,7 @@ internal sealed class ShortcutsModule : IWheelModule
             new ShortcutGroup
             {
                 Name = "Windows",
-                Color = Abgr(.16f, .26f, .52f, .88f),
+                Hue = 11, // Blue
                 Entries =
                 [
                     new ShortcutEntry { Kind = ShortcutKind.MainCommand, RowId = 33 }, // Duty Finder
@@ -84,7 +85,7 @@ internal sealed class ShortcutsModule : IWheelModule
             new ShortcutGroup
             {
                 Name = "Chocobo",
-                Color = Abgr(.50f, .36f, .10f, .88f),
+                Hue = 3, // Amber
                 Entries =
                 [
                     new ShortcutEntry { Kind = ShortcutKind.Item, RowId = 4868 }, // Gysahl Greens
@@ -95,10 +96,16 @@ internal sealed class ShortcutsModule : IWheelModule
         ],
     };
 
-    private static uint Abgr(float r, float g, float b, float a) =>
-        ((uint)(a * 255) << 24) | ((uint)(b * 255) << 16) | ((uint)(g * 255) << 8) | (uint)(r * 255);
+    // A palette hue in the wheel's style, or the group's custom color.
+    private Vector4 ColorOf(ShortcutGroup group) =>
+        group.Hue >= 0 ? Palette.Color(group.Hue, Wheel.Style) : Palette.FromAbgr(group.Color);
 
-    private static Vector4 ColorOf(ShortcutGroup group) => ImGui.ColorConvertU32ToFloat4(group.Color);
+    // Hues handed out to new groups and by Auto colors: far apart first, near neighbours later.
+    private static readonly int[] HueOrder = [11, 6, 0, 2, 14, 8, 3, 16, 12, 5, 9, 15, 1, 4, 7, 10, 13, 17];
+
+    // The first hue in HueOrder that no group uses yet (or the first one, if all are taken).
+    private static int NextHue(List<ShortcutGroup> groups) =>
+        HueOrder.FirstOrDefault(hue => groups.All(g => g.Hue != hue), HueOrder[0]);
 
     private sealed class ShortcutsWheel(ShortcutsModule module) : IWheel
     {
@@ -109,7 +116,7 @@ internal sealed class ShortcutsModule : IWheelModule
         public WheelRing Layout()
         {
             var groups = module.Wheel.Groups;
-            var slots = groups.SelectMany((group, index) => group.Entries.Select(entry => new RingSlot(entry.Uid, index, ColorOf(group))))
+            var slots = groups.SelectMany((group, index) => group.Entries.Select(entry => new RingSlot(entry.Uid, index, module.ColorOf(group))))
                               .ToArray();
             var pinned = groups.Count > 0 ? Math.Clamp(module.Wheel.PinnedGroup, 0, groups.Count - 1) : 0;
             return new WheelRing(slots, (pinned, 0f));
@@ -140,10 +147,10 @@ internal sealed class ShortcutsModule : IWheelModule
     {
         var changed = false;
         ImGui.TextWrapped("Groups are listed clockwise. Drag a shortcut sideways to move it within its group; right-click it to rename, change its icon, move it to another group or remove it. Press + to add a shortcut.");
-        ImGui.Spacing();
-        overlay.DrawPreviewControls();
-
         var groups = Wheel.Groups;
+        ImGui.Spacing();
+        changed |= DrawColorStyle(groups);
+
         var openPicker = false;
         for (var g = 0; g < groups.Count; g++)
         {
@@ -160,7 +167,7 @@ internal sealed class ShortcutsModule : IWheelModule
         ImGui.Separator();
         if (ImGui.Button("Add group"))
         {
-            groups.Add(new ShortcutGroup { Name = $"Group {groups.Count + 1}", Color = Abgr(.30f, .31f, .36f, .88f) });
+            groups.Add(new ShortcutGroup { Name = $"Group {groups.Count + 1}", Hue = NextHue(groups) });
             changed = true;
         }
 
@@ -174,6 +181,31 @@ internal sealed class ShortcutsModule : IWheelModule
 
         if (changed)
             overlay.PreviewWheel = WheelId; // show the wheel being edited
+        return changed;
+    }
+
+    // The shade style for the whole wheel, and a button that gives every group its own hue.
+    // Each group's hue is picked from its own swatch.
+    private bool DrawColorStyle(List<ShortcutGroup> groups)
+    {
+        var changed = false;
+        ImGui.TextDisabled("Colors");
+        var style = Wheel.Style;
+        if (GroupEditor.StyleButtons(ref style))
+        {
+            Wheel.Style = style;
+            changed = true;
+        }
+
+        if (ImGui.SmallButton("Auto colors"))
+        {
+            for (var g = 0; g < groups.Count; g++)
+                groups[g].Hue = HueOrder[g % HueOrder.Length];
+            changed = true;
+        }
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip("Give every group a different color.");
+
         return changed;
     }
 
@@ -196,12 +228,15 @@ internal sealed class ShortcutsModule : IWheelModule
         }
         ImGui.SameLine();
 
-        var color = ColorOf(group);
-        if (ImGui.ColorEdit4("##color", ref color, ImGuiColorEditFlags.NoInputs | ImGuiColorEditFlags.AlphaBar))
+        var hue = group.Hue;
+        var custom = group.Color;
+        if (GroupEditor.ColorSwatch(ref hue, ref custom, Wheel.Style))
         {
-            group.Color = ImGui.ColorConvertFloat4ToU32(color);
+            group.Hue = hue;
+            group.Color = custom;
             changed = true;
         }
+        var color = ColorOf(group);
         ImGui.SameLine();
         var name = group.Name;
         ImGui.SetNextItemWidth(140f);
@@ -351,9 +386,10 @@ internal sealed class ShortcutsModule : IWheelModule
     }
 
     // The add-a-shortcut popup: tabs for game windows, actions, items and plugin commands.
+    // Popups always size to their contents, so everything sits in a fixed-size child;
+    // otherwise wrapped text would stretch the popup across the screen.
     private bool DrawPicker()
     {
-        ImGui.SetNextWindowSize(new Vector2(420f, 480f), ImGuiCond.Appearing);
         if (!ImGui.BeginPopup(PickerPopup))
             return false;
 
@@ -365,6 +401,7 @@ internal sealed class ShortcutsModule : IWheelModule
             return false;
         }
 
+        ImGui.BeginChild("##pickerBody", new Vector2(600f, 500f) * ImGuiHelpers.GlobalScale);
         var group = Wheel.Groups[pickerGroup];
         ImGui.TextDisabled($"Add to {(group.Name.Length > 0 ? group.Name : "this group")}");
         ImGui.SetNextItemWidth(-1);
@@ -395,6 +432,7 @@ internal sealed class ShortcutsModule : IWheelModule
             ImGui.EndTabBar();
         }
 
+        ImGui.EndChild();
         ImGui.EndPopup();
         return changed;
     }

@@ -57,7 +57,9 @@ public sealed class ShortcutGroup
 {
     public string Uid { get; set; } = Guid.NewGuid().ToString("N");
     public string Name { get; set; } = string.Empty;
-    // Band color as ABGR.
+    // Palette hue (see Palette.Hues), shaded by the wheel's style. -1 = the custom Color below.
+    public int Hue { get; set; } = -1;
+    // Custom band color as ABGR, used when Hue is -1.
     public uint Color { get; set; }
     public List<ShortcutEntry> Entries { get; set; } = new();
 }
@@ -68,6 +70,8 @@ public sealed class ShortcutWheel
     public List<ShortcutGroup> Groups { get; set; } = new();
     // Index of the group centered at the top.
     public int PinnedGroup { get; set; }
+    // Palette shade style (see Palette.Styles) for groups that use a palette hue.
+    public int Style { get; set; }
 }
 
 public sealed class Configuration : IPluginConfiguration
@@ -118,8 +122,16 @@ public sealed class Configuration : IPluginConfiguration
     // Clockwise job order within each group. Missing = default order.
     public Dictionary<JobGroup, List<string>> JobOrder { get; set; } = new();
 
-    // Band color per group as ABGR. Missing = default color.
+    // Custom band color per group as ABGR, picked with the swatch's Custom picker.
     public Dictionary<JobGroup, uint> RoleColors { get; set; } = new();
+
+    // Palette hue per group (see Palette.Hues). Missing = the group's default hue.
+    public Dictionary<JobGroup, int> RoleHues { get; set; } = new();
+    // Palette shade style (see Palette.Styles) for the job wheels.
+    public int RoleStyle { get; set; }
+    // Color every group by its role as the game does (tanks blue, healers green, DPS red…),
+    // ignoring the per-group picks.
+    public bool UseJobColors { get; set; }
 
     // The Shortcuts wheel. Null until first used, then filled with starter groups (in
     // code rather than here, so loading saved groups doesn't add to the starter ones).
