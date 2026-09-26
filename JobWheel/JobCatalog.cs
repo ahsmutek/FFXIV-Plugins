@@ -23,8 +23,8 @@ internal readonly record struct GearsetInfo(int Index, string Name, uint ClassJo
 
 internal sealed class JobCatalog(IDataManager data, IUnlockState unlocks, IPlayerState player, Configuration config)
 {
-    // Framed round job icons are 62100 + ClassJob row id.
-    private const uint JobIconBase = 62100;
+    // Gold job glyphs on a transparent background are 62000 + ClassJob row id.
+    private const uint JobIconBase = 62000;
 
     private Dictionary<string, ClassJob>? byAbbreviation;
 

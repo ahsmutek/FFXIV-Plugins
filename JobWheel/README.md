@@ -1,19 +1,21 @@
 # Job Wheel
 
 A controller-friendly radial menu for switching jobs. Hold the shortcut, flick the
-right stick toward a job, and let the stick spring back. You switch to that job
-and the wheel closes. You don't press a confirm button or open a list.
+right stick toward a job, and let go of the shortcut to switch. You don't press a
+confirm button or open a list.
 
 ## Usage
 
 1. Hold **Ctrl + ,**. On a controller, map a button to it with reWASD or Steam Input.
    This opens the combat wheel. Hold **LB** to show the crafting and gathering wheel
    instead. It swaps back and forth as you press and let go of LB, even while the wheel is open.
-2. Tilt the right stick toward a job. The targeted icon grows and gets a gold ring.
-3. Let the stick return to center. The wheel closes and the job's gear set is equipped.
+2. Tilt the right stick toward a job. Its whole slice of the wheel fills with its role color.
+3. Let go of the shortcut. The wheel closes and the job's gear set is equipped.
+   The stick can spring back to center first; the target stays until you flick
+   toward another job.
 
+- Pressing **B** closes the wheel with no change, even with a job targeted.
 - Letting go of the shortcut without targeting anything closes the wheel with no change.
-- Letting go of the shortcut while a job is targeted switches to it, the same as releasing the stick.
 - Picking the job you're already on just closes the wheel.
 - `/jobwheel` opens settings.
 
@@ -22,15 +24,15 @@ and the wheel closes. You don't press a confirm button or open a list.
 There are two wheels, and every job has a fixed spot on its wheel, so you can learn
 the directions by feel. Groups run clockwise starting from the top.
 
-**Combat wheel** (tanks centered on top):
+**Combat wheel** (tanks centered north, healers centered south):
 
 | Group | Jobs |
 |---|---|
-| Tanks | PLD WAR DRK GNB |
-| Healers | WHM SCH AST SGE |
-| Melee | MNK DRG NIN SAM RPR VPR |
-| Physical ranged | BRD MCH DNC |
-| Magical ranged | BLM SMN RDM PCT BLU |
+| Tanks (north) | PLD WAR DRK GNB |
+| Melee (east) | MNK DRG NIN SAM RPR VPR |
+| Healers (south) | WHM SCH AST SGE |
+| Physical ranged (west) | BRD MCH DNC |
+| Magical ranged (west) | BLM SMN RDM PCT BLU |
 
 **Crafting and gathering wheel** (hold LB; crafters across the top, gatherers along the bottom):
 
@@ -41,8 +43,8 @@ the directions by feel. Groups run clockwise starting from the top.
 
 - Locked jobs leave their spot empty, and nothing else moves when you unlock one.
 - If you have a class but not its job yet (e.g. Gladiator), the class shows in the job's spot.
-- The stick targets the nearest icon, so the fewer jobs you have unlocked, the bigger each target is.
-- A thin colored arc behind each group marks the role.
+- The stick targets the slice it points into. Pointing at an empty slice (a locked job) targets the nearest unlocked job instead.
+- The ring is a band colored by role (blue tanks, green healers, reds for DPS, purple crafters, teal gatherers), with the job glyphs on top. The targeted job's slice fills with its role color and your current job has a white dot. The east and west sides split the space left between tanks and healers evenly, so their slots are slightly wider (melee) or narrower (ranged and casters).
 
 ## Switching
 
@@ -60,7 +62,7 @@ This covers being in combat, in a duty, casting, crafting, or not having a gear 
 - Wheel scale
 - Icon size
 - Offset from screen center
-- Stick deadzone and selection threshold
+- Stick selection threshold
 - The shortcut
 - Gear set per job
 

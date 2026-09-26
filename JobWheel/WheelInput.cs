@@ -9,9 +9,10 @@ using Dalamud.Plugin.Services;
 
 namespace JobWheel;
 
-// Hold the hotkey to show the wheel, tilt the right stick toward a job, let the
-// stick spring back to switch. Letting go of the hotkey commits the target if
-// there is one and cancels otherwise, so the wheel can never get stuck open.
+// Hold the hotkey to show the wheel and tilt the right stick toward a job; the
+// target stays when the stick springs back. Letting go of the hotkey switches to
+// the target if there is one and cancels otherwise, so the wheel can never get
+// stuck open. B cancels.
 internal sealed class WheelInput : IDisposable
 {
     // Game stick axes run -99..99.
@@ -107,6 +108,13 @@ internal sealed class WheelInput : IDisposable
         if (keys.IsVirtualKeyValid(config.Key))
             keys[config.Key] = false;
 
+        // B cancels. The wheel stays shut until the shortcut is pressed again.
+        if (gamepad.Raw(GamepadButtons.East) > 0)
+        {
+            Close();
+            return;
+        }
+
         ReadStick();
 
         // Pressing or letting go of LB swaps wheels while open.
@@ -127,9 +135,7 @@ internal sealed class WheelInput : IDisposable
 
         if (StickTilt < config.Deadzone)
         {
-            // Back at center: a target means the gesture is done.
-            if (Target != null)
-                Commit();
+            // Back at center: keep the target so letting go of the shortcut switches to it.
             gesturePeak = 0;
             return;
         }
@@ -185,9 +191,18 @@ internal sealed class WheelInput : IDisposable
     }
 
     // Nearest shown icon to the stick direction, sticky toward the current target.
+    // The job whose slice the stick points into, sticky toward the current target.
+    // If that slice is empty (a locked job), the nearest shown icon takes it.
     private WheelJob? Pick(WheelJob? current)
     {
         var angle = MathF.Atan2(StickDirection.X, -StickDirection.Y);
+
+        if (current != null && InSlice(angle, current.Slot, Hysteresis))
+            return current;
+        foreach (var job in Jobs)
+            if (InSlice(angle, job.Slot, 0))
+                return job;
+
         WheelJob? best = null;
         var bestDistance = float.MaxValue;
         foreach (var job in Jobs)
@@ -208,6 +223,12 @@ internal sealed class WheelInput : IDisposable
         }
 
         return best;
+    }
+
+    private bool InSlice(float angle, int slot, float margin)
+    {
+        var halfWidth = (Ring.EndOf(slot) - Ring.StartOf(slot)) / 2 + margin;
+        return JobLayout.AngleDistance(angle, Ring.AngleOf(slot)) <= halfWidth;
     }
 
     // LB held shows crafters and gatherers instead of combat jobs.

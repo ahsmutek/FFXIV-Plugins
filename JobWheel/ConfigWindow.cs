@@ -75,21 +75,13 @@ internal sealed class ConfigWindow : Window
 
         ImGui.Spacing();
         ImGui.TextDisabled("Stick");
-        var deadzone = config.Deadzone;
-        if (ImGui.SliderFloat("Center deadzone", ref deadzone, 0.05f, 0.5f, "%.2f"))
-        {
-            config.Deadzone = deadzone;
-            config.SelectThreshold = Math.Max(config.SelectThreshold, deadzone + 0.1f);
-            changed = true;
-        }
         var threshold = config.SelectThreshold;
-        if (ImGui.SliderFloat("Select threshold", ref threshold, 0.2f, 0.95f, "%.2f"))
+        if (ImGui.SliderFloat("Select threshold", ref threshold, 0.35f, 0.95f, "%.2f"))
         {
             config.SelectThreshold = threshold;
-            config.Deadzone = Math.Min(config.Deadzone, threshold - 0.1f);
             changed = true;
         }
-        ImGui.TextWrapped("The stick has to tilt past the threshold to target a job, and back inside the deadzone to switch.");
+        ImGui.TextWrapped("How far the stick has to tilt to target a job. The target stays when the stick springs back; let go of the shortcut to switch.");
 
         ImGui.Spacing();
         ImGui.TextDisabled("Shortcut (hold)");

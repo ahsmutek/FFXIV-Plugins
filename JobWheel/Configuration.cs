@@ -24,7 +24,7 @@ public sealed class Configuration : IPluginConfiguration
     public float OffsetX { get; set; } = 0f;
     public float OffsetY { get; set; } = 0f;
 
-    // Stick tilt (0-1) below which the stick counts as back at center.
+    // Stick tilt (0-1) below which the stick counts as back at center, ending one flick.
     public float Deadzone { get; set; } = 0.25f;
     // Stick tilt (0-1) needed before a job gets targeted.
     public float SelectThreshold { get; set; } = 0.55f;
