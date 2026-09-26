@@ -28,6 +28,13 @@ closed, only equips barding you own, and uses the game's normal Appearance-tab
 event (no hooks or memory writes). Command: `/cbarding "Sophic"` or
 `/cbarding "Suzaku" "Windswept" "Ice"`.
 
+### [Job Wheel](JobWheel/)
+A controller radial menu for switching jobs. Hold `Ctrl + ,`, flick the right stick
+toward a job, and let go to switch. Hold LB to swap to the crafting and
+gathering wheel instead. Every unlocked job has a fixed, role-grouped
+spot on the wheel so you can learn the directions by feel, and each job can use a
+gear set of your choice. Command: `/jobwheel` (settings).
+
 ## Building
 
 Each plugin is a standard Dalamud project. From a plugin's folder:

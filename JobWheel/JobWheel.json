@@ -1,0 +1,8 @@
+{
+  "Author": "Kotanna",
+  "Name": "Job Wheel",
+  "Punchline": "Switch jobs with one flick of the right stick.",
+  "Description": "Hold Ctrl+, to open a radial wheel of every job you've unlocked, flick the right stick toward one, and let go to switch. Jobs keep fixed, role-grouped positions so you can learn them by feel.",
+  "ApplicableVersion": "any",
+  "Tags": ["job", "gearset", "controller", "radial", "wheel"]
+}
