@@ -4,6 +4,7 @@ using Dalamud.Interface.Windowing;
 using Dalamud.IoC;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
+using Lumina.Excel.Sheets;
 
 namespace ChocoboBarding;
 
@@ -35,6 +36,9 @@ public sealed class Plugin : IDalamudPlugin
     [PluginService]
     private static IFramework Framework { get; set; } = null!;
 
+    [PluginService]
+    private static IPlayerState PlayerState { get; set; } = null!;
+
 #if DEBUG
     [PluginService]
     private static IAgentLifecycle AgentLifecycle { get; set; } = null!;
@@ -42,24 +46,30 @@ public sealed class Plugin : IDalamudPlugin
     private readonly DebugProbe debugProbe;
 #endif
 
+    private const string JobKeyword = "job";
+
+    private readonly Configuration config;
     private readonly WindowSystem windows = new("ChocoboBarding");
     private readonly BardingWindow bardingWindow;
     private readonly BardingQueue queue;
 
     public Plugin()
     {
+        config = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
+
         CommandManager.AddHandler(
             BardingCommandName,
             new CommandInfo(OnBardingCommand)
             {
                 HelpMessage = "Put barding on your chocobo. /cbarding \"Sophic\" sets the full set; " +
                               "/cbarding \"Head\" \"Body\" \"Legs\" sets each slot (- keeps a slot, none removes it). " +
+                              "/cbarding job uses the barding picked for your current job. " +
                               "No name opens the barding list."
             });
 
-        queue = new BardingQueue(Framework, Log);
+        queue = new BardingQueue(Framework, PlayerState, Log);
 
-        bardingWindow = new BardingWindow(Data, Unlocks, Textures);
+        bardingWindow = new BardingWindow(Data, Unlocks, Textures, PlayerState, config, Save);
         windows.AddWindow(bardingWindow);
         PluginInterface.UiBuilder.Draw += windows.Draw;
         PluginInterface.UiBuilder.OpenConfigUi += bardingWindow.Toggle;
@@ -83,11 +93,19 @@ public sealed class Plugin : IDalamudPlugin
         windows.RemoveAllWindows();
     }
 
+    private void Save() => PluginInterface.SavePluginConfig(config);
+
     private void OnBardingCommand(string command, string args)
     {
         if (string.IsNullOrWhiteSpace(args))
         {
             bardingWindow.Toggle();
+            return;
+        }
+
+        if (args.Trim().Equals(JobKeyword, System.StringComparison.OrdinalIgnoreCase))
+        {
+            ApplyJobBarding();
             return;
         }
 
@@ -119,6 +137,36 @@ public sealed class Plugin : IDalamudPlugin
 
         queue.Replace(choices);
         Log.Information($"Requested head={described[0]}, body={described[1]}, legs={described[2]}.");
+    }
+
+    private void ApplyJobBarding()
+    {
+        if (!PlayerState.IsLoaded)
+            return;
+
+        var job = PlayerState.ClassJob;
+        if (Barding.ForJob(config, Data, job.RowId) is not { } choices)
+        {
+            Chat.PrintError($"[Chocobo Barding] No barding set for {Barding.JobName(job.Value)}. Pick one in /cbarding → Jobs.");
+            return;
+        }
+
+        // Check every slot before changing anything.
+        var sheet = Data.GetExcelSheet<BuddyEquip>();
+        for (var slot = 0; slot < choices.Length; slot++)
+        {
+            if (choices[slot].Action != SlotAction.Set)
+                continue;
+
+            if (sheet.GetRowOrDefault(choices[slot].RowId) is not { } row || !Unlocks.IsBuddyEquipUnlocked(row))
+            {
+                Chat.PrintError($"[Chocobo Barding] {Barding.SlotNames[slot]}: You don't own the barding picked for {Barding.JobName(job.Value)}.");
+                return;
+            }
+        }
+
+        queue.Replace(choices);
+        Log.Information($"Requested barding for {Barding.JobName(job.Value)}: {string.Join(", ", choices)}.");
     }
 
     private static bool TryResolve(string token, string slotLabel, out SlotChoice choice, out string description)

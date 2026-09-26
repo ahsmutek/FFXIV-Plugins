@@ -10,13 +10,20 @@ so a job macro can switch barding along with your gearset.
   Names are shown without the `Barding` suffix; typing it is optional, and names are
   case-insensitive (`/cbarding sophic`).
 - **Keep or remove a slot** – `-` leaves a slot as it is, `none` takes that piece off.
+- **Barding per job** – pick a barding for each job (and crafter/gatherer) in the **Jobs**
+  tab, then `/cbarding job` puts on the one for the job you're on. Put it on a hotbar
+  and press it only when you want your chocobo to match; switching jobs alone changes
+  nothing. Base classes use their job's pick (Arcanist → Summoner/Scholar).
 - **Works with the Companion window closed** – ready for macros.
 - **Barding window** – `/cbarding` with no name (or the plugin's Settings / Open button)
-  opens it:
+  opens it. The **Barding** tab has:
   - **Mix & match** – a column per slot with a large preview icon and a dropdown of
     your barding (plus Keep current / None); it builds the macro line with a Copy button.
   - **Full sets** – every barding you own with its head/body/legs icons, macro line and
     a Copy button, with a filter box.
+
+  The **Jobs** tab has a row per job with a Full set dropdown and Head/Body/Legs
+  dropdowns. Your current job is highlighted.
 - **Owned barding only** – barding you don't own is refused, and suggestions for a
   mistyped name only list barding you own. Nothing changes unless every slot is valid.
 - **Human pace** – pieces change one at a time: each change waits until the game shows
@@ -35,6 +42,7 @@ so a job macro can switch barding along with your gearset.
 /cbarding - - "Ice"                         legs only
 /cbarding "Suzaku" none none                Suzaku head, body and legs removed
 /cbarding none                              remove all barding
+/cbarding job                               barding picked for your current job
 ```
 
 Give either one name (full set) or three (head, body, legs). Use quotes around names

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using Dalamud.Plugin.Services;
@@ -10,7 +11,7 @@ using Lumina.Excel.Sheets;
 
 namespace ChocoboBarding;
 
-internal enum SlotAction
+public enum SlotAction
 {
     Keep,
     Remove,
@@ -18,7 +19,7 @@ internal enum SlotAction
 }
 
 /// <summary>What to do with one barding slot: leave it, take the piece off, or put a BuddyEquip row on.</summary>
-internal readonly record struct SlotChoice(SlotAction Action, uint RowId = 0)
+public readonly record struct SlotChoice(SlotAction Action, uint RowId = 0)
 {
     public static readonly SlotChoice Keep = new(SlotAction.Keep);
     public static readonly SlotChoice Remove = new(SlotAction.Remove);
@@ -133,6 +134,44 @@ internal static class Barding
         SlotAction.Remove => RemoveToken,
         _ => $"\"{name}\"",
     };
+
+    /// <summary>
+    /// Jobs a barding can be picked for: every job, crafter and gatherer, in the game's own order.
+    /// Base classes (Arcanist, Gladiator…) are left out; they use their job's barding.
+    /// </summary>
+    public static List<ClassJob> Jobs(IDataManager data)
+    {
+        var sheet = data.GetExcelSheet<ClassJob>();
+        var baseClasses = sheet.Where(HasParent).Select(job => job.ClassJobParent.RowId).ToHashSet();
+        return sheet.Where(job => job.RowId != 0
+                                  && job.Name.ExtractText().Length > 0
+                                  && job.Abbreviation.ExtractText().Length > 0
+                                  && !baseClasses.Contains(job.RowId))
+                    .OrderBy(job => job.UIPriority)
+                    .ToList();
+    }
+
+    /// <summary>The barding saved for a job; a base class falls back to a job built on it (Arcanist → Summoner or Scholar).</summary>
+    public static SlotChoice[]? ForJob(Configuration config, IDataManager data, uint classJobId)
+    {
+        if (Saved(config, classJobId) is { } choices)
+            return choices;
+
+        foreach (var job in data.GetExcelSheet<ClassJob>().Where(job => HasParent(job) && job.ClassJobParent.RowId == classJobId).OrderBy(job => job.UIPriority))
+            if (Saved(config, job.RowId) is { } fallback)
+                return fallback;
+
+        return null;
+    }
+
+    private static SlotChoice[]? Saved(Configuration config, uint classJobId) =>
+        config.JobBarding.TryGetValue(classJobId, out var choices) && choices.Length == SlotCount ? choices : null;
+
+    private static bool HasParent(ClassJob job) =>
+        job.ClassJobParent.IsValid && job.ClassJobParent.RowId != 0 && job.ClassJobParent.RowId != job.RowId;
+
+    public static string JobName(ClassJob job) =>
+        CultureInfo.CurrentCulture.TextInfo.ToTitleCase(job.Name.ExtractText());
 
     public static unsafe uint WornRowId(int slot)
     {

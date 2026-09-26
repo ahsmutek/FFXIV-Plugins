@@ -1,10 +1,12 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Textures;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin.Services;
+using ClassJob = Lumina.Excel.Sheets.ClassJob;
 
 namespace ChocoboBarding;
 
@@ -14,22 +16,34 @@ internal sealed class BardingWindow : Window
     private const float SmallIconSize = 24;
     private const float MixIconSize = 80;
 
+    // Gold job glyphs on a transparent background are 62000 + ClassJob row id.
+    private const uint JobIconBase = 62000;
+    private const string JobMacro = "/cbarding job";
+
     private readonly IDataManager data;
     private readonly IUnlockState unlocks;
     private readonly ITextureProvider textures;
+    private readonly IPlayerState player;
+    private readonly Configuration config;
+    private readonly Action save;
     private (string Name, uint RowId, uint[] Icons)[] owned = [];
+    private List<ClassJob> jobs = [];
     private string filter = string.Empty;
 
     // Mix & match picks per slot (head, body, legs).
     private readonly SlotChoice[] mix = [SlotChoice.Keep, SlotChoice.Keep, SlotChoice.Keep];
 
-    public BardingWindow(IDataManager data, IUnlockState unlocks, ITextureProvider textures)
+    public BardingWindow(IDataManager data, IUnlockState unlocks, ITextureProvider textures,
+                         IPlayerState player, Configuration config, Action save)
         : base("Chocobo Barding###ChocoboBardingMain")
     {
         this.data = data;
         this.unlocks = unlocks;
         this.textures = textures;
-        Size = new Vector2(580, 720);
+        this.player = player;
+        this.config = config;
+        this.save = save;
+        Size = new Vector2(720, 720);
         SizeCondition = ImGuiCond.FirstUseEver;
     }
 
@@ -41,6 +55,7 @@ internal sealed class BardingWindow : Window
                        .DistinctBy(entry => entry.Name)
                        .OrderBy(entry => entry.Name, StringComparer.OrdinalIgnoreCase)
                        .ToArray();
+        jobs = Barding.Jobs(data);
     }
 
     private void DrawIcon(uint icon, float size)
@@ -88,14 +103,53 @@ internal sealed class BardingWindow : Window
             ImGui.TextUnformatted(text);
     }
 
+    private static void CopyButton(string id, string? text)
+    {
+        ImGui.BeginDisabled(text == null);
+        if (ImGui.Button($"Copy##{id}") && text != null)
+            ImGui.SetClipboardText(text);
+        ImGui.EndDisabled();
+    }
+
     private int IndexOf(uint rowId) => Array.FindIndex(owned, entry => entry.RowId == rowId);
 
     private string Label(SlotChoice choice) => choice.Action switch
     {
         SlotAction.Remove => "None",
         SlotAction.Set when IndexOf(choice.RowId) is var i and >= 0 => owned[i].Name,
+        SlotAction.Set => $"#{choice.RowId}",
         _ => "Keep current",
     };
+
+    /// <summary>A dropdown for one slot: Keep current, None, then every owned barding. True when the pick changed.</summary>
+    private bool DrawSlotCombo(string id, int slot, ref SlotChoice choice)
+    {
+        ImGui.SetNextItemWidth(-1);
+        if (!ImGui.BeginCombo($"##{id}", Label(choice)))
+            return false;
+
+        var picked = choice;
+        if (ImGui.Selectable("Keep current", choice.Action == SlotAction.Keep))
+            picked = SlotChoice.Keep;
+        if (ImGui.Selectable("None", choice.Action == SlotAction.Remove))
+            picked = SlotChoice.Remove;
+
+        foreach (var (name, rowId, icons) in owned)
+        {
+            DrawIcon(icons[slot], SmallIconSize);
+            ImGui.SameLine();
+            if (ImGui.Selectable($"{name}##{id}-{rowId}", choice.Action == SlotAction.Set && choice.RowId == rowId))
+                picked = SlotChoice.Set(rowId);
+        }
+
+        ImGui.EndCombo();
+
+        if (picked == choice)
+            return false;
+
+        choice = picked;
+        return true;
+    }
 
     /// <summary>The /cbarding line for the current picks, or null when every slot is "Keep current".</summary>
     private string? MixMacro()
@@ -138,24 +192,7 @@ internal sealed class BardingWindow : Window
                 ImGui.Dummy(new Vector2(MixIconSize));
             }
 
-            ImGui.SetNextItemWidth(-1);
-            if (!ImGui.BeginCombo($"##mix{slot}", Label(current)))
-                continue;
-
-            if (ImGui.Selectable("Keep current", current.Action == SlotAction.Keep))
-                mix[slot] = SlotChoice.Keep;
-            if (ImGui.Selectable("None", current.Action == SlotAction.Remove))
-                mix[slot] = SlotChoice.Remove;
-
-            foreach (var (name, rowId, icons) in owned)
-            {
-                DrawIcon(icons[slot], SmallIconSize);
-                ImGui.SameLine();
-                if (ImGui.Selectable($"{name}##mix{slot}-{rowId}", current.Action == SlotAction.Set && current.RowId == rowId))
-                    mix[slot] = SlotChoice.Set(rowId);
-            }
-
-            ImGui.EndCombo();
+            DrawSlotCombo($"mix{slot}", slot, ref mix[slot]);
         }
 
         ImGui.EndTable();
@@ -169,23 +206,11 @@ internal sealed class BardingWindow : Window
             ImGui.TextUnformatted(macro);
 
         ImGui.SameLine();
-        ImGui.BeginDisabled(macro == null);
-        if (ImGui.Button("Copy##mix") && macro != null)
-            ImGui.SetClipboardText(macro);
-        ImGui.EndDisabled();
+        CopyButton("mix", macro);
     }
 
-    public override void Draw()
+    private void DrawFullSets()
     {
-        if (owned.Length == 0)
-        {
-            ImGui.TextDisabled("You don't own any barding yet.");
-            return;
-        }
-
-        DrawMixAndMatch();
-
-        ImGui.Spacing();
         Heading("Full sets");
         ImGui.SetNextItemWidth(-1);
         ImGui.InputTextWithHint("##filter", "Filter owned barding", ref filter, 64);
@@ -217,10 +242,161 @@ internal sealed class BardingWindow : Window
 
             ImGui.TableNextColumn();
             ImGui.SetCursorPosY(ImGui.GetCursorPosY() + textOffset);
-            if (ImGui.Button($"Copy##{name}"))
-                ImGui.SetClipboardText(macro);
+            CopyButton(name, macro);
         }
 
         ImGui.EndTable();
+    }
+
+    // Only ever read from; rows copy it into jobEdit before changing anything.
+    private static readonly SlotChoice[] NotSet = [SlotChoice.Keep, SlotChoice.Keep, SlotChoice.Keep];
+
+    // One job row's picks while it is drawn, reused for every row so drawing doesn't allocate.
+    private readonly SlotChoice[] jobEdit = new SlotChoice[Barding.SlotCount];
+
+    private SlotChoice[] JobChoices(uint jobId) =>
+        config.JobBarding.TryGetValue(jobId, out var saved) && saved.Length == Barding.SlotCount
+            ? saved
+            : NotSet;
+
+    // A job with every slot on "Keep current" has nothing picked, so it isn't stored.
+    private void SetJobChoices(uint jobId, SlotChoice[] choices)
+    {
+        if (choices.All(choice => choice.Action == SlotAction.Keep))
+            config.JobBarding.Remove(jobId);
+        else
+            config.JobBarding[jobId] = choices;
+        save();
+    }
+
+    private string FullSetLabel(SlotChoice[] choices)
+    {
+        if (choices.All(choice => choice.Action == SlotAction.Keep))
+            return "Not set";
+        return choices[0] == choices[1] && choices[1] == choices[2] ? Label(choices[0]) : "Mixed";
+    }
+
+    /// <summary>A dropdown that puts one barding (or None) on all three slots. True when the picks changed.</summary>
+    private bool DrawFullSetCombo(string id, SlotChoice[] choices)
+    {
+        ImGui.SetNextItemWidth(-1);
+        if (!ImGui.BeginCombo($"##{id}", FullSetLabel(choices)))
+            return false;
+
+        SlotChoice? picked = null;
+        if (ImGui.Selectable("Not set", choices.All(choice => choice.Action == SlotAction.Keep)))
+            picked = SlotChoice.Keep;
+        if (ImGui.Selectable("None", choices.All(choice => choice.Action == SlotAction.Remove)))
+            picked = SlotChoice.Remove;
+
+        foreach (var (name, rowId, icons) in owned)
+        {
+            DrawIcon(icons[1], SmallIconSize);
+            ImGui.SameLine();
+            if (ImGui.Selectable($"{name}##{id}-{rowId}", choices.All(choice => choice.Action == SlotAction.Set && choice.RowId == rowId)))
+                picked = SlotChoice.Set(rowId);
+        }
+
+        ImGui.EndCombo();
+
+        if (picked is not { } all)
+            return false;
+
+        choices[0] = choices[1] = choices[2] = all;
+        return true;
+    }
+
+    private void DrawJobs()
+    {
+        ImGui.AlignTextToFramePadding();
+        ImGui.TextUnformatted($"Macro: {JobMacro}");
+        ImGui.SameLine();
+        CopyButton("job", JobMacro);
+        ImGui.TextDisabled("Pick barding for each job, then press the macro to put on the one for your current job.");
+        ImGui.Spacing();
+
+        if (!ImGui.BeginTable("jobs", 6, ImGuiTableFlags.RowBg | ImGuiTableFlags.ScrollY | ImGuiTableFlags.BordersInnerH))
+            return;
+
+        ImGui.TableSetupScrollFreeze(0, 1);
+        ImGui.TableSetupColumn("Job", ImGuiTableColumnFlags.WidthFixed);
+        ImGui.TableSetupColumn("Full set", ImGuiTableColumnFlags.WidthStretch);
+        for (var slot = 0; slot < Barding.SlotCount; slot++)
+            ImGui.TableSetupColumn(Barding.SlotNames[slot], ImGuiTableColumnFlags.WidthStretch);
+        ImGui.TableSetupColumn(string.Empty, ImGuiTableColumnFlags.WidthFixed);
+        ImGui.TableHeadersRow();
+
+        var current = player.IsLoaded ? player.ClassJob.RowId : 0;
+        foreach (var job in jobs)
+        {
+            ImGui.PushID((int)job.RowId);
+            ImGui.TableNextRow();
+            if (job.RowId == current || job.ClassJobParent.RowId == current)
+                ImGui.TableSetBgColor(ImGuiTableBgTarget.RowBg0, ImGui.GetColorU32(ImGuiCol.Header));
+
+            var choices = jobEdit;
+            JobChoices(job.RowId).CopyTo(choices, 0);
+            var changed = false;
+
+            ImGui.TableNextColumn();
+            DrawIcon(JobIconBase + job.RowId, SmallIconSize);
+            ImGui.SameLine();
+            ImGui.AlignTextToFramePadding();
+            ImGui.TextUnformatted(Barding.JobName(job));
+
+            ImGui.TableNextColumn();
+            changed |= DrawFullSetCombo("full", choices);
+
+            for (var slot = 0; slot < Barding.SlotCount; slot++)
+            {
+                ImGui.TableNextColumn();
+                changed |= DrawSlotCombo($"slot{slot}", slot, ref choices[slot]);
+            }
+
+            ImGui.TableNextColumn();
+            ImGui.BeginDisabled(!config.JobBarding.ContainsKey(job.RowId));
+            if (ImGui.Button("Clear"))
+            {
+                NotSet.CopyTo(choices, 0);
+                changed = true;
+            }
+            ImGui.EndDisabled();
+
+            // The config keeps its own copy; jobEdit is reused by the next row.
+            if (changed)
+                SetJobChoices(job.RowId, (SlotChoice[])choices.Clone());
+
+            ImGui.PopID();
+        }
+
+        ImGui.EndTable();
+    }
+
+    public override void Draw()
+    {
+        if (owned.Length == 0)
+        {
+            ImGui.TextDisabled("You don't own any barding yet.");
+            return;
+        }
+
+        if (!ImGui.BeginTabBar("tabs"))
+            return;
+
+        if (ImGui.BeginTabItem("Barding"))
+        {
+            DrawMixAndMatch();
+            ImGui.Spacing();
+            DrawFullSets();
+            ImGui.EndTabItem();
+        }
+
+        if (ImGui.BeginTabItem("Jobs"))
+        {
+            DrawJobs();
+            ImGui.EndTabItem();
+        }
+
+        ImGui.EndTabBar();
     }
 }

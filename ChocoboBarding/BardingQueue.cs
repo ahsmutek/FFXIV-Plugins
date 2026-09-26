@@ -15,6 +15,7 @@ internal sealed class BardingQueue : IDisposable
     private const int MaxPauseMs = 700;
 
     private readonly IFramework framework;
+    private readonly IPlayerState player;
     private readonly IPluginLog log;
     private readonly Queue<(int Slot, SlotChoice Choice)> pending = new();
 
@@ -22,9 +23,10 @@ internal sealed class BardingQueue : IDisposable
     private (int Slot, uint RowId, uint Expected, long SentAt)? awaiting;
     private long nextSendAt;
 
-    public BardingQueue(IFramework framework, IPluginLog log)
+    public BardingQueue(IFramework framework, IPlayerState player, IPluginLog log)
     {
         this.framework = framework;
+        this.player = player;
         this.log = log;
         framework.Update += OnUpdate;
     }
@@ -46,6 +48,18 @@ internal sealed class BardingQueue : IDisposable
 
     private void OnUpdate(IFramework _)
     {
+        if (awaiting == null && pending.Count == 0)
+            return;
+
+        // Logged out: drop what's left rather than send it to the next character.
+        if (!player.IsLoaded)
+        {
+            log.Debug("Player not loaded; dropping pending barding changes.");
+            pending.Clear();
+            awaiting = null;
+            return;
+        }
+
         var now = Environment.TickCount64;
 
         if (awaiting is { } sent)
