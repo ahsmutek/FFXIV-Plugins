@@ -24,6 +24,12 @@ so a job macro can switch barding along with your gearset.
   - **Full sets** – every barding you own with its head/body/legs icons, macro line and
     a Copy button, with a filter box.
 
+  The **Pets** tab (if you have Arcanist, Summoner or Scholar) lists every look Carbuncle
+  and Eos can have (Emerald, Topaz or Ruby Carbuncle, Ifrit-, Titan- or Garuda-Egi; Selene) with its `/petglamour` macro
+  line, a preview icon and a Copy button, plus the line that resummons the pet so the new
+  look shows. With Summoner it also has `/petsize` buttons to make Demi-Bahamut,
+  Demi-Phoenix, Solar Bahamut and the three primals (or all of them) small, medium or large.
+
   The **Jobs** tab has a row per job, shown by its short name (SMN, WHM…; hover for the
   full name), with a Full set dropdown and Head/Body/Legs dropdowns. Your current job is
   highlighted.

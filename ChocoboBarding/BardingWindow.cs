@@ -15,6 +15,7 @@ internal sealed class BardingWindow : Window
     private const float IconSize = 48;
     private const float SmallIconSize = 24;
     private const float MixIconSize = 80;
+    private const float PetIconSize = 40;
 
     // Gold job glyphs on a transparent background are 62000 + ClassJob row id.
     private const uint JobIconBase = 62000;
@@ -28,7 +29,11 @@ internal sealed class BardingWindow : Window
     private readonly Action save;
     private (string Name, uint RowId, uint[] Icons)[] owned = [];
     private List<ClassJob> jobs = [];
+    private List<PetGlamour.Pet> pets = [];
+    private List<PetGlamour.Resize> resizes = [];
     private string filter = string.Empty;
+    // Pets tab: add the resummon line, since a new look only shows once the pet is resummoned.
+    private bool resummon = true;
 
     private readonly SlotChoice[] mix = [SlotChoice.Keep, SlotChoice.Keep, SlotChoice.Keep];
 
@@ -55,6 +60,8 @@ internal sealed class BardingWindow : Window
                        .OrderBy(entry => entry.Name, StringComparer.OrdinalIgnoreCase)
                        .ToArray();
         jobs = Barding.Jobs(data);
+        pets = PetGlamour.Glamourable(data, player, unlocks);
+        resizes = PetGlamour.Resizable(data, player, unlocks);
     }
 
     private void DrawIcon(uint icon, float size)
@@ -367,28 +374,138 @@ internal sealed class BardingWindow : Window
         ImGui.EndTable();
     }
 
-    public override void Draw()
+    // One table per pet: each look it can have, its macro line(s) and a Copy button.
+    private void DrawPets()
     {
-        if (owned.Length == 0)
+        ImGui.TextWrapped("Change how your pet looks with the game's /petglamour command. Copy a line into a macro.");
+        ImGui.Checkbox("Add a line that resummons the pet (the new look shows after resummoning)", ref resummon);
+
+        foreach (var pet in pets)
         {
-            ImGui.TextDisabled("You don't own any barding yet.");
-            return;
+            ImGui.PushID(pet.Name);
+            ImGui.Spacing();
+            DrawIcon(pet.Icon, SmallIconSize);
+            ImGui.SameLine();
+            ImGui.AlignTextToFramePadding();
+            ImGui.TextUnformatted(pet.Name);
+            ImGui.Separator();
+
+            if (ImGui.BeginTable("looks", 4, ImGuiTableFlags.RowBg | ImGuiTableFlags.BordersInnerH))
+            {
+                ImGui.TableSetupColumn("Preview", ImGuiTableColumnFlags.WidthFixed);
+                ImGui.TableSetupColumn("Look", ImGuiTableColumnFlags.WidthFixed);
+                ImGui.TableSetupColumn("Macro", ImGuiTableColumnFlags.WidthStretch);
+                ImGui.TableSetupColumn("Copy", ImGuiTableColumnFlags.WidthFixed);
+
+                foreach (var look in pet.Looks)
+                {
+                    var macro = resummon ? $"{look.Line}\n{pet.Resummon}" : look.Line;
+                    ImGui.TableNextRow();
+                    ImGui.TableNextColumn();
+                    DrawIcon(look.Icon, PetIconSize);
+
+                    // Text and button centered against the icon.
+                    var offset = (PetIconSize - ImGui.GetFrameHeight()) / 2;
+                    ImGui.TableNextColumn();
+                    ImGui.SetCursorPosY(ImGui.GetCursorPosY() + offset);
+                    ImGui.AlignTextToFramePadding();
+                    ImGui.TextUnformatted(look.Name == pet.Name ? $"{look.Name} (normal look)" : look.Name);
+                    ImGui.TableNextColumn();
+                    ImGui.SetCursorPosY(ImGui.GetCursorPosY() + (PetIconSize - ImGui.CalcTextSize(macro).Y) / 2);
+                    ImGui.TextUnformatted(macro);
+                    ImGui.TableNextColumn();
+                    ImGui.SetCursorPosY(ImGui.GetCursorPosY() + offset);
+                    CopyButton(look.Name, macro);
+                }
+
+                ImGui.EndTable();
+            }
+
+            ImGui.PopID();
         }
 
+        if (resizes.Count > 0)
+            DrawSizes();
+    }
+
+    // /petsize: one row per big summon (and one for all of them), a Copy button per size.
+    private void DrawSizes()
+    {
+        ImGui.Spacing();
+        ImGui.Spacing();
+        ImGui.TextUnformatted("Summon size");
+        ImGui.Separator();
+        ImGui.TextWrapped("Make Bahamut, Phoenix and the primals small, medium or large with the game's /petsize command. Only you see the change.");
+
+        if (!ImGui.BeginTable("sizes", 3, ImGuiTableFlags.RowBg | ImGuiTableFlags.BordersInnerH))
+            return;
+
+        ImGui.TableSetupColumn("Preview", ImGuiTableColumnFlags.WidthFixed);
+        ImGui.TableSetupColumn("Summon", ImGuiTableColumnFlags.WidthStretch);
+        ImGui.TableSetupColumn("Copy", ImGuiTableColumnFlags.WidthFixed);
+
+        foreach (var summon in resizes.Append(new PetGlamour.Resize("all", 0)))
+        {
+            ImGui.PushID(summon.Name);
+            ImGui.TableNextRow();
+            ImGui.TableNextColumn();
+            DrawIcon(summon.Icon, PetIconSize);
+
+            var offset = (PetIconSize - ImGui.GetFrameHeight()) / 2;
+            ImGui.TableNextColumn();
+            ImGui.SetCursorPosY(ImGui.GetCursorPosY() + offset);
+            ImGui.AlignTextToFramePadding();
+            ImGui.TextUnformatted(summon.Name == "all" ? "All of them" : summon.Name);
+
+            ImGui.TableNextColumn();
+            ImGui.SetCursorPosY(ImGui.GetCursorPosY() + offset);
+            for (var i = 0; i < PetGlamour.Sizes.Length; i++)
+            {
+                if (i > 0)
+                    ImGui.SameLine();
+                var size = PetGlamour.Sizes[i];
+                var line = summon.Line(size);
+                if (ImGui.Button($"{char.ToUpper(size[0])}{size[1..]}"))
+                    ImGui.SetClipboardText(line);
+                if (ImGui.IsItemHovered())
+                    ImGui.SetTooltip($"Copy {line}");
+            }
+            ImGui.PopID();
+        }
+
+        ImGui.EndTable();
+    }
+
+    public override void Draw()
+    {
         if (!ImGui.BeginTabBar("tabs"))
             return;
 
         if (ImGui.BeginTabItem("Barding"))
         {
-            DrawMixAndMatch();
-            ImGui.Spacing();
-            DrawFullSets();
+            if (owned.Length == 0)
+            {
+                ImGui.TextDisabled("You don't own any barding yet.");
+            }
+            else
+            {
+                DrawMixAndMatch();
+                ImGui.Spacing();
+                DrawFullSets();
+            }
             ImGui.EndTabItem();
         }
 
-        if (ImGui.BeginTabItem("Jobs"))
+        if (owned.Length > 0 && ImGui.BeginTabItem("Jobs"))
         {
             DrawJobs();
+            ImGui.EndTabItem();
+        }
+
+        // Only for players who can summon Carbuncle or Eos.
+        if ((pets.Count > 0 || resizes.Count > 0) && ImGui.BeginTabItem("Pets"))
+        {
+            DrawPets();
             ImGui.EndTabItem();
         }
 
