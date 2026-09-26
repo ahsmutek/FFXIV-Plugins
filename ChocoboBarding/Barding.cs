@@ -171,6 +171,9 @@ internal static class Barding
     public static string JobName(ClassJob job) =>
         CultureInfo.CurrentCulture.TextInfo.ToTitleCase(job.Name.ExtractText());
 
+    /// <summary>Whether the chocobo companion is summoned (its timer is running).</summary>
+    public static unsafe bool IsChocoboOut() => UIState.Instance()->Buddy.CompanionInfo.TimeLeft > 0;
+
     public static unsafe uint WornRowId(int slot)
     {
         return UIState.Instance()->Buddy.CompanionInfo.BuddyEquipRowIds[slot];

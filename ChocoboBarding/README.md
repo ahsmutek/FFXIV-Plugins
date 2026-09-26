@@ -11,9 +11,12 @@ so a job macro can switch barding along with your gearset.
   case-insensitive (`/cbarding sophic`).
 - **Keep or remove a slot** – `-` leaves a slot as it is, `none` takes that piece off.
 - **Barding per job** – pick a barding for each job (and crafter/gatherer) in the **Jobs**
-  tab, then `/cbarding job` puts on the one for the job you're on. Put it on a hotbar
-  and press it only when you want your chocobo to match; switching jobs alone changes
-  nothing. Base classes use their job's pick (Arcanist → Summoner/Scholar).
+  tab, then `/cbarding job` puts on the one for the job you're on. Base classes use their
+  job's pick (Arcanist → Summoner/Scholar).
+- **Match my job automatically** (Jobs tab, off by default) – puts on your job's barding when
+  you summon your chocobo, and when you change job while it's out, however you change it.
+  Only pieces that differ are changed, so nothing is sent when it already matches. Nothing
+  happens while your chocobo isn't summoned, and it waits until you're out of combat.
 - **Summon from a macro** – `/cbarding greens` uses one Gysahl Greens (the game has no
   macro command for items).
 - **Works with the Companion window closed** – ready for macros.

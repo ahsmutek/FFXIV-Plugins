@@ -41,6 +41,9 @@ public sealed class Plugin : IDalamudPlugin
     [PluginService]
     private static IPlayerState PlayerState { get; set; } = null!;
 
+    [PluginService]
+    private static ICondition Condition { get; set; } = null!;
+
 #if DEBUG
     [PluginService]
     private static IAgentLifecycle AgentLifecycle { get; set; } = null!;
@@ -58,6 +61,7 @@ public sealed class Plugin : IDalamudPlugin
     private readonly WindowSystem windows = new("ChocoboBarding");
     private readonly BardingWindow bardingWindow;
     private readonly BardingQueue queue;
+    private readonly AutoBarding autoBarding;
 
     public Plugin()
     {
@@ -75,6 +79,7 @@ public sealed class Plugin : IDalamudPlugin
             });
 
         queue = new BardingQueue(Framework, PlayerState, Log);
+        autoBarding = new AutoBarding(Framework, PlayerState, Condition, config, () => ApplyJobBarding(quiet: true));
 
         bardingWindow = new BardingWindow(Data, Unlocks, Textures, PlayerState, config, Save);
         windows.AddWindow(bardingWindow);
@@ -93,6 +98,7 @@ public sealed class Plugin : IDalamudPlugin
         debugProbe.Dispose();
 #endif
         CommandManager.RemoveHandler(BardingCommandName);
+        autoBarding.Dispose();
         queue.Dispose();
         PluginInterface.UiBuilder.Draw -= windows.Draw;
         PluginInterface.UiBuilder.OpenConfigUi -= bardingWindow.Toggle;
@@ -112,7 +118,7 @@ public sealed class Plugin : IDalamudPlugin
 
         if (args.Trim().Equals(JobKeyword, System.StringComparison.OrdinalIgnoreCase))
         {
-            ApplyJobBarding();
+            ApplyJobBarding(quiet: false);
             return;
         }
 
@@ -169,7 +175,8 @@ public sealed class Plugin : IDalamudPlugin
         agent->UseItem(GysahlGreensItemId);
     }
 
-    private void ApplyJobBarding()
+    // quiet: for the automatic switch, which runs on every summon and job change.
+    private void ApplyJobBarding(bool quiet)
     {
         if (!PlayerState.IsLoaded)
             return;
@@ -177,7 +184,8 @@ public sealed class Plugin : IDalamudPlugin
         var job = PlayerState.ClassJob;
         if (Barding.ForJob(config, Data, job.RowId) is not { } choices)
         {
-            Chat.PrintError($"[Chocobo Barding] No barding set for {Barding.JobName(job.Value)}. Pick one in /cbarding → Jobs.");
+            if (!quiet)
+                Chat.PrintError($"[Chocobo Barding] No barding set for {Barding.JobName(job.Value)}. Pick one in /cbarding → Jobs.");
             return;
         }
 
@@ -190,7 +198,8 @@ public sealed class Plugin : IDalamudPlugin
 
             if (sheet.GetRowOrDefault(choices[slot].RowId) is not { } row || !Unlocks.IsBuddyEquipUnlocked(row))
             {
-                Chat.PrintError($"[Chocobo Barding] {Barding.SlotNames[slot]}: You don't own the barding picked for {Barding.JobName(job.Value)}.");
+                if (!quiet)
+                    Chat.PrintError($"[Chocobo Barding] {Barding.SlotNames[slot]}: You don't own the barding picked for {Barding.JobName(job.Value)}.");
                 return;
             }
         }

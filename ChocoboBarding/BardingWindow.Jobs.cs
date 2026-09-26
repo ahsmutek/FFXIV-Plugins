@@ -70,6 +70,19 @@ internal sealed partial class BardingWindow
         ImGui.SameLine();
         CopyButton("job", JobMacro);
         ImGui.TextDisabled("Pick barding for each job, then press the macro to put on the one for your current job.");
+
+        var auto = config.MatchJobAutomatically;
+        if (ImGui.Checkbox("Match my job automatically", ref auto))
+        {
+            config.MatchJobAutomatically = auto;
+            save();
+        }
+        ImGui.SameLine();
+        ImGui.TextDisabled("(?)");
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip("Puts on your job's barding when you summon your chocobo, and when you change job while it's out.\n" +
+                             "Only pieces that differ are changed, so nothing is sent when it already matches.\n" +
+                             "Nothing happens while your chocobo isn't summoned, and it waits until you're out of combat.");
         ImGui.Spacing();
 
         if (!ImGui.BeginTable("jobs", 6, ImGuiTableFlags.RowBg | ImGuiTableFlags.ScrollY | ImGuiTableFlags.BordersInnerH))
