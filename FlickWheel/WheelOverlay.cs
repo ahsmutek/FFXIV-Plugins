@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
 
-namespace JobWheel;
+namespace FlickWheel;
 
 // Draws the wheel straight onto a draw list: no window, no focus, nothing to click.
 // Icons only; the role-colored band behind them groups the jobs. While the settings
@@ -98,7 +98,7 @@ internal sealed class WheelOverlay(WheelInput input, JobCatalog catalog, IconCac
                                        ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.NoMove |
                                        ImGuiWindowFlags.NoFocusOnAppearing | ImGuiWindowFlags.NoBringToFrontOnFocus |
                                        ImGuiWindowFlags.NoNav;
-        if (ImGui.Begin("##JobWheelPreview", flags))
+        if (ImGui.Begin("##FlickWheelPreview", flags))
         {
             ImGui.InvisibleButton("##drag", new Vector2(outer * 2));
             if (ImGui.IsItemHovered() || ImGui.IsItemActive())

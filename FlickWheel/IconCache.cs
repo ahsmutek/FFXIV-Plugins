@@ -6,7 +6,7 @@ using Dalamud.Interface.Textures.TextureWraps;
 using Dalamud.Plugin.Services;
 using Lumina.Data.Files;
 
-namespace JobWheel;
+namespace FlickWheel;
 
 // Textures for wheel icons. Job glyphs come straight from the game. Log icons only
 // exist as a gold glyph on a solid red tile, so the tile and its frame are keyed out
@@ -42,7 +42,7 @@ internal sealed class IconCache(IDataManager data, ITextureProvider textures) : 
             var pixels = (byte[])tex.ImageData.Clone();
             KeyOutTile(pixels, tex.Header.Width, tex.Header.Height);
             wrap = textures.CreateFromRaw(RawImageSpecification.Bgra32(tex.Header.Width, tex.Header.Height), pixels,
-                                          $"JobWheel keyed icon {iconId}");
+                                          $"FlickWheel keyed icon {iconId}");
         }
 
         keyed[iconId] = wrap;

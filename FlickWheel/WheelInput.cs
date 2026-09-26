@@ -8,7 +8,7 @@ using Dalamud.Game.ClientState.GamePad;
 using Dalamud.Game.ClientState.Keys;
 using Dalamud.Plugin.Services;
 
-namespace JobWheel;
+namespace FlickWheel;
 // Hold the hotkey to show the wheel and tilt the right stick toward a job. By
 // default the target stays when the stick springs back and letting go of the
 // hotkey switches to it; optionally the stick returning to center switches.

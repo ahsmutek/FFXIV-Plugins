@@ -4,7 +4,7 @@ using System.Linq;
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
 
-namespace JobWheel;
+namespace FlickWheel;
 
 public enum JobGroup
 {

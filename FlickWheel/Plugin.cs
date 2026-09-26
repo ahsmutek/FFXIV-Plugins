@@ -1,14 +1,19 @@
+using System;
+using System.IO;
 using Dalamud.Game.Command;
 using Dalamud.Interface.Windowing;
 using Dalamud.IoC;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
 
-namespace JobWheel;
+namespace FlickWheel;
 
 public sealed class Plugin : IDalamudPlugin
 {
-    private const string CommandName = "/jobwheel";
+    private const string CommandName = "/flick";
+    // The plugin used to be called Job Wheel; its command still works.
+    private const string OldCommandName = "/jobwheel";
+    private const string OldConfigFile = "JobWheel.json";
 
     [PluginService]
     private static IDalamudPluginInterface PluginInterface { get; set; } = null!;
@@ -44,7 +49,7 @@ public sealed class Plugin : IDalamudPlugin
     private static IToastGui Toasts { get; set; } = null!;
 
     private readonly Configuration config;
-    private readonly WindowSystem windows = new("JobWheel");
+    private readonly WindowSystem windows = new("FlickWheel");
     private readonly ConfigWindow configWindow;
     private readonly WheelInput input;
     private readonly WheelOverlay overlay;
@@ -52,7 +57,7 @@ public sealed class Plugin : IDalamudPlugin
 
     public Plugin()
     {
-        config = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
+        config = LoadConfig();
 
         var catalog = new JobCatalog(Data, Unlocks, PlayerState, config);
         var switcher = new JobSwitcher(Condition, Toasts);
@@ -69,8 +74,41 @@ public sealed class Plugin : IDalamudPlugin
 
         CommandManager.AddHandler(CommandName, new CommandInfo((_, _) => configWindow.Toggle())
         {
-            HelpMessage = "Open Job Wheel settings. Hold Ctrl+, and flick the right stick to switch jobs.",
+            HelpMessage = "Open Flick Wheel settings. Hold Ctrl+, and flick the right stick to switch jobs.",
         });
+        CommandManager.AddHandler(OldCommandName, new CommandInfo((_, _) => configWindow.Toggle())
+        {
+            ShowInHelp = false,
+        });
+    }
+
+    // First load after the rename from Job Wheel: carry the old settings over. The old
+    // file names the old assembly in its "$type" entries, so those are rewritten and the
+    // result saved as this plugin's config, then loaded as usual. The old file is kept.
+    private static Configuration LoadConfig()
+    {
+        if (PluginInterface.GetPluginConfig() is Configuration saved)
+            return saved;
+
+        var oldPath = Path.Combine(PluginInterface.ConfigFile.DirectoryName!, OldConfigFile);
+        if (File.Exists(oldPath))
+        {
+            try
+            {
+                var text = File.ReadAllText(oldPath)
+                               .Replace("JobWheel.", "FlickWheel.")
+                               .Replace(", JobWheel", ", FlickWheel");
+                File.WriteAllText(PluginInterface.ConfigFile.FullName, text);
+                if (PluginInterface.GetPluginConfig() is Configuration migrated)
+                    return migrated;
+            }
+            catch (Exception)
+            {
+                // An unreadable old file just means starting from defaults.
+            }
+        }
+
+        return new Configuration();
     }
 
     private void Save() => PluginInterface.SavePluginConfig(config);
@@ -84,6 +122,7 @@ public sealed class Plugin : IDalamudPlugin
     public void Dispose()
     {
         CommandManager.RemoveHandler(CommandName);
+        CommandManager.RemoveHandler(OldCommandName);
         PluginInterface.UiBuilder.Draw -= Draw;
         input.Dispose();
         PluginInterface.UiBuilder.OpenConfigUi -= configWindow.Toggle;

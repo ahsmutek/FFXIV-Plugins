@@ -8,7 +8,7 @@ using Dalamud.Game.ClientState.Keys;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin.Services;
 
-namespace JobWheel;
+namespace FlickWheel;
 
 internal sealed class ConfigWindow : Window
 {
@@ -50,7 +50,7 @@ internal sealed class ConfigWindow : Window
 
     public ConfigWindow(Configuration config, Action save, JobCatalog catalog, WheelOverlay overlay,
                         IconCache icons, IKeyState keyState)
-        : base("Job Wheel Settings###JobWheelConfig")
+        : base("Flick Wheel Settings###FlickWheelConfig")
     {
         this.config = config;
         this.save = save;

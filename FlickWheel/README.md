@@ -1,4 +1,6 @@
-# Job Wheel
+# Flick Wheel
+
+_Formerly **Job Wheel**. Your Job Wheel settings are carried over the first time Flick Wheel loads._
 
 A controller-friendly radial menu for switching jobs. Hold the shortcut, flick the
 right stick toward a job, and let go of the shortcut to switch. You don't press a
@@ -20,7 +22,7 @@ confirm button or open a list.
 - Pressing **B** closes the wheel with no change, even with a job targeted.
 - Letting go of the shortcut without targeting anything closes the wheel with no change.
 - Picking the job you're already on just closes the wheel.
-- `/jobwheel` opens settings.
+- `/flick` opens settings (`/jobwheel` still works).
 
 ## Layout
 
@@ -83,7 +85,7 @@ This covers being in combat, in a duty, casting, crafting, or not having a gear 
 dotnet build -c Debug
 ```
 
-Then load `bin\Debug\JobWheel.dll` as a Dalamud dev plugin
+Then load `bin\Debug\FlickWheel.dll` as a Dalamud dev plugin
 (`/xlsettings` → Experimental → Dev Plugin Locations).
 
 ## Notes

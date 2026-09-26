@@ -1,0 +1,8 @@
+{
+  "Author": "Kotanna",
+  "Name": "Flick Wheel",
+  "Punchline": "Flick the right stick to switch jobs or open anything.",
+  "Description": "Hold Ctrl+, to open a radial wheel, flick the right stick toward an entry, and let go to use it. Switch jobs from fixed, role-grouped positions you can learn by feel. Formerly Job Wheel.",
+  "ApplicableVersion": "any",
+  "Tags": ["job", "gearset", "controller", "radial", "wheel", "shortcut", "menu"]
+}

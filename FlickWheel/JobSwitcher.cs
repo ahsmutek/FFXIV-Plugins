@@ -3,7 +3,7 @@ using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Misc;
 
-namespace JobWheel;
+namespace FlickWheel;
 
 internal sealed class JobSwitcher(ICondition condition, IToastGui toasts)
 {

@@ -6,7 +6,7 @@ using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Misc;
 using Lumina.Excel.Sheets;
 
-namespace JobWheel;
+namespace FlickWheel;
 
 // One icon on the wheel. RowId is what gets shown and switched to: the job, or
 // its base class when the job itself isn't unlocked yet (e.g. Gladiator).

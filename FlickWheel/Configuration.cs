@@ -3,7 +3,7 @@ using Dalamud.Configuration;
 using Dalamud.Game.ClientState.GamePad;
 using Dalamud.Game.ClientState.Keys;
 
-namespace JobWheel;
+namespace FlickWheel;
 
 // What switches to the targeted job.
 public enum ConfirmMode
