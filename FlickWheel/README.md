@@ -10,12 +10,13 @@ confirm button or open a list.
 
 1. Hold **Ctrl + ,**. On a controller, map a button to it with reWASD or Steam Input.
    The wheel opens on whichever wheel you used last (combat or crafting and gathering).
-   Tap **RB** (or LB, LT or RT, set in settings) while it's open to swap between them.
-2. Tilt the right stick toward a job. Its whole slice of the wheel fills with its role color.
+   Tap **RB** (or LB, LT or RT, set in settings) while it's open to move on to the next wheel.
+2. Tilt the right stick toward a job. Its whole slice of the wheel fills with its role color
+   and its name shows in the middle of the wheel.
 3. Let go of the shortcut. The wheel closes and the job's gear set is equipped.
    The stick can spring back to center first; the target stays until you flick
    toward another job.
-   Prefer the original flick-and-release? Set **Switch job when** to **The stick
+   Prefer the original flick-and-release? Set **Pick when** to **The stick
    returns to center** in settings, and the job switches as soon as the stick
    springs back.
 
@@ -50,7 +51,7 @@ the directions by feel. Groups run clockwise starting from the top.
 
 - Locked jobs leave their spot empty, and nothing else moves when you unlock one.
 - The **Crafting Log** and **Gathering Log** entries open those windows instead of switching job. They appear once the game has unlocked them.
-- The **Wheel layout** tab in settings lets you:
+- The **Job layout** tab in settings lets you:
   - move groups around the wheel with the arrows, and choose which group sits centered at the top with **Pin to top**. With tanks pinned on the combat wheel, healers stay at the bottom unless you put them right next to tanks;
   - reorder jobs within a group (drag an icon sideways);
   - pick each group's color, or apply a color preset (Muted, Vivid, Soft, Classic roles, Dark) to the whole wheel.
@@ -74,8 +75,10 @@ This covers being in combat, in a duty, casting, crafting, or not having a gear 
 - Wheel scale
 - Icon size
 - Position: tick **Show wheel preview** (pick which wheel it shows next to it) and drag the wheel with the mouse, type an offset from screen center, or press **Center** to reset it
-- Stick selection threshold, and whether letting go of the shortcut or the stick returning to center switches jobs
-- The shortcut, and which pad button (RB, LB, LT or RT) swaps wheels
+- Stick selection threshold, and whether letting go of the shortcut or the stick returning to center picks
+- The shortcut, and which pad button (RB, LB, LT or RT) moves to the next wheel
+- Optionally, a shortcut per wheel that opens straight to it. The shared shortcut keeps opening the wheel you last used with it
+- Which wheels are turned on (**Jobs**)
 - Group order and which group is on top, job order within each group, each group's color, and color presets
 - Gear set per job
 

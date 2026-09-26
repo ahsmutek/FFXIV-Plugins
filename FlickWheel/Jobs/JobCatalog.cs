@@ -43,7 +43,8 @@ internal sealed class JobCatalog(IDataManager data, IUnlockState unlocks, IPlaye
 
         for (var slot = 0; slot < ring.Slots.Length; slot++)
         {
-            var (abbreviation, group) = ring.Slots[slot];
+            var abbreviation = ring.Slots[slot].Key;
+            var group = (JobGroup)ring.Slots[slot].Group;
             if (JobLayout.Commands.TryGetValue(abbreviation, out var commandId))
             {
                 if (CommandEntry(slot, abbreviation, group, commandId) is { } entry)

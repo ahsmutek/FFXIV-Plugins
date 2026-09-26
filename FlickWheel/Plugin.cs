@@ -58,14 +58,20 @@ public sealed class Plugin : IDalamudPlugin
     public Plugin()
     {
         config = LoadConfig();
+        if (config.Migrate())
+            Save();
+
+        // The core first; modules are added once the overlay exists, since their settings use its preview.
+        var wheels = new WheelSet(config);
+        input = new WheelInput(Framework, KeyState, Gamepad, Condition, PlayerState, wheels, config, Save);
+        icons = new IconCache(Data, Textures);
+        overlay = new WheelOverlay(input, wheels, icons, config, Save);
 
         var catalog = new JobCatalog(Data, Unlocks, PlayerState, config);
         var switcher = new JobSwitcher(Condition, Toasts);
-        input = new WheelInput(Framework, KeyState, Gamepad, Condition, PlayerState, catalog, switcher, config, Save);
-        icons = new IconCache(Data, Textures);
-        overlay = new WheelOverlay(input, catalog, icons, config, Save);
+        wheels.Add(new JobsModule(config, catalog, switcher, icons, overlay));
 
-        configWindow = new ConfigWindow(config, Save, catalog, overlay, icons, KeyState);
+        configWindow = new ConfigWindow(config, Save, wheels, overlay, KeyState);
         windows.AddWindow(configWindow);
 
         PluginInterface.UiBuilder.Draw += Draw;
@@ -74,7 +80,7 @@ public sealed class Plugin : IDalamudPlugin
 
         CommandManager.AddHandler(CommandName, new CommandInfo((_, _) => configWindow.Toggle())
         {
-            HelpMessage = "Open Flick Wheel settings. Hold Ctrl+, and flick the right stick to switch jobs.",
+            HelpMessage = "Open Flick Wheel settings. Hold Ctrl+, and flick the right stick toward an entry.",
         });
         CommandManager.AddHandler(OldCommandName, new CommandInfo((_, _) => configWindow.Toggle())
         {

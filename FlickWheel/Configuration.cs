@@ -20,6 +20,13 @@ public enum HotkeyModifier
     Alt,
 }
 
+// A held key combination, e.g. Ctrl + ,.
+public sealed class Hotkey
+{
+    public HotkeyModifier Modifier { get; set; }
+    public VirtualKey Key { get; set; }
+}
+
 public sealed class Configuration : IPluginConfiguration
 {
     public int Version { get; set; } = 1;
@@ -39,14 +46,22 @@ public sealed class Configuration : IPluginConfiguration
 
     public ConfirmMode Confirm { get; set; } = ConfirmMode.ShortcutRelease;
 
-    // Tapped on the pad while the wheel is open to swap between the combat and crafting wheels.
+    // Tapped on the pad while the wheel is open to move on to the next wheel.
     public GamepadButtons SwapButton { get; set; } = GamepadButtons.R1;
 
-    // The wheel that was up last time; the next open starts on it.
-    public WheelKind LastWheel { get; set; } = WheelKind.Combat;
+    // Id of the wheel that was up last time the shared shortcut was used; the next
+    // open starts on it. Settings from before modules stored 0 / 1 (see Migrate).
+    public string LastWheel { get; set; } = "combat";
 
+    // The shared shortcut that opens the wheel.
     public HotkeyModifier Modifier { get; set; } = HotkeyModifier.Ctrl;
     public VirtualKey Key { get; set; } = VirtualKey.OEM_COMMA;
+
+    // Wheel id -> a shortcut that opens straight to that wheel. Missing = none.
+    public Dictionary<string, Hotkey> DirectHotkeys { get; set; } = new();
+
+    // Module id -> turned on. Missing = on.
+    public Dictionary<string, bool> Modules { get; set; } = new();
 
     // Job abbreviation -> 1-based gear set number. Missing or 0 = first matching set.
     public Dictionary<string, int> GearsetOverrides { get; set; } = new();
@@ -62,4 +77,21 @@ public sealed class Configuration : IPluginConfiguration
 
     // Band color per group as ABGR. Missing = default color.
     public Dictionary<JobGroup, uint> RoleColors { get; set; } = new();
+
+    /// <summary>Brings settings saved by older versions up to date. True when anything changed.</summary>
+    public bool Migrate()
+    {
+        // LastWheel used to be the WheelKind number.
+        var lastWheel = LastWheel switch
+        {
+            "0" => "combat",
+            "1" => "crafting",
+            _ => LastWheel,
+        };
+        if (lastWheel == LastWheel)
+            return false;
+
+        LastWheel = lastWheel;
+        return true;
+    }
 }

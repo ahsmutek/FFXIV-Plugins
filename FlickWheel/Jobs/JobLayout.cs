@@ -25,92 +25,6 @@ public enum WheelKind
     Crafting,
 }
 
-// One ring of fixed job positions. A job's slot never depends on what's unlocked,
-// so positions stay put for muscle memory; locked jobs just leave their slot empty.
-//
-// Anchored groups sit centered on a fixed compass angle at the ring's base slot
-// width. The groups between two anchors share the arc left over, spread evenly,
-// so their slots can end up a little wider or narrower than the anchored ones.
-internal sealed class WheelRing
-{
-    private readonly float[] centers;
-    private readonly float[] starts;
-    private readonly float[] ends;
-
-    public (string Abbreviation, JobGroup Group)[] Slots { get; }
-
-    public WheelRing((string, JobGroup)[] slots, params (JobGroup Group, float Angle)[] anchors)
-    {
-        Slots = slots;
-        var n = slots.Length;
-        var step = MathF.Tau / n;
-        centers = new float[n];
-        starts = new float[n];
-        ends = new float[n];
-
-        // Contiguous runs of one group, in clockwise order.
-        var runs = new List<(JobGroup Group, int First, int Count)>();
-        for (var i = 0; i < n; i++)
-        {
-            if (runs.Count > 0 && runs[^1].Group == slots[i].Item2)
-                runs[^1] = runs[^1] with { Count = runs[^1].Count + 1 };
-            else
-                runs.Add((slots[i].Item2, i, 1));
-        }
-
-        // Anchors are applied in priority order. Two anchored groups side by side would
-        // leave an empty arc between them, so a later anchor next to a kept one is dropped
-        // and that group just fills in like the others.
-        var anchored = new List<int>();
-        foreach (var (group, angle) in anchors)
-        {
-            var r = runs.FindIndex(run => run.Group == group);
-            if (r < 0 || anchored.Any(k => Math.Abs(k - r) == 1 || Math.Abs(k - r) == runs.Count - 1))
-                continue;
-            Place(runs[r].First, runs[r].Count, angle - runs[r].Count * step / 2, step);
-            anchored.Add(r);
-        }
-        anchored.Sort();
-
-        // Fill the slots between each anchored run and the next one (wrapping around).
-        for (var k = 0; k < anchored.Count; k++)
-        {
-            var from = runs[anchored[k]];
-            var to = runs[anchored[(k + 1) % anchored.Count]];
-            var firstFree = from.First + from.Count;
-            var freeCount = (to.First - firstFree + n) % n;
-            if (freeCount == 0)
-                continue;
-
-            var arcStart = ends[from.First + from.Count - 1];
-            var arcEnd = starts[to.First];
-            while (arcEnd <= arcStart)
-                arcEnd += MathF.Tau;
-            var width = (arcEnd - arcStart) / freeCount;
-            for (var j = 0; j < freeCount; j++)
-            {
-                var slot = (firstFree + j) % n;
-                Place(slot, 1, arcStart + j * width, width);
-            }
-        }
-    }
-
-    // Radians clockwise from straight up.
-    public float AngleOf(int slot) => centers[slot];
-    public float StartOf(int slot) => starts[slot];
-    public float EndOf(int slot) => ends[slot];
-
-    private void Place(int first, int count, float start, float width)
-    {
-        for (var i = 0; i < count; i++)
-        {
-            starts[first + i] = start + i * width;
-            ends[first + i] = start + (i + 1) * width;
-            centers[first + i] = start + (i + 0.5f) * width;
-        }
-    }
-}
-
 internal static class JobLayout
 {
     // Groups in clockwise order, each with its jobs in their default clockwise order.
@@ -212,9 +126,9 @@ internal static class JobLayout
         }),
     ];
 
-    // The most slots either wheel has; both wheels are drawn at the size this needs.
-    public static readonly int MaxSlots = Math.Max(
-        CombatGroups.Sum(g => g.Jobs.Length), CraftingGroups.Sum(g => g.Jobs.Length));
+    // Every slot the wheel has, locked jobs included.
+    public static int SlotCount(WheelKind kind) =>
+        (kind == WheelKind.Crafting ? CraftingGroups : CombatGroups).Sum(g => g.Jobs.Length);
 
     public static IEnumerable<JobGroup> GroupsOf(WheelKind kind) =>
         (kind == WheelKind.Crafting ? CraftingGroups : CombatGroups).Select(g => g.Group);
@@ -227,12 +141,12 @@ internal static class JobLayout
 
     // The north group is centered at the top. With tanks on top of the combat wheel,
     // healers are also pinned to the bottom, opposite them.
-    private static (JobGroup, float)[] AnchorsOf(WheelKind kind, Configuration config)
+    private static (int, float)[] AnchorsOf(WheelKind kind, Configuration config)
     {
         var north = NorthOf(kind, config);
         return kind == WheelKind.Combat && north == JobGroup.Tank
-            ? [(JobGroup.Tank, 0f), (JobGroup.Healer, MathF.PI)]
-            : [(north, 0f)];
+            ? [((int)JobGroup.Tank, 0f), ((int)JobGroup.Healer, MathF.PI)]
+            : [((int)north, 0f)];
     }
 
     // The wheel's groups in the player's saved clockwise order, sanitized like OrderOf.
@@ -249,7 +163,8 @@ internal static class JobLayout
     public static WheelRing Build(WheelKind kind, Configuration config)
     {
         var groups = GroupOrderOf(kind, config);
-        var slots = groups.SelectMany(g => OrderOf(g, config).Select(job => (job, g))).ToArray();
+        var slots = groups.SelectMany(g => OrderOf(g, config).Select(job => new RingSlot(job, (int)g, ColorOf(g, config))))
+                          .ToArray();
         return new WheelRing(slots, AnchorsOf(kind, config));
     }
 
@@ -270,14 +185,4 @@ internal static class JobLayout
 
     public static Vector4 ColorOf(JobGroup group, Configuration config) =>
         config.RoleColors.TryGetValue(group, out var abgr) ? ImGui.ColorConvertU32ToFloat4(abgr) : DefaultColors[group];
-
-    // Screen-space unit vector (Y grows down) for a clockwise-from-up angle.
-    public static Vector2 Direction(float angle) => new(MathF.Sin(angle), -MathF.Cos(angle));
-
-    // Smallest absolute difference between two angles, in radians.
-    public static float AngleDistance(float a, float b)
-    {
-        var d = MathF.IEEERemainder(a - b, MathF.Tau);
-        return MathF.Abs(d);
-    }
 }
