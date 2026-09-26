@@ -150,7 +150,17 @@ internal sealed class ConfigWindow : Window
             config.SelectThreshold = threshold;
             changed = true;
         }
-        ImGui.TextWrapped("How far the stick has to tilt to target a job. The target stays when the stick springs back; let go of the shortcut to switch.");
+        ImGui.TextWrapped("How far the stick has to tilt to target a job.");
+
+        var confirm = (int)config.Confirm;
+        if (ImGui.Combo("Switch job when", ref confirm, ["I let go of the shortcut", "The stick returns to center"], 2))
+        {
+            config.Confirm = (ConfirmMode)confirm;
+            changed = true;
+        }
+        ImGui.TextWrapped(config.Confirm == ConfirmMode.ShortcutRelease
+            ? "The target stays when the stick springs back, so you can flick and then let go of the shortcut."
+            : "Flick toward a job and let the stick spring back. Letting go of the shortcut with a job targeted also switches.");
 
         ImGui.Spacing();
         ImGui.TextDisabled("Shortcut (hold)");

@@ -13,6 +13,9 @@ confirm button or open a list.
 3. Let go of the shortcut. The wheel closes and the job's gear set is equipped.
    The stick can spring back to center first; the target stays until you flick
    toward another job.
+   Prefer the original flick-and-release? Set **Switch job when** to **The stick
+   returns to center** in settings, and the job switches as soon as the stick
+   springs back.
 
 - Pressing **B** closes the wheel with no change, even with a job targeted.
 - Letting go of the shortcut without targeting anything closes the wheel with no change.
@@ -64,7 +67,7 @@ This covers being in combat, in a duty, casting, crafting, or not having a gear 
 - Wheel scale
 - Icon size
 - Position: tick **Show wheel preview** and drag the wheel with the mouse, type an offset from screen center, or press **Center** to reset it
-- Stick selection threshold
+- Stick selection threshold, and whether letting go of the shortcut or the stick returning to center switches jobs
 - The shortcut, and which pad button (RB, LB, LT or RT) swaps wheels
 - Job order within each group, each group's color, and color presets
 - Gear set per job

@@ -9,10 +9,11 @@ using Dalamud.Game.ClientState.Keys;
 using Dalamud.Plugin.Services;
 
 namespace JobWheel;
-
-// Hold the hotkey to show the wheel and tilt the right stick toward a job; the
-// target stays when the stick springs back. Letting go of the hotkey switches to
-// the target if there is one and cancels otherwise, so the wheel can never get
+// Hold the hotkey to show the wheel and tilt the right stick toward a job. By
+// default the target stays when the stick springs back and letting go of the
+// hotkey switches to it; optionally the stick returning to center switches.
+// Letting go of the hotkey with no target cancels, so the wheel can never get
+// stuck open. B cancels.
 // stuck open. B cancels.
 internal sealed class WheelInput : IDisposable
 {
@@ -145,7 +146,13 @@ internal sealed class WheelInput : IDisposable
 
         if (StickTilt < config.Deadzone)
         {
-            // Back at center: keep the target so letting go of the shortcut switches to it.
+            // Back at center. Either switch now, or keep the target so letting go of
+            // the shortcut switches to it.
+            if (config.Confirm == ConfirmMode.StickRelease && Target != null)
+            {
+                Commit();
+                return;
+            }
             gesturePeak = 0;
             return;
         }

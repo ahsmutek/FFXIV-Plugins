@@ -5,6 +5,13 @@ using Dalamud.Game.ClientState.Keys;
 
 namespace JobWheel;
 
+// What switches to the targeted job.
+public enum ConfirmMode
+{
+    ShortcutRelease, // Letting go of the shortcut; the target stays while the stick springs back.
+    StickRelease,    // The stick returning to center.
+}
+
 public enum HotkeyModifier
 {
     None,
@@ -29,6 +36,8 @@ public sealed class Configuration : IPluginConfiguration
     public float Deadzone { get; set; } = 0.25f;
     // Stick tilt (0-1) needed before a job gets targeted.
     public float SelectThreshold { get; set; } = 0.55f;
+
+    public ConfirmMode Confirm { get; set; } = ConfirmMode.ShortcutRelease;
 
     // Tapped on the pad while the wheel is open to swap between the combat and crafting wheels.
     public GamepadButtons SwapButton { get; set; } = GamepadButtons.R1;
