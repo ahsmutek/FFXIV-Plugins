@@ -14,6 +14,8 @@ so a job macro can switch barding along with your gearset.
   tab, then `/cbarding job` puts on the one for the job you're on. Put it on a hotbar
   and press it only when you want your chocobo to match; switching jobs alone changes
   nothing. Base classes use their job's pick (Arcanist → Summoner/Scholar).
+- **Summon from a macro** – `/cbarding greens` uses one Gysahl Greens (the game has no
+  macro command for items) and prints how many you have left.
 - **Works with the Companion window closed** – ready for macros.
 - **Barding window** – `/cbarding` with no name (or the plugin's Settings / Open button)
   opens it. The **Barding** tab has:
@@ -31,8 +33,8 @@ so a job macro can switch barding along with your gearset.
 - **Safe to repeat** – slots already wearing the piece are skipped (re-selecting a worn
   piece would take it off).
 - Uses the game's normal path: calls the Buddy agent's `ReceiveEvent` with the same
-  arguments the Companion → Appearance tab sends. No hooks, signatures, memory writes
-  or custom packets.
+  arguments the Companion → Appearance tab sends, and uses greens the way the inventory's
+  Use menu does. No hooks, signatures, memory writes or custom packets.
 
 ## Usage
 
@@ -43,6 +45,7 @@ so a job macro can switch barding along with your gearset.
 /cbarding "Suzaku" none none                Suzaku head, body and legs removed
 /cbarding none                              remove all barding
 /cbarding job                               barding picked for your current job
+/cbarding greens                            use Gysahl Greens (summon your chocobo)
 ```
 
 Give either one name (full set) or three (head, body, legs). Use quotes around names

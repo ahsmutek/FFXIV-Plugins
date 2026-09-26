@@ -342,7 +342,9 @@ internal sealed class BardingWindow : Window
             DrawIcon(JobIconBase + job.RowId, SmallIconSize);
             ImGui.SameLine();
             ImGui.AlignTextToFramePadding();
-            ImGui.TextUnformatted(Barding.JobName(job));
+            ImGui.TextUnformatted(job.Abbreviation.ExtractText());
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip(Barding.JobName(job));
 
             ImGui.TableNextColumn();
             changed |= DrawFullSetCombo("full", choices);

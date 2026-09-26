@@ -4,6 +4,8 @@ using Dalamud.Interface.Windowing;
 using Dalamud.IoC;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
+using FFXIVClientStructs.FFXIV.Client.Game;
+using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using Lumina.Excel.Sheets;
 
 namespace ChocoboBarding;
@@ -47,6 +49,10 @@ public sealed class Plugin : IDalamudPlugin
 #endif
 
     private const string JobKeyword = "job";
+    private const string GreensKeyword = "greens";
+
+    // Item row for Gysahl Greens, which summon the chocobo companion.
+    private const uint GysahlGreensItemId = 4868;
 
     private readonly Configuration config;
     private readonly WindowSystem windows = new("ChocoboBarding");
@@ -64,6 +70,7 @@ public sealed class Plugin : IDalamudPlugin
                 HelpMessage = "Put barding on your chocobo. /cbarding \"Sophic\" sets the full set; " +
                               "/cbarding \"Head\" \"Body\" \"Legs\" sets each slot (- keeps a slot, none removes it). " +
                               "/cbarding job uses the barding picked for your current job. " +
+                              "/cbarding greens uses Gysahl Greens to summon your chocobo. " +
                               "No name opens the barding list."
             });
 
@@ -109,6 +116,12 @@ public sealed class Plugin : IDalamudPlugin
             return;
         }
 
+        if (args.Trim().Equals(GreensKeyword, System.StringComparison.OrdinalIgnoreCase))
+        {
+            UseGreens();
+            return;
+        }
+
         var tokens = Barding.Tokenize(args);
         if (tokens.Count is not (1 or 3))
         {
@@ -137,6 +150,25 @@ public sealed class Plugin : IDalamudPlugin
 
         queue.Replace(choices);
         Log.Information($"Requested head={described[0]}, body={described[1]}, legs={described[2]}.");
+    }
+
+    /// <summary>Uses one Gysahl Greens, as if clicked in the inventory, and says how many are left.</summary>
+    private static unsafe void UseGreens()
+    {
+        var inventory = InventoryManager.Instance();
+        var agent = AgentInventoryContext.Instance();
+        if (inventory == null || agent == null)
+            return;
+
+        var count = inventory->GetInventoryItemCount(GysahlGreensItemId);
+        if (count <= 0)
+        {
+            Chat.PrintError("[Chocobo Barding] You don't have any Gysahl Greens.");
+            return;
+        }
+
+        agent->UseItem(GysahlGreensItemId);
+        Chat.Print($"[Chocobo Barding] Gysahl Greens left: {count - 1}");
     }
 
     private void ApplyJobBarding()
