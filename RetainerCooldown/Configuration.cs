@@ -5,8 +5,8 @@ namespace RetainerCooldown;
 // Which venture the single HUD icon should track.
 public enum VentureDisplayMode
 {
-    Fastest, // Soonest to complete
-    Latest,  // Last to complete
+    Fastest,
+    Latest,
 }
 
 public sealed class Configuration : IPluginConfiguration

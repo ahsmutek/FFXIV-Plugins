@@ -23,7 +23,6 @@ internal sealed class HudWindow : Window
         IsOpen = true;
         RespectCloseHotkey = false;
 
-        // Restore the saved position (once) so the icon stays where the user left it.
         if (plugin.Config.IconPosX >= 0 && plugin.Config.IconPosY >= 0)
         {
             Position = new Vector2(plugin.Config.IconPosX, plugin.Config.IconPosY);
@@ -62,7 +61,6 @@ internal sealed class HudWindow : Window
 
         if (!allComplete)
         {
-            // Track the next still-running venture (fastest or latest).
             var running = ventures.Where(x => !x.Complete);
             RetainerSnapshot? next = (plugin.Config.DisplayMode == VentureDisplayMode.Latest
                     ? running.OrderByDescending(x => x.Remaining?.TotalSeconds ?? 0)
@@ -99,7 +97,6 @@ internal sealed class HudWindow : Window
         PersistPosition();
     }
 
-    // Save the icon's position after the user finishes dragging it.
     private void PersistPosition()
     {
         if (plugin.Config.Locked) return;
@@ -133,7 +130,6 @@ internal sealed class HudWindow : Window
             DrawSlot(dl, p, size);
     }
 
-    // Light silver metallic slot (fallback when the game icon isn't ready yet).
     private static void DrawSlot(ImDrawListPtr dl, Vector2 p, float size)
     {
         var max = p + new Vector2(size);

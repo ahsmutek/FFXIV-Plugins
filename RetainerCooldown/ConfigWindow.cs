@@ -98,7 +98,6 @@ internal sealed class ConfigWindow : Window
         }
     }
 
-    // Icon face selector: two slots (running / all complete), numeric entry, and a clickable grid.
     private bool DrawIconPicker()
     {
         var changed = false;
@@ -172,7 +171,6 @@ internal sealed class ConfigWindow : Window
         return changed;
     }
 
-    // The existing icon IDs on the current page; rescanned only when the page changes.
     private List<uint> PageIcons()
     {
         if (pageIconsStart == browseStart)
