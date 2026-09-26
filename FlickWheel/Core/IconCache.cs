@@ -8,8 +8,8 @@ using Lumina.Data.Files;
 
 namespace FlickWheel;
 
-// Textures for wheel icons. Job glyphs come straight from the game. Log icons only
-// exist as a gold glyph on a solid red tile, so the tile and its frame are keyed out
+// Textures for wheel icons. Job glyphs come straight from the game. Main-menu icons (logs,
+// Duty Finder…) only exist as a gold glyph on a red tile, so the tile and its frame are keyed out
 // once, leaving a transparent gold glyph that matches the job icons.
 internal sealed class IconCache(IDataManager data, ITextureProvider textures) : IDisposable
 {

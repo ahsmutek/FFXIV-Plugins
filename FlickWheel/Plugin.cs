@@ -81,7 +81,7 @@ public sealed class Plugin : IDalamudPlugin
 
         CommandManager.AddHandler(CommandName, new CommandInfo((_, _) => configWindow.Toggle())
         {
-            HelpMessage = "Open Flick Wheel settings. Hold Ctrl+, and flick the right stick toward an entry.",
+            HelpMessage = "Open Flick Wheel settings. Hold your hotkey (Ctrl+, by default) and flick the right stick toward an entry.",
         });
         CommandManager.AddHandler(OldCommandName, new CommandInfo((_, _) => configWindow.Toggle())
         {

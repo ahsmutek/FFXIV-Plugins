@@ -9,7 +9,7 @@ namespace FlickWheel;
 // What switches to the targeted job.
 public enum ConfirmMode
 {
-    ShortcutRelease, // Letting go of the shortcut; the target stays while the stick springs back.
+    ShortcutRelease, // Letting go of the hotkey; the target stays while the stick springs back.
     StickRelease,    // The stick returning to center.
 }
 
@@ -21,14 +21,12 @@ public enum HotkeyModifier
     Alt,
 }
 
-// A held key combination, e.g. Ctrl + ,.
 public sealed class Hotkey
 {
     public HotkeyModifier Modifier { get; set; }
     public VirtualKey Key { get; set; }
 }
 
-// What a shortcut does when picked.
 public enum ShortcutKind
 {
     MainCommand,   // opens a game window, like the main menu does (MainCommand row)
@@ -45,7 +43,6 @@ public sealed class ShortcutEntry
     public ShortcutKind Kind { get; set; }
     // The sheet row for Kind (unused for Command).
     public uint RowId { get; set; }
-    // Command kind: the text to run.
     public string? Command { get; set; }
     // Shown instead of the game's name when set.
     public string? Label { get; set; }
@@ -96,19 +93,22 @@ public sealed class Configuration : IPluginConfiguration
     // Tapped on the pad while the wheel is open to move on to the next wheel.
     public GamepadButtons SwapButton { get; set; } = GamepadButtons.R1;
 
-    // Id of the wheel that was up last time the shared shortcut was used; the next
+    // Id of the wheel that was up last time the shared hotkey was used; the next
     // open starts on it. Settings from before modules stored 0 / 1 (see Migrate).
     public string LastWheel { get; set; } = "combat";
 
-    // The shared shortcut that opens the wheel.
+    // The shared hotkey that opens the wheel.
     public HotkeyModifier Modifier { get; set; } = HotkeyModifier.Ctrl;
     public VirtualKey Key { get; set; } = VirtualKey.OEM_COMMA;
 
-    // Wheel id -> a shortcut that opens straight to that wheel. Missing = none.
+    // Wheel id -> a hotkey that opens straight to that wheel. Missing = none.
     public Dictionary<string, Hotkey> DirectHotkeys { get; set; } = new();
 
     // Module id -> turned on. Missing = on.
     public Dictionary<string, bool> Modules { get; set; } = new();
+
+    // Wheel id (e.g. "crafting") -> turned on, within a module that's on. Missing = on.
+    public Dictionary<string, bool> WheelsOn { get; set; } = new();
 
     // Job abbreviation -> 1-based gear set number. Missing or 0 = first matching set.
     public Dictionary<string, int> GearsetOverrides { get; set; } = new();
@@ -118,6 +118,9 @@ public sealed class Configuration : IPluginConfiguration
 
     // Clockwise group order on each wheel. Missing = default order.
     public Dictionary<WheelKind, List<JobGroup>> GroupOrder { get; set; } = new();
+
+    // Log entry (e.g. "FISHGUIDE") -> on the crafting wheel. Missing = default (all but the Fish Guide).
+    public Dictionary<string, bool> ShownLogs { get; set; } = new();
 
     // Clockwise job order within each group. Missing = default order.
     public Dictionary<JobGroup, List<string>> JobOrder { get; set; } = new();

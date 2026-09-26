@@ -6,7 +6,7 @@ using Dalamud.Bindings.ImGui;
 namespace FlickWheel;
 
 // The combat and crafting & gathering wheels: every job in a fixed, role-grouped spot,
-// plus the Crafting and Gathering Log.
+// plus the logs you pick (Crafting, Gathering, Fishing Log, Fish Guide).
 internal sealed class JobsModule : IWheelModule
 {
     private static readonly (JobGroup Group, string Label)[] GroupLabels =
@@ -19,7 +19,7 @@ internal sealed class JobsModule : IWheelModule
         (JobGroup.Caster, "Magical Ranged DPS"),
         (JobGroup.Hand, "Disciples of the Hand"),
         (JobGroup.Land, "Disciples of the Land"),
-        (JobGroup.Logs, "Crafting & Gathering Logs"),
+        (JobGroup.Logs, "Logs"),
     ];
 
     private static readonly WheelKind[] Kinds = [WheelKind.Combat, WheelKind.Crafting];
@@ -52,6 +52,8 @@ internal sealed class JobsModule : IWheelModule
 
     public static string WheelId(WheelKind kind) => kind == WheelKind.Combat ? "combat" : "crafting";
 
+    private bool IsOn(WheelKind kind) => !config.WheelsOn.TryGetValue(WheelId(kind), out var on) || on;
+
     private static string Title(WheelKind kind) =>
         kind == WheelKind.Combat ? "Combat wheel" : "Crafting & gathering wheel";
 
@@ -72,13 +74,10 @@ internal sealed class JobsModule : IWheelModule
     {
         public string Id => WheelId(kind);
         public string Title => JobsModule.Title(kind);
-        public int MaxSlots => JobLayout.SlotCount(kind);
         public WheelRing Layout() => JobLayout.Build(kind, module.config);
         public List<WheelEntry> Entries(WheelRing ring) => module.catalog.Build(ring).Select(module.ToEntry).ToList();
     }
 
-    // Per group: its band color, and its jobs in clockwise order. Drag an icon
-    // sideways onto a neighbour to swap them. Groups keep their place on the wheel.
     private bool DrawLayout()
     {
         var changed = false;
@@ -86,7 +85,7 @@ internal sealed class JobsModule : IWheelModule
         ImGui.Spacing();
         changed |= DrawColors();
 
-        foreach (var kind in Kinds)
+        foreach (var kind in Kinds.Where(IsOn))
         {
             ImGui.Spacing();
             ImGui.Separator();
@@ -116,8 +115,6 @@ internal sealed class JobsModule : IWheelModule
         return changed;
     }
 
-    // How strong the colors are (Muted, Vivid…), whether every group takes its role's
-    // job color, and a reset back to the default colors.
     private bool DrawColors()
     {
         var changed = false;
@@ -232,7 +229,31 @@ internal sealed class JobsModule : IWheelModule
             changed = true;
         }
 
+        if (group == JobGroup.Logs)
+            changed |= DrawLogChoices();
+
         ImGui.PopID();
+        return changed;
+    }
+
+    private bool DrawLogChoices()
+    {
+        var changed = false;
+        var first = true;
+        foreach (var key in JobLayout.Defaults(JobGroup.Logs))
+        {
+            if (!first)
+                ImGui.SameLine();
+            first = false;
+
+            var shown = JobLayout.IsShown(key, config);
+            if (ImGui.Checkbox($"{catalog.Info(key)?.Name ?? key}##show-{key}", ref shown))
+            {
+                config.ShownLogs[key] = shown;
+                changed = true;
+            }
+        }
+
         return changed;
     }
 
@@ -280,7 +301,8 @@ internal sealed class JobsModule : IWheelModule
                              .Max();
         var dropdownX = ImGui.GetCursorPosX() + ImGui.GetFrameHeight() + spacing + widestName + spacing;
 
-        foreach (var (group, label) in GroupLabels)
+        var groupsOn = Kinds.Where(IsOn).SelectMany(JobLayout.GroupsOf).ToHashSet();
+        foreach (var (group, label) in GroupLabels.Where(g => groupsOn.Contains(g.Group)))
         {
             var inGroup = jobs.Where(j => j.Group == group && j.CommandId == 0).ToList();
             if (inGroup.Count == 0)
@@ -291,14 +313,12 @@ internal sealed class JobsModule : IWheelModule
             foreach (var job in inGroup)
             {
                 ImGui.PushID(job.Abbreviation);
-                // The glyph on its group's band color, as on the wheel.
                 var size = new Vector2(ImGui.GetFrameHeight());
                 var min = ImGui.GetCursorScreenPos();
                 ImGui.GetWindowDrawList().AddRectFilled(min, min + size, ImGui.GetColorU32(JobLayout.ColorOf(job.Group, config)), 3f);
                 ImGui.Image(icons.Handle(job.IconId, false), size);
                 ImGui.SameLine();
                 ImGui.AlignTextToFramePadding();
-                // Short name of whatever is shown (a class before its job is unlocked); full name on hover.
                 ImGui.TextUnformatted(ShortName(job));
                 if (ImGui.IsItemHovered())
                     ImGui.SetTooltip(job.Name);

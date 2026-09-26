@@ -78,7 +78,6 @@ internal sealed class JobCatalog(IDataManager data, IUnlockState unlocks, IPlaye
         return jobs;
     }
 
-    // Every gear set the player has, in the game's order.
     public static unsafe List<GearsetInfo> Gearsets()
     {
         var list = new List<GearsetInfo>();

@@ -9,7 +9,6 @@ namespace FlickWheel;
 // and whether it's shown dimmed (e.g. a locked job).
 internal readonly record struct RowIcon(string Id, ImTextureID? Texture, string Label, string Tooltip, bool Dim);
 
-// Settings controls shared by every wheel's group editor.
 internal static class GroupEditor
 {
     // Every button is the icon plus 2px frame padding per side; 4px between buttons.

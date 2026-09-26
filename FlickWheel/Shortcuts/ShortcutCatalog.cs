@@ -128,7 +128,6 @@ internal sealed class ShortcutCatalog
                    .ToList();
     }
 
-    // General actions (Teleport, Return, Sprint, Mount Roulette…) plus the listed actions.
     public List<ShortcutChoice> Actions()
     {
         var general = data.GetExcelSheet<GeneralAction>()
@@ -142,7 +141,6 @@ internal sealed class ShortcutCatalog
         return general.Concat(other).ToList();
     }
 
-    // Usable items currently in your bags.
     public unsafe List<ShortcutChoice> Items()
     {
         var choices = new List<ShortcutChoice>();
@@ -169,7 +167,6 @@ internal sealed class ShortcutCatalog
         return choices.OrderBy(choice => choice.Name).ToList();
     }
 
-    // Plugin commands registered right now, e.g. /cbarding.
     public List<string> PluginCommands() => commands.Commands.Keys.Order().ToList();
 
     // "the Aether Compass" → "Aether Compass".

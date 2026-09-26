@@ -9,12 +9,12 @@ using Dalamud.Game.ClientState.Keys;
 using Dalamud.Plugin.Services;
 
 namespace FlickWheel;
-// Hold the shortcut to show the wheel and tilt the right stick toward an entry. By
+// Hold the hotkey to show the wheel and tilt the right stick toward an entry. By
 // default the target stays when the stick springs back and letting go of the
-// shortcut picks it; optionally the stick returning to center picks it.
-// Letting go of the shortcut with no target cancels, so the wheel can never get
-// stuck open. B cancels. The shared shortcut opens the wheel used last and the swap
-// button moves through every wheel; a wheel's own shortcut opens straight to it.
+// hotkey picks it; optionally the stick returning to center picks it.
+// Letting go of the hotkey with no target cancels, so the wheel can never get
+// stuck open. B cancels. The shared hotkey opens the wheel used last and the swap
+// button moves through every wheel; a wheel's own hotkey opens straight to it.
 internal sealed class WheelInput : IDisposable
 {
     // Game stick axes run -99..99.
@@ -46,15 +46,15 @@ internal sealed class WheelInput : IDisposable
     private readonly Configuration config;
     private readonly Action save;
 
-    // Shortcut stayed down after the wheel closed; wait for a real release before reopening.
+    // Hotkey stayed down after the wheel closed; wait for a real release before reopening.
     private bool waitForRelease;
     private bool savedGamepadNav;
     private float gesturePeak;
     private bool swapWasDown;
     private long lastDrawn;
 
-    // The shortcut that opened the wheel (letting go of it picks), and whether it was a
-    // wheel's own shortcut rather than the shared one.
+    // The hotkey that opened the wheel (letting go of it picks), and whether it was a
+    // wheel's own hotkey rather than the shared one.
     private HotkeyModifier heldModifier;
     private VirtualKey heldKey;
     private bool openedDirect;
@@ -122,7 +122,7 @@ internal sealed class WheelInput : IDisposable
         if (keys.IsVirtualKeyValid(heldKey))
             keys[heldKey] = false;
 
-        // B cancels. The wheel stays shut until the shortcut is pressed again.
+        // B cancels. The wheel stays shut until the hotkey is pressed again.
         if (gamepad.Raw(GamepadButtons.East) > 0)
         {
             Close();
@@ -131,7 +131,6 @@ internal sealed class WheelInput : IDisposable
 
         ReadStick();
 
-        // Tapping the swap button moves on to the next wheel.
         var swapDown = gamepad.Raw(config.SwapButton) > 0;
         if (swapDown && !swapWasDown)
             ShowNext();
@@ -146,7 +145,7 @@ internal sealed class WheelInput : IDisposable
         if (StickTilt < config.Deadzone)
         {
             // Back at center. Either pick now, or keep the target so letting go of
-            // the shortcut picks it.
+            // the hotkey picks it.
             if (config.Confirm == ConfirmMode.StickRelease && Target != null)
             {
                 Commit();
@@ -161,7 +160,7 @@ internal sealed class WheelInput : IDisposable
             Target = Pick(Target);
     }
 
-    // The shortcut being held: a wheel's own one first (it's the more specific), then
+    // The hotkey being held: a wheel's own one first (it's the more specific), then
     // the shared one. Null when none is held.
     private (string? WheelId, HotkeyModifier Modifier, VirtualKey Key)? PressedShortcut()
     {
@@ -182,7 +181,7 @@ internal sealed class WheelInput : IDisposable
 
         if (pressed.WheelId is { } id)
         {
-            // A wheel's own shortcut: that wheel or nothing.
+            // A wheel's own hotkey: that wheel or nothing.
             Show(wheels.Find(id)!);
         }
         else
@@ -272,8 +271,8 @@ internal sealed class WheelInput : IDisposable
         if (!savedGamepadNav)
             SetPadBlockQuietly(false);
 
-        // Remember which wheel was up so the shared shortcut opens it next time.
-        // A wheel's own shortcut doesn't change where the shared one starts.
+        // Remember which wheel was up so the shared hotkey opens it next time.
+        // A wheel's own hotkey doesn't change where the shared one starts.
         if (!openedDirect && Wheel != null && config.LastWheel != Wheel.Id)
         {
             config.LastWheel = Wheel.Id;
@@ -331,7 +330,6 @@ internal sealed class WheelInput : IDisposable
         return WheelRing.AngleDistance(angle, Ring.AngleOf(slot)) <= halfWidth;
     }
 
-    // Switch the open wheel to the given one and load what's on it.
     private void Show(IWheel wheel)
     {
         Wheel = wheel;

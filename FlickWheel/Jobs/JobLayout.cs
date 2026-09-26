@@ -40,22 +40,31 @@ internal static class JobLayout
         (JobGroup.Caster, ["BLM", "SMN", "RDM", "PCT"]),
     ];
 
-    // Crafters across the top, then clockwise the gatherers, then the gathering and
-    // crafting logs on the west side (each next to the jobs it belongs to).
+    // Crafters across the top, then clockwise the gatherers, then the logs on the west
+    // side: the fishing ones next to Fisher, the crafting log next to the crafters.
     private static readonly (JobGroup Group, string[] Jobs)[] CraftingGroups =
     [
         (JobGroup.Hand, ["CRP", "BSM", "ARM", "GSM", "LTW", "WVR", "ALC", "CUL"]),
         (JobGroup.Land, ["MIN", "BTN", "FSH"]),
-        (JobGroup.Logs, ["GATHERLOG", "CRAFTLOG"]),
+        (JobGroup.Logs, ["FISHLOG", "FISHGUIDE", "GATHERLOG", "CRAFTLOG"]),
     ];
-
 
     // Wheel entries that open a game window (a main command) instead of switching job.
     public static readonly Dictionary<string, uint> Commands = new()
     {
-        ["CRAFTLOG"] = 9, // Crafting Log
-        ["GATHERLOG"] = 7, // Gathering Log
+        ["CRAFTLOG"] = 9,   // Crafting Log
+        ["GATHERLOG"] = 7,  // Gathering Log
+        ["FISHLOG"] = 29,   // Fishing Log
+        ["FISHGUIDE"] = 41, // Fish Guide
     };
+
+    // Logs left off the wheel until you tick them in settings.
+    private static readonly HashSet<string> HiddenLogs = ["FISHGUIDE"];
+
+    // Whether an entry is on the wheel: every job, and the logs you've chosen.
+    public static bool IsShown(string key, Configuration config) =>
+        !Commands.ContainsKey(key) ||
+        (config.ShownLogs.TryGetValue(key, out var shown) ? shown : !HiddenLogs.Contains(key));
 
     // Palette hue per group (see Palette.Hues) until you pick another: close to the game's
     // role colors, with the three DPS kinds told apart.
@@ -85,10 +94,6 @@ internal static class JobLayout
         [JobGroup.Land] = 3,            // Amber
         [JobGroup.Logs] = 0,            // Red
     };
-
-    // Every slot the wheel has, locked jobs included.
-    public static int SlotCount(WheelKind kind) =>
-        (kind == WheelKind.Crafting ? CraftingGroups : CombatGroups).Sum(g => g.Jobs.Length);
 
     public static IEnumerable<JobGroup> GroupsOf(WheelKind kind) =>
         (kind == WheelKind.Crafting ? CraftingGroups : CombatGroups).Select(g => g.Group);
@@ -130,6 +135,7 @@ internal static class JobLayout
 
     // The group's jobs in the player's saved order. Unknown entries are dropped and
     // jobs missing from the saved order (e.g. added in an update) go on the end.
+    // Logs you've turned off are left out.
     public static List<string> OrderOf(JobGroup group, Configuration config)
     {
         var defaults = Defaults(group);
@@ -137,6 +143,7 @@ internal static class JobLayout
         if (config.JobOrder.TryGetValue(group, out var saved))
             order.AddRange(saved.Where(defaults.Contains).Distinct());
         order.AddRange(defaults.Where(job => !order.Contains(job)));
+        order.RemoveAll(job => !IsShown(job, config));
         return order;
     }
 

@@ -21,8 +21,6 @@ internal interface IWheel
 {
     string Id { get; }
     string Title { get; }
-    // The most slots this wheel can have, so all wheels are drawn at one size.
-    int MaxSlots { get; }
     WheelRing Layout();
     List<WheelEntry> Entries(WheelRing ring);
 }
@@ -53,9 +51,10 @@ internal sealed class WheelSet(Configuration config)
     public bool IsEnabled(IWheelModule module) =>
         !config.Modules.TryGetValue(module.Id, out var on) || on;
 
-    public List<IWheel> Wheels => modules.Where(IsEnabled).SelectMany(m => m.Wheels).ToList();
+    public bool IsEnabled(IWheel wheel) =>
+        !config.WheelsOn.TryGetValue(wheel.Id, out var on) || on;
+
+    public List<IWheel> Wheels => modules.Where(IsEnabled).SelectMany(m => m.Wheels).Where(IsEnabled).ToList();
 
     public IWheel? Find(string id) => Wheels.FirstOrDefault(w => w.Id == id);
-
-    public int MaxSlots => Wheels.Select(w => w.MaxSlots).DefaultIfEmpty(1).Max();
 }

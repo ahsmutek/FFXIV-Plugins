@@ -3,8 +3,8 @@
 _Formerly **Job Wheel**. Your Job Wheel settings are carried over the first time Flick Wheel loads._
 
 A controller-friendly radial menu for switching jobs and opening anything else you
-use often. Hold the shortcut, flick the right stick toward an entry, and let go of
-the shortcut to use it. You don't press a confirm button or open a list.
+use often. Hold the hotkey, flick the right stick toward an entry, and let go of
+the hotkey to use it. You don't press a confirm button or open a list.
 
 It has two parts, each of which can be turned off in settings:
 
@@ -19,7 +19,7 @@ It has two parts, each of which can be turned off in settings:
    on to the next wheel.
 2. Tilt the right stick toward an entry. Its whole slice of the wheel fills with its
    group color and its name shows in the middle of the wheel.
-3. Let go of the shortcut. The wheel closes and the entry is used: a job's gear set is
+3. Let go of the hotkey. The wheel closes and the entry is used: a job's gear set is
    equipped, a window opens, an item is used, and so on.
    The stick can spring back to center first; the target stays until you flick
    toward another entry.
@@ -28,14 +28,15 @@ It has two parts, each of which can be turned off in settings:
    springs back.
 
 - Pressing **B** closes the wheel with no change, even with an entry targeted.
-- Letting go of the shortcut without targeting anything closes the wheel with no change.
+- Letting go of the hotkey without targeting anything closes the wheel with no change.
 - Picking the job you're already on just closes the wheel.
 - `/flick` opens settings (`/jobwheel` still works).
 
 ## Job wheels
 
 The Jobs part has two wheels, and every job has a fixed spot on its wheel, so you can
-learn the directions by feel. Groups run clockwise starting from the top.
+learn the directions by feel. Groups run clockwise starting from the top. If you only
+want one of the two wheels, turn the other off under **Wheels to use** on the General tab.
 
 **Combat wheel** (tanks centered north, healers centered south):
 
@@ -54,10 +55,10 @@ learn the directions by feel. Groups run clockwise starting from the top.
 |---|---|
 | Hand | CRP BSM ARM GSM LTW WVR ALC CUL |
 | Land | MIN BTN FSH |
-| Logs | Gathering Log, Crafting Log |
+| Logs | Fishing Log, Gathering Log, Crafting Log (and optionally the Fish Guide) |
 
 - Locked jobs leave their spot empty, and nothing else moves when you unlock one.
-- The **Crafting Log** and **Gathering Log** entries open those windows instead of switching job. They appear once the game has unlocked them.
+- The **Logs** entries open those windows instead of switching job, once the game has unlocked them. Tick which ones you want under **Logs** on the **Job layout** tab: Crafting, Gathering and Fishing Log are on by default, the Fish Guide is off.
 - The **Job layout** tab in settings lets you:
   - move groups around the wheel with the arrows, and choose which group sits centered at the top with **Pin to top**. With tanks pinned on the combat wheel, healers stay at the bottom unless you put them right next to tanks;
   - reorder jobs within a group (drag an icon sideways);
@@ -84,7 +85,7 @@ This covers being in combat, in a duty, casting, crafting, or not having a gear 
 
 ## Shortcuts wheel
 
-Tap RB until the Shortcuts wheel comes up, or give it its own shortcut in settings.
+Tap RB until the Shortcuts wheel comes up, or give it its own hotkey in settings.
 It starts with three groups, all of which you can change:
 
 | Group | Shortcuts |
@@ -117,10 +118,10 @@ In the **Shortcuts** settings tab:
 - Wheel scale
 - Icon size
 - Position: tick **Show wheel preview** (pick which wheel it shows next to it) and drag the wheel with the mouse, type an offset from screen center, or press **Center** to reset it
-- Stick selection threshold, and whether letting go of the shortcut or the stick returning to center picks
-- The shortcut, and which pad button (RB, LB, LT or RT) moves to the next wheel
-- Optionally, a shortcut per wheel that opens straight to it. The shared shortcut keeps opening the wheel you last used with it
-- Which wheels are turned on (**Jobs**, **Shortcuts**)
+- Stick selection threshold, and whether letting go of the hotkey or the stick returning to center picks
+- The hotkey, and which pad button (RB, LB, LT or RT) moves to the next wheel
+- Optionally, a hotkey per wheel that opens straight to it. The shared hotkey keeps opening the wheel you last used with it
+- Which wheels are turned on: **Jobs** (the combat wheel, the crafting & gathering wheel, or both) and **Shortcuts**
 - Group order and which group is on top, job order within each group, each group's color, the color style, and job colors
 - Gear set per job
 - Shortcut groups, their colors and their shortcuts
@@ -136,10 +137,12 @@ Then load `bin\Debug\FlickWheel.dll` as a Dalamud dev plugin
 
 ## Notes
 
+- Every wheel is the same size, set by **Wheel scale** and **Icon size** alone. A wheel with
+  more than 24 entries draws its icons smaller to fit, instead of growing.
 - While the wheel is open, Dalamud's gamepad capture (`IGamepadState.EnableGamepadNav`)
   stops controller input from reaching the game, so the right stick doesn't turn the camera.
   It's switched back off when the wheel closes. If the camera still moves, a reWASD
-  shift layer on the shortcut button can remap the right stick while it's held.
+  shift layer on the hotkey button can remap the right stick while it's held.
 - If the controller disconnects while the wheel is open, the stick reads as centered.
-  If an entry was targeted it's used; otherwise letting go of the shortcut cancels.
+  If an entry was targeted it's used; otherwise letting go of the hotkey cancels.
 - Zoning, cutscenes and logging out close the wheel without using anything.

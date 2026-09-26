@@ -16,7 +16,7 @@ internal sealed class ConfigWindow : Window
         [GamepadButtons.L1, GamepadButtons.R1, GamepadButtons.L2, GamepadButtons.R2];
     private static readonly string[] SwapButtonNames = ["LB", "RB", "LT", "RT"];
 
-    private static readonly string[] ConfirmNames = ["I let go of the shortcut", "The stick returns to center"];
+    private static readonly string[] ConfirmNames = ["I let go of the hotkey", "The stick returns to center"];
     private static readonly string[] ModifierNames = ["None", "Ctrl", "Shift", "Alt"];
 
     private readonly Configuration config;
@@ -25,7 +25,7 @@ internal sealed class ConfigWindow : Window
     private readonly WheelOverlay overlay;
     private readonly VirtualKey[] keys;
     private readonly string[] keyNames;
-    // Same keys with "None" first, for the optional per-wheel shortcuts.
+    // Same keys with "None" first, for the optional per-wheel hotkeys.
     private readonly string[] optionalKeyNames;
     private bool dirty;
 
@@ -105,7 +105,7 @@ internal sealed class ConfigWindow : Window
     {
         var changed = false;
 
-        ImGui.TextDisabled("Wheels");
+        ImGui.TextDisabled("Wheels to use");
         foreach (var module in wheels.Modules)
         {
             var on = wheels.IsEnabled(module);
@@ -114,10 +114,27 @@ internal sealed class ConfigWindow : Window
                 config.Modules[module.Id] = on;
                 changed = true;
             }
+
+            // A module with several wheels (Jobs: combat, crafting & gathering) lets each be turned off.
+            if (module.Wheels.Count < 2)
+                continue;
+            ImGui.Indent();
+            ImGui.BeginDisabled(!on);
+            foreach (var wheel in module.Wheels)
+            {
+                var wheelOn = wheels.IsEnabled(wheel);
+                if (ImGui.Checkbox($"{wheel.Title}##{wheel.Id}", ref wheelOn))
+                {
+                    config.WheelsOn[wheel.Id] = wheelOn;
+                    changed = true;
+                }
+            }
+            ImGui.EndDisabled();
+            ImGui.Unindent();
         }
 
         ImGui.Spacing();
-        ImGui.TextDisabled("Wheel");
+        ImGui.TextDisabled("Size and position");
         var scale = config.Scale;
         if (ImGui.SliderFloat("Wheel scale", ref scale, 0.5f, 2f, "%.2fx")) { config.Scale = scale; changed = true; }
         var iconSize = config.IconSize;
@@ -156,11 +173,11 @@ internal sealed class ConfigWindow : Window
             changed = true;
         }
         ImGui.TextWrapped(config.Confirm == ConfirmMode.ShortcutRelease
-            ? "The target stays when the stick springs back, so you can flick and then let go of the shortcut."
-            : "Flick toward an entry and let the stick spring back. Letting go of the shortcut with an entry targeted also picks it.");
+            ? "The target stays when the stick springs back, so you can flick and then let go of the hotkey."
+            : "Flick toward an entry and let the stick spring back. Letting go of the hotkey with an entry targeted also picks it.");
 
         ImGui.Spacing();
-        ImGui.TextDisabled("Shortcut (hold)");
+        ImGui.TextDisabled("Hotkey (hold)");
         var modifier = config.Modifier;
         var key = config.Key;
         if (DrawHotkey("shared", ref modifier, ref key, false))
@@ -179,7 +196,7 @@ internal sealed class ConfigWindow : Window
         }
 
         ImGui.Spacing();
-        ImGui.TextDisabled("Open one wheel directly (optional)");
+        ImGui.TextDisabled("Hotkey that opens one wheel directly (optional)");
         foreach (var wheel in wheels.Wheels)
         {
             ImGui.PushID(wheel.Id);

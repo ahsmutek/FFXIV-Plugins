@@ -96,14 +96,12 @@ internal sealed class ShortcutsModule : IWheelModule
         ],
     };
 
-    // A palette hue in the wheel's style, or the group's custom color.
     private Vector4 ColorOf(ShortcutGroup group) =>
         group.Hue >= 0 ? Palette.Color(group.Hue, Wheel.Style) : Palette.FromAbgr(group.Color);
 
     // Hues handed out to new groups and by Auto colors: far apart first, near neighbours later.
     private static readonly int[] HueOrder = [11, 6, 0, 2, 14, 8, 3, 16, 12, 5, 9, 15, 1, 4, 7, 10, 13, 17];
 
-    // The first hue in HueOrder that no group uses yet (or the first one, if all are taken).
     private static int NextHue(List<ShortcutGroup> groups) =>
         HueOrder.FirstOrDefault(hue => groups.All(g => g.Hue != hue), HueOrder[0]);
 
@@ -111,7 +109,6 @@ internal sealed class ShortcutsModule : IWheelModule
     {
         public string Id => WheelId;
         public string Title => "Shortcuts wheel";
-        public int MaxSlots => module.Wheel.Groups.Sum(g => g.Entries.Count);
 
         public WheelRing Layout()
         {
@@ -184,8 +181,6 @@ internal sealed class ShortcutsModule : IWheelModule
         return changed;
     }
 
-    // The shade style for the whole wheel, and a button that gives every group its own hue.
-    // Each group's hue is picked from its own swatch.
     private bool DrawColorStyle(List<ShortcutGroup> groups)
     {
         var changed = false;
@@ -209,7 +204,6 @@ internal sealed class ShortcutsModule : IWheelModule
         return changed;
     }
 
-    // One group: arrows, color, name, pin, delete, then its shortcuts and a + button.
     private (bool Changed, bool OpenPicker, bool Removed) DrawGroup(List<ShortcutGroup> groups, int index)
     {
         var changed = false;
@@ -323,14 +317,13 @@ internal sealed class ShortcutsModule : IWheelModule
     // First letters for icon-less entries, e.g. "/cbarding job" → "/cb".
     private static string Short(string name) => name.Length <= 3 ? name : name[..3];
 
-    // Right-click menu for one shortcut: its label, icon and command, then move or remove.
     private bool DrawEntryMenu(List<ShortcutGroup> groups, int groupIndex, ShortcutEntry entry, ref Action? pending)
     {
         var changed = false;
 
         var label = entry.Label ?? string.Empty;
         ImGui.SetNextItemWidth(200f);
-        if (ImGui.InputTextWithHint("Label", "Game name", ref label, 64))
+        if (ImGui.InputTextWithHint("Label", "Default name", ref label, 64))
         {
             entry.Label = label.Length > 0 ? label : null;
             changed = true;
@@ -437,7 +430,6 @@ internal sealed class ShortcutsModule : IWheelModule
         return changed;
     }
 
-    // A scrolling list of choices with category headings; clicking one adds it.
     private bool DrawChoices(ShortcutGroup group, List<ShortcutChoice> choices, string empty)
     {
         var changed = false;

@@ -13,8 +13,13 @@ namespace FlickWheel;
 // it can be dragged into place.
 internal sealed class WheelOverlay(WheelInput input, WheelSet wheels, IconCache icons, Configuration config, Action save)
 {
-    // Smallest ring radius at scale 1; rings with many icons grow past it so they never touch.
+    // Smallest ring radius at scale 1.
     private const float MinRadius = 140f;
+    // Icons the ring is sized for at the chosen icon size (the combat wheel has 23). Every
+    // wheel is drawn at this one size; a wheel with more icons shrinks them to fit instead.
+    private const int RingSlots = 24;
+    // Room each icon takes along the ring, as a multiple of its size.
+    private const float IconPitch = 1.35f;
     private const float TargetGrow = 1.2f;
     // Band thickness as a multiple of the icon size.
     private const float BandWidth = 1.35f;
@@ -88,9 +93,9 @@ internal sealed class WheelOverlay(WheelInput input, WheelSet wheels, IconCache 
         var scale = Math.Clamp(config.Scale, 0.3f, 3f);
         var icon = config.IconSize * scale;
         var center = ImGui.GetIO().DisplaySize / 2 + new Vector2(config.OffsetX, config.OffsetY);
-        // Every wheel shares the size the biggest one needs, so swapping doesn't resize;
-        // the ring grows if the icons are too big to fit around it.
-        var radius = Math.Max(MinRadius * scale, wheels.MaxSlots * icon * 1.35f / MathF.Tau);
+        // Depends only on scale and icon size, never on how many icons a wheel has,
+        // so every wheel is the same size.
+        var radius = Math.Max(MinRadius * scale, RingSlots * icon * IconPitch / MathF.Tau);
         return (center, radius, icon);
     }
 
@@ -99,16 +104,19 @@ internal sealed class WheelOverlay(WheelInput input, WheelSet wheels, IconCache 
         var (center, radius, icon) = Geometry();
         DrawRing(dl, ring, center, radius, icon, target);
 
+        // More icons than the ring has room for: draw them smaller rather than overlapping.
+        var glyph = Math.Min(icon, radius * MathF.Tau / (Math.Max(1, ring.Slots.Length) * IconPitch));
+
         foreach (var entry in entries)
         {
             if (entry != target)
-                DrawIcon(dl, ring, center, radius, icon, entry, false);
+                DrawIcon(dl, ring, center, radius, icon, glyph, entry, false);
         }
 
         // Targeted icon last so its enlarged frame sits on top of its neighbours.
         if (target != null)
         {
-            DrawIcon(dl, ring, center, radius, icon, target, true);
+            DrawIcon(dl, ring, center, radius, icon, glyph, target, true);
             DrawOutlinedText(dl, target.Name, center, Math.Clamp(icon * 0.4f, 14f, 32f), Align.Center);
         }
     }
@@ -172,7 +180,6 @@ internal sealed class WheelOverlay(WheelInput input, WheelSet wheels, IconCache 
             start = i;
         }
 
-        // The targeted slot's part of the band in a brighter shade of its group.
         if (target is { } lit)
         {
             var color = Vector4.Min(slots[lit.Slot].Color * new Vector4(1.7f, 1.7f, 1.7f, 1f), Vector4.One);
@@ -192,9 +199,12 @@ internal sealed class WheelOverlay(WheelInput input, WheelSet wheels, IconCache 
         }
     }
 
-    private void DrawIcon(ImDrawListPtr dl, WheelRing ring, Vector2 center, float radius, float icon, WheelEntry entry, bool targeted)
+    // icon sizes the band (and where the current-job dot sits); glyph is how big the icon
+    // itself is drawn, smaller than icon when the wheel is crowded.
+    private void DrawIcon(ImDrawListPtr dl, WheelRing ring, Vector2 center, float radius, float icon, float glyph,
+                          WheelEntry entry, bool targeted)
     {
-        var size = targeted ? icon * TargetGrow : icon;
+        var size = targeted ? glyph * TargetGrow : glyph;
         var dir = WheelRing.Direction(ring.AngleOf(entry.Slot));
         var pos = center + dir * radius;
         var min = pos - new Vector2(size / 2);
@@ -222,7 +232,6 @@ internal sealed class WheelOverlay(WheelInput input, WheelSet wheels, IconCache 
         BottomRight, // ending at the point
     }
 
-    // White text with a dark outline, readable on any background.
     private static void DrawOutlinedText(ImDrawListPtr dl, string text, Vector2 at, float fontSize, Align align)
     {
         var font = ImGui.GetFont();
