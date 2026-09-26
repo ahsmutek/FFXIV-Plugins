@@ -2,9 +2,14 @@
 
 _Formerly **Job Wheel**. Your Job Wheel settings are carried over the first time Flick Wheel loads._
 
-A controller-friendly radial menu for switching jobs. Hold the shortcut, flick the
-right stick toward a job, and let go of the shortcut to switch. You don't press a
-confirm button or open a list.
+A controller-friendly radial menu for switching jobs and opening anything else you
+use often. Hold the shortcut, flick the right stick toward an entry, and let go of
+the shortcut to use it. You don't press a confirm button or open a list.
+
+It has two parts, each of which can be turned off in settings:
+
+- **Jobs** – a combat wheel and a crafting & gathering wheel with every job in a fixed spot.
+- **Shortcuts** – a wheel of your own shortcuts (game windows, Teleport, items, plugin commands) in groups you name and color.
 
 ## Usage
 
@@ -70,6 +75,32 @@ Switching equips a gear set:
 If the switch isn't possible, a short error toast appears and nothing else happens.
 This covers being in combat, in a duty, casting, crafting, or not having a gear set.
 
+## Shortcuts wheel
+
+Tap RB until the Shortcuts wheel comes up, or give it its own shortcut in settings.
+It starts with three groups, all of which you can change:
+
+| Group | Shortcuts |
+|---|---|
+| Travel | Teleport, Return, Aether Compass |
+| Windows | Duty Finder, Timers, Journal |
+| Chocobo | Gysahl Greens, `/cbarding job` (Chocobo Barding plugin) |
+
+In the **Shortcuts** settings tab:
+
+- **+** adds a shortcut to a group. The picker has four tabs:
+  - **Menus** – any main-menu window: Character, Armoury Chest, Inventory, Currency,
+    Achievements, Blue Magic Spellbook, Master's Bestiary, Hunting Log, Duty Finder…
+  - **Actions** – general actions (Teleport, Return, Sprint, Mount Roulette, Repair…) and the Aether Compass.
+  - **Items** – usable items in your bags. The wheel shows how many you have left, and fades the icon at 0.
+  - **Commands** – any plugin command, with your own label and icon ID. It only shows on the
+    wheel while that plugin is loaded.
+- Drag a shortcut sideways to reorder it. Right-click it to change its label or icon,
+  move it to another group, or remove it.
+- Each group has a name, a color, arrows to move it around the wheel, and **Pin to top**.
+  **Add group** makes a new one; deleting a group that has shortcuts needs Ctrl held.
+- Menus you haven't unlocked yet leave their spot empty.
+
 ## Settings
 
 - Wheel scale
@@ -78,9 +109,10 @@ This covers being in combat, in a duty, casting, crafting, or not having a gear 
 - Stick selection threshold, and whether letting go of the shortcut or the stick returning to center picks
 - The shortcut, and which pad button (RB, LB, LT or RT) moves to the next wheel
 - Optionally, a shortcut per wheel that opens straight to it. The shared shortcut keeps opening the wheel you last used with it
-- Which wheels are turned on (**Jobs**)
+- Which wheels are turned on (**Jobs**, **Shortcuts**)
 - Group order and which group is on top, job order within each group, each group's color, and color presets
 - Gear set per job
+- Shortcut groups, their colors and their shortcuts
 
 ## Build
 

@@ -70,6 +70,7 @@ public sealed class Plugin : IDalamudPlugin
         var catalog = new JobCatalog(Data, Unlocks, PlayerState, config);
         var switcher = new JobSwitcher(Condition, Toasts);
         wheels.Add(new JobsModule(config, catalog, switcher, icons, overlay));
+        wheels.Add(new ShortcutsModule(config, Save, new ShortcutCatalog(Data, CommandManager), icons, overlay));
 
         configWindow = new ConfigWindow(config, Save, wheels, overlay, KeyState);
         windows.AddWindow(configWindow);

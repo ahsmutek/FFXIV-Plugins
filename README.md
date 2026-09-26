@@ -29,12 +29,13 @@ event (no hooks or memory writes). Command: `/cbarding "Sophic"` or
 `/cbarding "Suzaku" "Windswept" "Ice"`.
 
 ### [Flick Wheel](FlickWheel/)
-A controller radial menu for switching jobs (formerly Job Wheel). Hold `Ctrl + ,`, flick the right stick
-toward a job, and let go to switch. Tap RB (or another shoulder button) to swap
-between the combat and crafting/gathering wheels; it reopens on the one you used
-last. Every unlocked job has a fixed, role-grouped spot on the wheel so you can
-learn the directions by feel, and you can reorder jobs within a group, recolor the
-groups, and pick a gear set per job. Command: `/flick` (settings).
+A controller radial menu for switching jobs and opening anything else (formerly Job
+Wheel). Hold `Ctrl + ,`, flick the right stick toward an entry, and let go to use it.
+Tap RB (or another shoulder button) to move between the combat, crafting/gathering
+and shortcuts wheels; it reopens on the one you used last. Every unlocked job has a
+fixed, role-grouped spot so you can learn the directions by feel. The shortcuts wheel
+holds your own groups of game windows, Teleport and other actions, items (with how many
+are left) and plugin commands such as `/cbarding job`. Command: `/flick` (settings).
 
 ## Building
 

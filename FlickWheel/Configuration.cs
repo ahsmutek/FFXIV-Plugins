@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Dalamud.Configuration;
 using Dalamud.Game.ClientState.GamePad;
@@ -25,6 +26,48 @@ public sealed class Hotkey
 {
     public HotkeyModifier Modifier { get; set; }
     public VirtualKey Key { get; set; }
+}
+
+// What a shortcut does when picked.
+public enum ShortcutKind
+{
+    MainCommand,   // opens a game window, like the main menu does (MainCommand row)
+    GeneralAction, // Teleport, Return, Sprint… (GeneralAction row)
+    Action,        // an action used from the hotbar, e.g. the Aether Compass (Action row)
+    Item,          // uses an item from your bags (Item row)
+    Command,       // runs a plugin's chat command, e.g. /cbarding job
+}
+
+public sealed class ShortcutEntry
+{
+    // Stable id so the settings can keep hold of an entry while it's dragged around.
+    public string Uid { get; set; } = Guid.NewGuid().ToString("N");
+    public ShortcutKind Kind { get; set; }
+    // The sheet row for Kind (unused for Command).
+    public uint RowId { get; set; }
+    // Command kind: the text to run.
+    public string? Command { get; set; }
+    // Shown instead of the game's name when set.
+    public string? Label { get; set; }
+    // Game icon to show instead of the default one; 0 = default.
+    public uint IconId { get; set; }
+}
+
+public sealed class ShortcutGroup
+{
+    public string Uid { get; set; } = Guid.NewGuid().ToString("N");
+    public string Name { get; set; } = string.Empty;
+    // Band color as ABGR.
+    public uint Color { get; set; }
+    public List<ShortcutEntry> Entries { get; set; } = new();
+}
+
+public sealed class ShortcutWheel
+{
+    // Clockwise from the top.
+    public List<ShortcutGroup> Groups { get; set; } = new();
+    // Index of the group centered at the top.
+    public int PinnedGroup { get; set; }
 }
 
 public sealed class Configuration : IPluginConfiguration
@@ -77,6 +120,10 @@ public sealed class Configuration : IPluginConfiguration
 
     // Band color per group as ABGR. Missing = default color.
     public Dictionary<JobGroup, uint> RoleColors { get; set; } = new();
+
+    // The Shortcuts wheel. Null until first used, then filled with starter groups (in
+    // code rather than here, so loading saved groups doesn't add to the starter ones).
+    public ShortcutWheel? Shortcuts { get; set; }
 
     /// <summary>Brings settings saved by older versions up to date. True when anything changed.</summary>
     public bool Migrate()
