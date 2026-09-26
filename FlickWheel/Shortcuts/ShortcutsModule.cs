@@ -2,8 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
-using Dalamud.Bindings.ImGui;
-using Dalamud.Interface.Utility;
 
 namespace FlickWheel;
 
@@ -11,39 +9,24 @@ namespace FlickWheel;
 // items (with how many are left) and plugin commands, in groups you name and color.
 internal sealed class ShortcutsModule : IWheelModule
 {
-    private const string WheelId = "shortcuts";
-    private const string PickerPopup = "##addShortcut";
+    public const string WheelId = "shortcuts";
 
     private readonly Configuration config;
     private readonly ShortcutCatalog catalog;
-    private readonly IconCache icons;
-    private readonly WheelOverlay overlay;
-
-    // Picker state: which group it adds to, the search text, the Commands tab's fields,
-    // and its lists (game data once, the bag contents each time it opens).
-    private int pickerGroup = -1;
-    private string search = string.Empty;
-    private string newLabel = string.Empty;
-    private string newCommand = string.Empty;
-    private int newIcon;
-    private List<ShortcutChoice>? menus;
-    private List<ShortcutChoice>? actions;
-    private List<ShortcutChoice> items = [];
 
     public ShortcutsModule(Configuration config, Action save, ShortcutCatalog catalog, IconCache icons, WheelOverlay overlay)
     {
         this.config = config;
         this.catalog = catalog;
-        this.icons = icons;
-        this.overlay = overlay;
         if (config.Shortcuts == null)
         {
             config.Shortcuts = Starter();
             save();
         }
 
+        var settings = new ShortcutsSettings(config, catalog, icons, overlay, new ShortcutPicker(catalog, icons));
         Wheels = [new ShortcutsWheel(this)];
-        SettingsTabs = [new("Shortcuts", DrawSettings)];
+        SettingsTabs = [new("Shortcuts", settings.Draw)];
     }
 
     public string Id => "shortcuts";
@@ -54,6 +37,10 @@ internal sealed class ShortcutsModule : IWheelModule
     private ShortcutWheel Wheel => config.Shortcuts!;
 
     public void OnSettingsOpen() { }
+
+    // A palette hue in the wheel's style, or the group's custom color.
+    public static Vector4 ColorOf(ShortcutGroup group, int style) =>
+        group.Hue >= 0 ? Palette.Color(group.Hue, style) : Palette.FromAbgr(group.Color);
 
     // What a new install starts with; everything can be changed or removed.
     private static ShortcutWheel Starter() => new()
@@ -96,15 +83,6 @@ internal sealed class ShortcutsModule : IWheelModule
         ],
     };
 
-    private Vector4 ColorOf(ShortcutGroup group) =>
-        group.Hue >= 0 ? Palette.Color(group.Hue, Wheel.Style) : Palette.FromAbgr(group.Color);
-
-    // Hues handed out to new groups and by Auto colors: far apart first, near neighbours later.
-    private static readonly int[] HueOrder = [11, 6, 0, 2, 14, 8, 3, 16, 12, 5, 9, 15, 1, 4, 7, 10, 13, 17];
-
-    private static int NextHue(List<ShortcutGroup> groups) =>
-        HueOrder.FirstOrDefault(hue => groups.All(g => g.Hue != hue), HueOrder[0]);
-
     private sealed class ShortcutsWheel(ShortcutsModule module) : IWheel
     {
         public string Id => WheelId;
@@ -112,10 +90,12 @@ internal sealed class ShortcutsModule : IWheelModule
 
         public WheelRing Layout()
         {
-            var groups = module.Wheel.Groups;
-            var slots = groups.SelectMany((group, index) => group.Entries.Select(entry => new RingSlot(entry.Uid, index, module.ColorOf(group))))
-                              .ToArray();
-            var pinned = groups.Count > 0 ? Math.Clamp(module.Wheel.PinnedGroup, 0, groups.Count - 1) : 0;
+            var wheel = module.Wheel;
+            var slots = wheel.Groups
+                             .SelectMany((group, index) => group.Entries.Select(entry =>
+                                 new RingSlot(entry.Uid, index, ColorOf(group, wheel.Style))))
+                             .ToArray();
+            var pinned = wheel.Groups.Count > 0 ? Math.Clamp(wheel.PinnedGroup, 0, wheel.Groups.Count - 1) : 0;
             return new WheelRing(slots, (pinned, 0f));
         }
 
@@ -138,384 +118,5 @@ internal sealed class ShortcutsModule : IWheelModule
 
             return entries;
         }
-    }
-
-    private bool DrawSettings()
-    {
-        var changed = false;
-        ImGui.TextWrapped("Groups are listed clockwise. Drag a shortcut sideways to move it within its group; right-click it to rename, change its icon, move it to another group or remove it. Press + to add a shortcut.");
-        var groups = Wheel.Groups;
-        ImGui.Spacing();
-        changed |= DrawColorStyle(groups);
-
-        var openPicker = false;
-        for (var g = 0; g < groups.Count; g++)
-        {
-            ImGui.Spacing();
-            ImGui.Separator();
-            var (groupChanged, pick, removed) = DrawGroup(groups, g);
-            changed |= groupChanged;
-            openPicker |= pick;
-            if (removed)
-                break; // the list changed under the loop; the rest draws next frame
-        }
-
-        ImGui.Spacing();
-        ImGui.Separator();
-        if (ImGui.Button("Add group"))
-        {
-            groups.Add(new ShortcutGroup { Name = $"Group {groups.Count + 1}", Hue = NextHue(groups) });
-            changed = true;
-        }
-
-        if (openPicker)
-        {
-            search = string.Empty;
-            items = catalog.Items();
-            ImGui.OpenPopup(PickerPopup);
-        }
-        changed |= DrawPicker();
-
-        if (changed)
-            overlay.PreviewWheel = WheelId; // show the wheel being edited
-        return changed;
-    }
-
-    private bool DrawColorStyle(List<ShortcutGroup> groups)
-    {
-        var changed = false;
-        ImGui.TextDisabled("Colors");
-        var style = Wheel.Style;
-        if (GroupEditor.StyleButtons(ref style))
-        {
-            Wheel.Style = style;
-            changed = true;
-        }
-
-        if (ImGui.SmallButton("Auto colors"))
-        {
-            for (var g = 0; g < groups.Count; g++)
-                groups[g].Hue = HueOrder[g % HueOrder.Length];
-            changed = true;
-        }
-        if (ImGui.IsItemHovered())
-            ImGui.SetTooltip("Give every group a different color.");
-
-        return changed;
-    }
-
-    private (bool Changed, bool OpenPicker, bool Removed) DrawGroup(List<ShortcutGroup> groups, int index)
-    {
-        var changed = false;
-        var group = groups[index];
-        ImGui.PushID(group.Uid);
-
-        if (GroupEditor.MoveArrows(index, groups.Count) is var step and not 0)
-        {
-            var other = index + step;
-            (groups[index], groups[other]) = (groups[other], groups[index]);
-            if (Wheel.PinnedGroup == index)
-                Wheel.PinnedGroup = other;
-            else if (Wheel.PinnedGroup == other)
-                Wheel.PinnedGroup = index;
-            changed = true;
-        }
-        ImGui.SameLine();
-
-        var hue = group.Hue;
-        var custom = group.Color;
-        if (GroupEditor.ColorSwatch(ref hue, ref custom, Wheel.Style))
-        {
-            group.Hue = hue;
-            group.Color = custom;
-            changed = true;
-        }
-        var color = ColorOf(group);
-        ImGui.SameLine();
-        var name = group.Name;
-        ImGui.SetNextItemWidth(140f);
-        if (ImGui.InputText("##name", ref name, 32))
-        {
-            group.Name = name;
-            changed = true;
-        }
-        ImGui.SameLine();
-        if (ImGui.RadioButton("Pin to top", Wheel.PinnedGroup == index))
-        {
-            Wheel.PinnedGroup = index;
-            changed = true;
-        }
-
-        // A group with shortcuts in it needs Ctrl held, so it can't go by accident.
-        ImGui.SameLine();
-        var removed = false;
-        var canDelete = group.Entries.Count == 0 || ImGui.GetIO().KeyCtrl;
-        ImGui.BeginDisabled(!canDelete);
-        if (ImGui.SmallButton("Delete"))
-        {
-            groups.RemoveAt(index);
-            if (Wheel.PinnedGroup > index || Wheel.PinnedGroup >= groups.Count)
-                Wheel.PinnedGroup = Math.Max(0, Wheel.PinnedGroup - 1);
-            changed = removed = true;
-        }
-        ImGui.EndDisabled();
-        if (!canDelete && ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
-            ImGui.SetTooltip("Hold Ctrl to delete a group that has shortcuts in it.");
-
-        if (removed)
-        {
-            ImGui.PopID();
-            return (true, false, true);
-        }
-
-        // Remove and Move to happen after the row is drawn, not while it's being walked.
-        Action? pending = null;
-        var entries = group.Entries;
-        var move = GroupEditor.IconRow(entries.Count, color, i => RowIconOf(entries[i]), i =>
-        {
-            changed |= DrawEntryMenu(groups, index, entries[i], ref pending);
-        });
-        if (move is var (from, to))
-        {
-            var entry = entries[from];
-            entries.RemoveAt(from);
-            entries.Insert(to, entry);
-            changed = true;
-        }
-        if (pending != null)
-        {
-            pending();
-            changed = true;
-        }
-
-        if (entries.Count > 0)
-            ImGui.SameLine(0, 4f);
-        var openPicker = false;
-        if (ImGui.Button("+", new Vector2(40f)))
-        {
-            pickerGroup = index;
-            openPicker = true;
-        }
-
-        ImGui.PopID();
-        return (changed, openPicker, false);
-    }
-
-    private RowIcon RowIconOf(ShortcutEntry entry)
-    {
-        if (catalog.Describe(entry) is not { } info)
-            return new RowIcon(entry.Uid, null, "?", "This shortcut no longer exists in the game.", true);
-
-        var available = catalog.Available(entry);
-        var tooltip = available ? info.Name : entry.Kind == ShortcutKind.Command
-            ? $"{info.Name} (the plugin for this command isn't loaded)"
-            : $"{info.Name} (locked)";
-        var texture = info.IconId != 0 ? icons.Handle(info.IconId, info.KeyOutIcon) : (ImTextureID?)null;
-        return new RowIcon(entry.Uid, texture, Short(info.Name), tooltip, !available);
-    }
-
-    // First letters for icon-less entries, e.g. "/cbarding job" → "/cb".
-    private static string Short(string name) => name.Length <= 3 ? name : name[..3];
-
-    private bool DrawEntryMenu(List<ShortcutGroup> groups, int groupIndex, ShortcutEntry entry, ref Action? pending)
-    {
-        var changed = false;
-
-        var label = entry.Label ?? string.Empty;
-        ImGui.SetNextItemWidth(200f);
-        if (ImGui.InputTextWithHint("Label", "Default name", ref label, 64))
-        {
-            entry.Label = label.Length > 0 ? label : null;
-            changed = true;
-        }
-
-        var icon = (int)entry.IconId;
-        ImGui.SetNextItemWidth(200f);
-        if (ImGui.InputInt("Icon ID (0 = default)", ref icon))
-        {
-            entry.IconId = (uint)Math.Max(0, icon);
-            changed = true;
-        }
-
-        if (entry.Kind == ShortcutKind.Command)
-        {
-            var command = entry.Command ?? string.Empty;
-            ImGui.SetNextItemWidth(200f);
-            if (ImGui.InputText("Command", ref command, 128))
-            {
-                entry.Command = command;
-                changed = true;
-            }
-        }
-
-        ImGui.Separator();
-        if (groups.Count > 1 && ImGui.BeginMenu("Move to"))
-        {
-            for (var g = 0; g < groups.Count; g++)
-            {
-                if (g == groupIndex)
-                    continue;
-                var target = groups[g];
-                if (ImGui.MenuItem($"{(target.Name.Length > 0 ? target.Name : "(unnamed)")}##{target.Uid}"))
-                {
-                    var source = groups[groupIndex];
-                    pending = () =>
-                    {
-                        source.Entries.Remove(entry);
-                        target.Entries.Add(entry);
-                    };
-                }
-            }
-            ImGui.EndMenu();
-        }
-
-        if (ImGui.MenuItem("Remove"))
-        {
-            var source = groups[groupIndex];
-            pending = () => source.Entries.Remove(entry);
-        }
-
-        return changed;
-    }
-
-    // The add-a-shortcut popup: tabs for game windows, actions, items and plugin commands.
-    // Popups always size to their contents, so everything sits in a fixed-size child;
-    // otherwise wrapped text would stretch the popup across the screen.
-    private bool DrawPicker()
-    {
-        if (!ImGui.BeginPopup(PickerPopup))
-            return false;
-
-        var changed = false;
-        if (pickerGroup < 0 || pickerGroup >= Wheel.Groups.Count)
-        {
-            ImGui.CloseCurrentPopup();
-            ImGui.EndPopup();
-            return false;
-        }
-
-        ImGui.BeginChild("##pickerBody", new Vector2(600f, 500f) * ImGuiHelpers.GlobalScale);
-        var group = Wheel.Groups[pickerGroup];
-        ImGui.TextDisabled($"Add to {(group.Name.Length > 0 ? group.Name : "this group")}");
-        ImGui.SetNextItemWidth(-1);
-        ImGui.InputTextWithHint("##search", "Search", ref search, 64);
-
-        if (ImGui.BeginTabBar("pickerTabs"))
-        {
-            if (ImGui.BeginTabItem("Menus"))
-            {
-                changed |= DrawChoices(group, menus ??= catalog.Menus(), "Nothing matches.");
-                ImGui.EndTabItem();
-            }
-            if (ImGui.BeginTabItem("Actions"))
-            {
-                changed |= DrawChoices(group, actions ??= catalog.Actions(), "Nothing matches.");
-                ImGui.EndTabItem();
-            }
-            if (ImGui.BeginTabItem("Items"))
-            {
-                changed |= DrawChoices(group, items, "No usable items in your bags match.");
-                ImGui.EndTabItem();
-            }
-            if (ImGui.BeginTabItem("Commands"))
-            {
-                changed |= DrawCommandForm(group);
-                ImGui.EndTabItem();
-            }
-            ImGui.EndTabBar();
-        }
-
-        ImGui.EndChild();
-        ImGui.EndPopup();
-        return changed;
-    }
-
-    private bool DrawChoices(ShortcutGroup group, List<ShortcutChoice> choices, string empty)
-    {
-        var changed = false;
-        ImGui.BeginChild("choices", new Vector2(0, 0));
-
-        var category = (string?)null;
-        var any = false;
-        foreach (var choice in choices)
-        {
-            if (search.Length > 0 && !choice.Name.Contains(search, StringComparison.OrdinalIgnoreCase))
-                continue;
-            any = true;
-
-            if (choice.Category != category)
-            {
-                category = choice.Category;
-                ImGui.Spacing();
-                ImGui.TextDisabled(category);
-            }
-
-            ImGui.Image(icons.Handle(choice.IconId, false), new Vector2(ImGui.GetFrameHeight()));
-            ImGui.SameLine();
-            ImGui.AlignTextToFramePadding();
-            if (ImGui.Selectable($"{choice.Name}##{choice.Kind}-{choice.RowId}"))
-            {
-                group.Entries.Add(new ShortcutEntry { Kind = choice.Kind, RowId = choice.RowId });
-                changed = true;
-                ImGui.CloseCurrentPopup();
-            }
-        }
-
-        if (!any)
-            ImGui.TextDisabled(empty);
-
-        ImGui.EndChild();
-        return changed;
-    }
-
-    // A plugin command with your own label and icon. The registered commands are listed
-    // below so one can be picked instead of typed.
-    private bool DrawCommandForm(ShortcutGroup group)
-    {
-        var changed = false;
-        ImGui.TextWrapped("Runs a plugin's command, like /cbarding job. It only shows on the wheel while that plugin is loaded.");
-        ImGui.SetNextItemWidth(-90f);
-        ImGui.InputTextWithHint("Command", "/command arguments", ref newCommand, 128);
-        ImGui.SetNextItemWidth(-90f);
-        ImGui.InputTextWithHint("Label", "Shown in the middle of the wheel", ref newLabel, 64);
-        ImGui.SetNextItemWidth(-90f);
-        ImGui.InputInt("Icon ID", ref newIcon);
-        newIcon = Math.Max(0, newIcon);
-        if (newIcon > 0)
-        {
-            ImGui.Image(icons.Handle((uint)newIcon, false), new Vector2(40f));
-            ImGui.SameLine();
-        }
-
-        ImGui.BeginDisabled(newCommand.Trim().Length == 0 || !newCommand.TrimStart().StartsWith('/'));
-        if (ImGui.Button("Add"))
-        {
-            group.Entries.Add(new ShortcutEntry
-            {
-                Kind = ShortcutKind.Command,
-                Command = newCommand.Trim(),
-                Label = newLabel.Trim().Length > 0 ? newLabel.Trim() : null,
-                IconId = (uint)newIcon,
-            });
-            newCommand = newLabel = string.Empty;
-            newIcon = 0;
-            changed = true;
-            ImGui.CloseCurrentPopup();
-        }
-        ImGui.EndDisabled();
-
-        ImGui.Spacing();
-        ImGui.TextDisabled("Plugin commands");
-        ImGui.BeginChild("commands", new Vector2(0, 0));
-        foreach (var command in catalog.PluginCommands())
-        {
-            if (search.Length > 0 && !command.Contains(search, StringComparison.OrdinalIgnoreCase))
-                continue;
-            if (ImGui.Selectable(command))
-                newCommand = command + " ";
-        }
-        ImGui.EndChild();
-
-        return changed;
     }
 }

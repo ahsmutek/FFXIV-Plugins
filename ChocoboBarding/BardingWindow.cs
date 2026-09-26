@@ -10,12 +10,11 @@ using ClassJob = Lumina.Excel.Sheets.ClassJob;
 
 namespace ChocoboBarding;
 
-internal sealed class BardingWindow : Window
+internal sealed partial class BardingWindow : Window
 {
     private const float IconSize = 48;
     private const float SmallIconSize = 24;
     private const float MixIconSize = 80;
-    private const float PetIconSize = 40;
 
     // Gold job glyphs on a transparent background are 62000 + ClassJob row id.
     private const uint JobIconBase = 62000;
@@ -32,8 +31,6 @@ internal sealed class BardingWindow : Window
     private List<PetGlamour.Pet> pets = [];
     private List<PetGlamour.Resize> resizes = [];
     private string filter = string.Empty;
-    // Pets tab: add the resummon line, since a new look only shows once the pet is resummoned.
-    private bool resummon = true;
 
     private readonly SlotChoice[] mix = [SlotChoice.Keep, SlotChoice.Keep, SlotChoice.Keep];
 
@@ -244,233 +241,6 @@ internal sealed class BardingWindow : Window
             ImGui.TableNextColumn();
             ImGui.SetCursorPosY(ImGui.GetCursorPosY() + textOffset);
             CopyButton(name, macro);
-        }
-
-        ImGui.EndTable();
-    }
-
-    // Only ever read from; rows copy it into jobEdit before changing anything.
-    private static readonly SlotChoice[] NotSet = [SlotChoice.Keep, SlotChoice.Keep, SlotChoice.Keep];
-
-    // One job row's picks while it is drawn, reused for every row so drawing doesn't allocate.
-    private readonly SlotChoice[] jobEdit = new SlotChoice[Barding.SlotCount];
-
-    private SlotChoice[] JobChoices(uint jobId) =>
-        config.JobBarding.TryGetValue(jobId, out var saved) && saved.Length == Barding.SlotCount
-            ? saved
-            : NotSet;
-
-    // A job with every slot on "Keep current" has nothing picked, so it isn't stored.
-    private void SetJobChoices(uint jobId, SlotChoice[] choices)
-    {
-        if (choices.All(choice => choice.Action == SlotAction.Keep))
-            config.JobBarding.Remove(jobId);
-        else
-            config.JobBarding[jobId] = choices;
-        save();
-    }
-
-    private string FullSetLabel(SlotChoice[] choices)
-    {
-        if (choices.All(choice => choice.Action == SlotAction.Keep))
-            return "Not set";
-        return choices[0] == choices[1] && choices[1] == choices[2] ? Label(choices[0]) : "Mixed";
-    }
-
-    private bool DrawFullSetCombo(string id, SlotChoice[] choices)
-    {
-        ImGui.SetNextItemWidth(-1);
-        if (!ImGui.BeginCombo($"##{id}", FullSetLabel(choices)))
-            return false;
-
-        SlotChoice? picked = null;
-        if (ImGui.Selectable("Not set", choices.All(choice => choice.Action == SlotAction.Keep)))
-            picked = SlotChoice.Keep;
-        if (ImGui.Selectable("None", choices.All(choice => choice.Action == SlotAction.Remove)))
-            picked = SlotChoice.Remove;
-
-        foreach (var (name, rowId, icons) in owned)
-        {
-            DrawIcon(icons[1], SmallIconSize);
-            ImGui.SameLine();
-            if (ImGui.Selectable($"{name}##{id}-{rowId}", choices.All(choice => choice.Action == SlotAction.Set && choice.RowId == rowId)))
-                picked = SlotChoice.Set(rowId);
-        }
-
-        ImGui.EndCombo();
-
-        if (picked is not { } all)
-            return false;
-
-        choices[0] = choices[1] = choices[2] = all;
-        return true;
-    }
-
-    private void DrawJobs()
-    {
-        ImGui.AlignTextToFramePadding();
-        ImGui.TextUnformatted($"Macro: {JobMacro}");
-        ImGui.SameLine();
-        CopyButton("job", JobMacro);
-        ImGui.TextDisabled("Pick barding for each job, then press the macro to put on the one for your current job.");
-        ImGui.Spacing();
-
-        if (!ImGui.BeginTable("jobs", 6, ImGuiTableFlags.RowBg | ImGuiTableFlags.ScrollY | ImGuiTableFlags.BordersInnerH))
-            return;
-
-        ImGui.TableSetupScrollFreeze(0, 1);
-        ImGui.TableSetupColumn("Job", ImGuiTableColumnFlags.WidthFixed);
-        ImGui.TableSetupColumn("Full set", ImGuiTableColumnFlags.WidthStretch);
-        for (var slot = 0; slot < Barding.SlotCount; slot++)
-            ImGui.TableSetupColumn(Barding.SlotNames[slot], ImGuiTableColumnFlags.WidthStretch);
-        ImGui.TableSetupColumn(string.Empty, ImGuiTableColumnFlags.WidthFixed);
-        ImGui.TableHeadersRow();
-
-        var current = player.IsLoaded ? player.ClassJob.RowId : 0;
-        foreach (var job in jobs)
-        {
-            ImGui.PushID((int)job.RowId);
-            ImGui.TableNextRow();
-            if (job.RowId == current || job.ClassJobParent.RowId == current)
-                ImGui.TableSetBgColor(ImGuiTableBgTarget.RowBg0, ImGui.GetColorU32(ImGuiCol.Header));
-
-            var choices = jobEdit;
-            JobChoices(job.RowId).CopyTo(choices, 0);
-            var changed = false;
-
-            ImGui.TableNextColumn();
-            DrawIcon(JobIconBase + job.RowId, SmallIconSize);
-            ImGui.SameLine();
-            ImGui.AlignTextToFramePadding();
-            ImGui.TextUnformatted(job.Abbreviation.ExtractText());
-            if (ImGui.IsItemHovered())
-                ImGui.SetTooltip(Barding.JobName(job));
-
-            ImGui.TableNextColumn();
-            changed |= DrawFullSetCombo("full", choices);
-
-            for (var slot = 0; slot < Barding.SlotCount; slot++)
-            {
-                ImGui.TableNextColumn();
-                changed |= DrawSlotCombo($"slot{slot}", slot, ref choices[slot]);
-            }
-
-            ImGui.TableNextColumn();
-            ImGui.BeginDisabled(!config.JobBarding.ContainsKey(job.RowId));
-            if (ImGui.Button("Clear"))
-            {
-                NotSet.CopyTo(choices, 0);
-                changed = true;
-            }
-            ImGui.EndDisabled();
-
-            // The config keeps its own copy; jobEdit is reused by the next row.
-            if (changed)
-                SetJobChoices(job.RowId, (SlotChoice[])choices.Clone());
-
-            ImGui.PopID();
-        }
-
-        ImGui.EndTable();
-    }
-
-    // One table per pet: each look it can have, its macro line(s) and a Copy button.
-    private void DrawPets()
-    {
-        ImGui.TextWrapped("Change how your pet looks with the game's /petglamour command. Copy a line into a macro.");
-        ImGui.Checkbox("Add a line that resummons the pet (the new look shows after resummoning)", ref resummon);
-
-        foreach (var pet in pets)
-        {
-            ImGui.PushID(pet.Name);
-            ImGui.Spacing();
-            DrawIcon(pet.Icon, SmallIconSize);
-            ImGui.SameLine();
-            ImGui.AlignTextToFramePadding();
-            ImGui.TextUnformatted(pet.Name);
-            ImGui.Separator();
-
-            if (ImGui.BeginTable("looks", 4, ImGuiTableFlags.RowBg | ImGuiTableFlags.BordersInnerH))
-            {
-                ImGui.TableSetupColumn("Preview", ImGuiTableColumnFlags.WidthFixed);
-                ImGui.TableSetupColumn("Look", ImGuiTableColumnFlags.WidthFixed);
-                ImGui.TableSetupColumn("Macro", ImGuiTableColumnFlags.WidthStretch);
-                ImGui.TableSetupColumn("Copy", ImGuiTableColumnFlags.WidthFixed);
-
-                foreach (var look in pet.Looks)
-                {
-                    var macro = resummon ? $"{look.Line}\n{pet.Resummon}" : look.Line;
-                    ImGui.TableNextRow();
-                    ImGui.TableNextColumn();
-                    DrawIcon(look.Icon, PetIconSize);
-
-                    // Text and button centered against the icon.
-                    var offset = (PetIconSize - ImGui.GetFrameHeight()) / 2;
-                    ImGui.TableNextColumn();
-                    ImGui.SetCursorPosY(ImGui.GetCursorPosY() + offset);
-                    ImGui.AlignTextToFramePadding();
-                    ImGui.TextUnformatted(look.Name == pet.Name ? $"{look.Name} (normal look)" : look.Name);
-                    ImGui.TableNextColumn();
-                    ImGui.SetCursorPosY(ImGui.GetCursorPosY() + (PetIconSize - ImGui.CalcTextSize(macro).Y) / 2);
-                    ImGui.TextUnformatted(macro);
-                    ImGui.TableNextColumn();
-                    ImGui.SetCursorPosY(ImGui.GetCursorPosY() + offset);
-                    CopyButton(look.Name, macro);
-                }
-
-                ImGui.EndTable();
-            }
-
-            ImGui.PopID();
-        }
-
-        if (resizes.Count > 0)
-            DrawSizes();
-    }
-
-    // /petsize: one row per big summon (and one for all of them), a Copy button per size.
-    private void DrawSizes()
-    {
-        ImGui.Spacing();
-        ImGui.Spacing();
-        ImGui.TextUnformatted("Summon size");
-        ImGui.Separator();
-        ImGui.TextWrapped("Make Bahamut, Phoenix and the primals small, medium or large with the game's /petsize command. Only you see the change.");
-
-        if (!ImGui.BeginTable("sizes", 3, ImGuiTableFlags.RowBg | ImGuiTableFlags.BordersInnerH))
-            return;
-
-        ImGui.TableSetupColumn("Preview", ImGuiTableColumnFlags.WidthFixed);
-        ImGui.TableSetupColumn("Summon", ImGuiTableColumnFlags.WidthStretch);
-        ImGui.TableSetupColumn("Copy", ImGuiTableColumnFlags.WidthFixed);
-
-        foreach (var summon in resizes.Append(new PetGlamour.Resize("all", 0)))
-        {
-            ImGui.PushID(summon.Name);
-            ImGui.TableNextRow();
-            ImGui.TableNextColumn();
-            DrawIcon(summon.Icon, PetIconSize);
-
-            var offset = (PetIconSize - ImGui.GetFrameHeight()) / 2;
-            ImGui.TableNextColumn();
-            ImGui.SetCursorPosY(ImGui.GetCursorPosY() + offset);
-            ImGui.AlignTextToFramePadding();
-            ImGui.TextUnformatted(summon.Name == "all" ? "All of them" : summon.Name);
-
-            ImGui.TableNextColumn();
-            ImGui.SetCursorPosY(ImGui.GetCursorPosY() + offset);
-            for (var i = 0; i < PetGlamour.Sizes.Length; i++)
-            {
-                if (i > 0)
-                    ImGui.SameLine();
-                var size = PetGlamour.Sizes[i];
-                var line = summon.Line(size);
-                if (ImGui.Button($"{char.ToUpper(size[0])}{size[1..]}"))
-                    ImGui.SetClipboardText(line);
-                if (ImGui.IsItemHovered())
-                    ImGui.SetTooltip($"Copy {line}");
-            }
-            ImGui.PopID();
         }
 
         ImGui.EndTable();
