@@ -15,7 +15,7 @@ so a job macro can switch barding along with your gearset.
   and press it only when you want your chocobo to match; switching jobs alone changes
   nothing. Base classes use their job's pick (Arcanist → Summoner/Scholar).
 - **Summon from a macro** – `/cbarding greens` uses one Gysahl Greens (the game has no
-  macro command for items) and prints how many you have left.
+  macro command for items).
 - **Works with the Companion window closed** – ready for macros.
 - **Barding window** – `/cbarding` with no name (or the plugin's Settings / Open button)
   opens it. The **Barding** tab has:

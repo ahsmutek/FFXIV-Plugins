@@ -71,7 +71,7 @@ public sealed class Plugin : IDalamudPlugin
                               "/cbarding \"Head\" \"Body\" \"Legs\" sets each slot (- keeps a slot, none removes it). " +
                               "/cbarding job uses the barding picked for your current job. " +
                               "/cbarding greens uses Gysahl Greens to summon your chocobo. " +
-                              "No name opens the barding list."
+                              "No name opens the barding window."
             });
 
         queue = new BardingQueue(Framework, PlayerState, Log);
@@ -152,7 +152,6 @@ public sealed class Plugin : IDalamudPlugin
         Log.Information($"Requested head={described[0]}, body={described[1]}, legs={described[2]}.");
     }
 
-    /// <summary>Uses one Gysahl Greens, as if clicked in the inventory, and says how many are left.</summary>
     private static unsafe void UseGreens()
     {
         var inventory = InventoryManager.Instance();
@@ -168,7 +167,6 @@ public sealed class Plugin : IDalamudPlugin
         }
 
         agent->UseItem(GysahlGreensItemId);
-        Chat.Print($"[Chocobo Barding] Gysahl Greens left: {count - 1}");
     }
 
     private void ApplyJobBarding()

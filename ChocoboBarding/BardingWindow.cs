@@ -30,7 +30,6 @@ internal sealed class BardingWindow : Window
     private List<ClassJob> jobs = [];
     private string filter = string.Empty;
 
-    // Mix & match picks per slot (head, body, legs).
     private readonly SlotChoice[] mix = [SlotChoice.Keep, SlotChoice.Keep, SlotChoice.Keep];
 
     public BardingWindow(IDataManager data, IUnlockState unlocks, ITextureProvider textures,
@@ -86,7 +85,6 @@ internal sealed class BardingWindow : Window
         ImGui.Separator();
     }
 
-    // Moves the cursor so an item of this width is centered in the current column.
     private static void CenterNext(float width)
     {
         var offset = (ImGui.GetContentRegionAvail().X - width) / 2;
@@ -121,7 +119,6 @@ internal sealed class BardingWindow : Window
         _ => "Keep current",
     };
 
-    /// <summary>A dropdown for one slot: Keep current, None, then every owned barding. True when the pick changed.</summary>
     private bool DrawSlotCombo(string id, int slot, ref SlotChoice choice)
     {
         ImGui.SetNextItemWidth(-1);
@@ -168,7 +165,6 @@ internal sealed class BardingWindow : Window
     {
         Heading("Mix & match");
 
-        // One column per slot: slot label, big icon, then its dropdown.
         if (!ImGui.BeginTable("mix", Barding.SlotCount, ImGuiTableFlags.SizingStretchSame))
             return;
 
@@ -186,7 +182,6 @@ internal sealed class BardingWindow : Window
             }
             else
             {
-                // Empty frame for "Keep current" / "None".
                 var min = ImGui.GetCursorScreenPos();
                 ImGui.GetWindowDrawList().AddRect(min, min + new Vector2(MixIconSize), ImGui.GetColorU32(ImGuiCol.Border), 6);
                 ImGui.Dummy(new Vector2(MixIconSize));
@@ -233,7 +228,6 @@ internal sealed class BardingWindow : Window
             ImGui.TableNextColumn();
             DrawIcons(icons);
 
-            // Center the text and button vertically against the icons.
             var textOffset = (IconSize - ImGui.GetFrameHeight()) / 2;
             ImGui.TableNextColumn();
             ImGui.SetCursorPosY(ImGui.GetCursorPosY() + textOffset);
@@ -276,7 +270,6 @@ internal sealed class BardingWindow : Window
         return choices[0] == choices[1] && choices[1] == choices[2] ? Label(choices[0]) : "Mixed";
     }
 
-    /// <summary>A dropdown that puts one barding (or None) on all three slots. True when the picks changed.</summary>
     private bool DrawFullSetCombo(string id, SlotChoice[] choices)
     {
         ImGui.SetNextItemWidth(-1);

@@ -39,7 +39,6 @@ internal static class Barding
 
     private const string BardingSuffix = " Barding";
 
-    /// <summary>"Postmoogle Barding" → "Postmoogle"; names without the suffix are unchanged.</summary>
     public static string ShortName(string name)
     {
         return name.EndsWith(BardingSuffix, StringComparison.OrdinalIgnoreCase)
@@ -127,7 +126,6 @@ internal static class Barding
         return tokens;
     }
 
-    /// <summary>The token a slot choice is written as in a macro.</summary>
     public static string ToToken(SlotChoice choice, string? name) => choice.Action switch
     {
         SlotAction.Keep => KeepToken,
