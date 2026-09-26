@@ -63,6 +63,7 @@ internal sealed class ConfigWindow : Window
 
     public override void OnOpen()
     {
+        overlay.PreviewKind = config.LastWheel;
         gearsets = JobCatalog.Gearsets();
         jobs = [.. catalog.Build(JobLayout.Build(WheelKind.Combat, config)),
                 .. catalog.Build(JobLayout.Build(WheelKind.Crafting, config))];
@@ -137,11 +138,7 @@ internal sealed class ConfigWindow : Window
             changed = true;
         }
 
-        var preview = overlay.Preview;
-        if (ImGui.Checkbox("Show wheel preview", ref preview))
-            overlay.Preview = preview;
-        ImGui.SameLine();
-        ImGui.TextDisabled("(drag the wheel to move it)");
+        DrawPreviewControls();
 
         ImGui.Spacing();
         ImGui.TextDisabled("Stick");
@@ -199,7 +196,9 @@ internal sealed class ConfigWindow : Window
     private bool DrawLayout()
     {
         var changed = false;
-        ImGui.TextWrapped("Drag a job sideways to move it within its group. Jobs run clockwise, left to right.");
+        ImGui.TextWrapped("Groups are listed clockwise; use the arrows to move a group. Drag a job sideways to move it within its group (left to right is clockwise). Use Pin to top to choose the group centered at the top. With tanks pinned, healers are also kept at the bottom unless they sit right next to tanks.");
+        ImGui.Spacing();
+        DrawPreviewControls();
 
         ImGui.Spacing();
         ImGui.TextDisabled("Color presets");
@@ -210,11 +209,43 @@ internal sealed class ConfigWindow : Window
             ImGui.Spacing();
             ImGui.Separator();
             ImGui.TextDisabled(title);
-            foreach (var group in JobLayout.GroupsOf(kind))
-                changed |= DrawGroupLayout(group);
+            if (config.GroupOrder.ContainsKey(kind) || config.NorthGroup.ContainsKey(kind))
+            {
+                ImGui.SameLine();
+                if (ImGui.SmallButton($"Reset groups##{kind}"))
+                {
+                    config.GroupOrder.Remove(kind);
+                    config.NorthGroup.Remove(kind);
+                    changed = true;
+                }
+            }
+
+            var groups = JobLayout.GroupOrderOf(kind, config);
+            for (var g = 0; g < groups.Count; g++)
+            {
+                if (DrawGroupLayout(kind, groups, g))
+                {
+                    changed = true;
+                    overlay.PreviewKind = kind; // show the wheel being edited
+                }
+            }
         }
 
         return changed;
+    }
+
+    // Preview checkbox plus which wheel it shows; used on both the General and Wheel layout tabs.
+    private void DrawPreviewControls()
+    {
+        var preview = overlay.Preview;
+        if (ImGui.Checkbox("Show wheel preview", ref preview))
+            overlay.Preview = preview;
+        ImGui.SameLine();
+        var kind = (int)overlay.PreviewKind;
+        ImGui.SetNextItemWidth(170f);
+        if (ImGui.Combo("##previewKind", ref kind, ["Combat wheel", "Crafting & gathering wheel"], 2))
+            overlay.PreviewKind = (WheelKind)kind;
+        ImGui.TextDisabled("Drag the preview to move the wheel.");
     }
 
     // One button per palette with a strip of its colors; clicking recolors every group.
@@ -252,11 +283,24 @@ internal sealed class ConfigWindow : Window
         return changed;
     }
 
-    private bool DrawGroupLayout(JobGroup group)
+    private bool DrawGroupLayout(WheelKind kind, List<JobGroup> groups, int index)
     {
         var changed = false;
+        var group = groups[index];
         ImGui.PushID(group.ToString());
         ImGui.Spacing();
+
+        // Move the group one step counter-clockwise (up) or clockwise (down).
+        ImGui.BeginDisabled(index == 0);
+        if (ImGui.ArrowButton("##up", ImGuiDir.Up))
+            changed |= MoveGroup(kind, groups, index, -1);
+        ImGui.EndDisabled();
+        ImGui.SameLine(0, 2f);
+        ImGui.BeginDisabled(index == groups.Count - 1);
+        if (ImGui.ArrowButton("##down", ImGuiDir.Down))
+            changed |= MoveGroup(kind, groups, index, 1);
+        ImGui.EndDisabled();
+        ImGui.SameLine();
 
         var color = JobLayout.ColorOf(group, config);
         if (ImGui.ColorEdit4("##color", ref color, ImGuiColorEditFlags.NoInputs | ImGuiColorEditFlags.AlphaBar))
@@ -267,6 +311,12 @@ internal sealed class ConfigWindow : Window
         ImGui.SameLine();
         ImGui.AlignTextToFramePadding();
         ImGui.TextUnformatted(Label(group));
+        ImGui.SameLine();
+        if (ImGui.RadioButton("Pin to top", JobLayout.NorthOf(kind, config) == group))
+        {
+            config.NorthGroup[kind] = group;
+            changed = true;
+        }
 
         var customized = config.RoleColors.ContainsKey(group) || config.JobOrder.ContainsKey(group);
         if (customized)
@@ -334,6 +384,17 @@ internal sealed class ConfigWindow : Window
 
         ImGui.PopID();
         return changed;
+    }
+
+    private bool MoveGroup(WheelKind kind, List<JobGroup> groups, int index, int step)
+    {
+        var other = index + step;
+        if (other < 0 || other >= groups.Count)
+            return false;
+        var order = new List<JobGroup>(groups);
+        (order[index], order[other]) = (order[other], order[index]);
+        config.GroupOrder[kind] = order;
+        return true;
     }
 
     private static string Label(JobGroup group) => GroupLabels.First(g => g.Group == group).Label;

@@ -58,17 +58,19 @@ internal sealed class WheelRing
                 runs.Add((slots[i].Item2, i, 1));
         }
 
+        // Anchors are applied in priority order. Two anchored groups side by side would
+        // leave an empty arc between them, so a later anchor next to a kept one is dropped
+        // and that group just fills in like the others.
         var anchored = new List<int>();
-        for (var r = 0; r < runs.Count; r++)
+        foreach (var (group, angle) in anchors)
         {
-            foreach (var (group, angle) in anchors)
-            {
-                if (group != runs[r].Group)
-                    continue;
-                Place(runs[r].First, runs[r].Count, angle - runs[r].Count * step / 2, step);
-                anchored.Add(r);
-            }
+            var r = runs.FindIndex(run => run.Group == group);
+            if (r < 0 || anchored.Any(k => Math.Abs(k - r) == 1 || Math.Abs(k - r) == runs.Count - 1))
+                continue;
+            Place(runs[r].First, runs[r].Count, angle - runs[r].Count * step / 2, step);
+            anchored.Add(r);
         }
+        anchored.Sort();
 
         // Fill the slots between each anchored run and the next one (wrapping around).
         for (var k = 0; k < anchored.Count; k++)
@@ -124,13 +126,13 @@ internal static class JobLayout
         (JobGroup.Caster, ["BLM", "SMN", "RDM", "PCT"]),
     ];
 
-    // Crafters across the top, gatherers along the bottom, and the crafting and gathering
-    // logs between them on the east side (each next to the jobs it belongs to).
+    // Crafters across the top, then clockwise the gatherers, then the gathering and
+    // crafting logs on the west side (each next to the jobs it belongs to).
     private static readonly (JobGroup Group, string[] Jobs)[] CraftingGroups =
     [
         (JobGroup.Hand, ["CRP", "BSM", "ARM", "GSM", "LTW", "WVR", "ALC", "CUL"]),
-        (JobGroup.Logs, ["CRAFTLOG", "GATHERLOG"]),
         (JobGroup.Land, ["MIN", "BTN", "FSH"]),
+        (JobGroup.Logs, ["GATHERLOG", "CRAFTLOG"]),
     ];
 
 
@@ -141,8 +143,6 @@ internal static class JobLayout
         ["GATHERLOG"] = 7, // Gathering Log
     };
 
-    private static readonly (JobGroup, float)[] CombatAnchors = [(JobGroup.Tank, 0f), (JobGroup.Healer, MathF.PI)];
-    private static readonly (JobGroup, float)[] CraftingAnchors = [(JobGroup.Hand, 0f)];
 
     // Muted versions of the game's role colors, dark enough for the gold glyphs to read on.
     private static readonly Dictionary<JobGroup, Vector4> DefaultColors = new()
@@ -219,11 +219,38 @@ internal static class JobLayout
     public static IEnumerable<JobGroup> GroupsOf(WheelKind kind) =>
         (kind == WheelKind.Crafting ? CraftingGroups : CombatGroups).Select(g => g.Group);
 
+    // The group pinned to the top of the wheel: the player's pick, else tanks / crafters.
+    public static JobGroup NorthOf(WheelKind kind, Configuration config) =>
+        config.NorthGroup.TryGetValue(kind, out var group) && GroupsOf(kind).Contains(group)
+            ? group
+            : GroupsOf(kind).First();
+
+    // The north group is centered at the top. With tanks on top of the combat wheel,
+    // healers are also pinned to the bottom, opposite them.
+    private static (JobGroup, float)[] AnchorsOf(WheelKind kind, Configuration config)
+    {
+        var north = NorthOf(kind, config);
+        return kind == WheelKind.Combat && north == JobGroup.Tank
+            ? [(JobGroup.Tank, 0f), (JobGroup.Healer, MathF.PI)]
+            : [(north, 0f)];
+    }
+
+    // The wheel's groups in the player's saved clockwise order, sanitized like OrderOf.
+    public static List<JobGroup> GroupOrderOf(WheelKind kind, Configuration config)
+    {
+        var defaults = GroupsOf(kind).ToList();
+        var order = new List<JobGroup>();
+        if (config.GroupOrder.TryGetValue(kind, out var saved))
+            order.AddRange(saved.Where(defaults.Contains).Distinct());
+        order.AddRange(defaults.Where(group => !order.Contains(group)));
+        return order;
+    }
+
     public static WheelRing Build(WheelKind kind, Configuration config)
     {
-        var groups = kind == WheelKind.Crafting ? CraftingGroups : CombatGroups;
-        var slots = groups.SelectMany(g => OrderOf(g.Group, config).Select(job => (job, g.Group))).ToArray();
-        return new WheelRing(slots, kind == WheelKind.Crafting ? CraftingAnchors : CombatAnchors);
+        var groups = GroupOrderOf(kind, config);
+        var slots = groups.SelectMany(g => OrderOf(g, config).Select(job => (job, g))).ToArray();
+        return new WheelRing(slots, AnchorsOf(kind, config));
     }
 
     // The group's jobs in the player's saved order. Unknown entries are dropped and

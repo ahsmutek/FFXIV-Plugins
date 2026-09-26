@@ -22,8 +22,9 @@ internal sealed class WheelOverlay(WheelInput input, JobCatalog catalog, IconCac
     // ABGR
     private const uint White = 0xF2FFFFFF;
 
-    // Set by the settings window while its preview checkbox is ticked.
+    // Set by the settings window while its preview checkbox is ticked, and which wheel to show.
     public bool Preview { get; set; }
+    public WheelKind PreviewKind { get; set; }
 
     public void Draw()
     {
@@ -34,7 +35,7 @@ internal sealed class WheelOverlay(WheelInput input, JobCatalog catalog, IconCac
         }
         else if (Preview)
         {
-            var ring = JobLayout.Build(config.LastWheel, config);
+            var ring = JobLayout.Build(PreviewKind, config);
             DrawWheel(ImGui.GetBackgroundDrawList(), ring, catalog.Build(ring), null);
             DrawDragHandle();
         }

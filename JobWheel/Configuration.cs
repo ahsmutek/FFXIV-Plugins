@@ -51,6 +51,12 @@ public sealed class Configuration : IPluginConfiguration
     // Job abbreviation -> 1-based gear set number. Missing or 0 = first matching set.
     public Dictionary<string, int> GearsetOverrides { get; set; } = new();
 
+    // The group centered at the top of each wheel. Missing = tanks / crafters.
+    public Dictionary<WheelKind, JobGroup> NorthGroup { get; set; } = new();
+
+    // Clockwise group order on each wheel. Missing = default order.
+    public Dictionary<WheelKind, List<JobGroup>> GroupOrder { get; set; } = new();
+
     // Clockwise job order within each group. Missing = default order.
     public Dictionary<JobGroup, List<string>> JobOrder { get; set; } = new();
 
