@@ -16,6 +16,7 @@ public enum JobGroup
     Hand,
     Land,
     Limited,
+    Logs,
 }
 
 public enum WheelKind
@@ -123,12 +124,22 @@ internal static class JobLayout
         (JobGroup.Caster, ["BLM", "SMN", "RDM", "PCT"]),
     ];
 
-    // Crafters across the top, gatherers along the bottom.
+    // Crafters across the top, gatherers along the bottom, and the crafting and gathering
+    // logs between them on the east side (each next to the jobs it belongs to).
     private static readonly (JobGroup Group, string[] Jobs)[] CraftingGroups =
     [
         (JobGroup.Hand, ["CRP", "BSM", "ARM", "GSM", "LTW", "WVR", "ALC", "CUL"]),
+        (JobGroup.Logs, ["CRAFTLOG", "GATHERLOG"]),
         (JobGroup.Land, ["MIN", "BTN", "FSH"]),
     ];
+
+
+    // Wheel entries that open a game window (a main command) instead of switching job.
+    public static readonly Dictionary<string, uint> Commands = new()
+    {
+        ["CRAFTLOG"] = 9, // Crafting Log
+        ["GATHERLOG"] = 7, // Gathering Log
+    };
 
     private static readonly (JobGroup, float)[] CombatAnchors = [(JobGroup.Tank, 0f), (JobGroup.Healer, MathF.PI)];
     private static readonly (JobGroup, float)[] CraftingAnchors = [(JobGroup.Hand, 0f)];
@@ -144,6 +155,7 @@ internal static class JobLayout
         [JobGroup.Hand] = new(.33f, .22f, .45f, .88f),
         [JobGroup.Land] = new(.14f, .36f, .34f, .88f),
         [JobGroup.Limited] = new(.30f, .31f, .36f, .88f),
+        [JobGroup.Logs] = new(.48f, .14f, .14f, .88f),
     };
 
     // Whole-wheel palettes for the settings window. The first one is the default.
@@ -158,6 +170,7 @@ internal static class JobLayout
             [JobGroup.PhysicalRanged] = new(.78f, .38f, .10f, .92f),
             [JobGroup.Caster] = new(.62f, .16f, .52f, .92f),
             [JobGroup.Limited] = new(.42f, .44f, .52f, .92f),
+            [JobGroup.Logs] = new(.72f, .16f, .16f, .92f),
             [JobGroup.Hand] = new(.46f, .30f, .68f, .92f),
             [JobGroup.Land] = new(.14f, .54f, .50f, .92f),
         }),
@@ -169,6 +182,7 @@ internal static class JobLayout
             [JobGroup.PhysicalRanged] = new(.68f, .50f, .34f, .82f),
             [JobGroup.Caster] = new(.60f, .38f, .56f, .82f),
             [JobGroup.Limited] = new(.50f, .52f, .56f, .82f),
+            [JobGroup.Logs] = new(.66f, .38f, .38f, .82f),
             [JobGroup.Hand] = new(.52f, .44f, .64f, .82f),
             [JobGroup.Land] = new(.34f, .58f, .54f, .82f),
         }),
@@ -180,6 +194,7 @@ internal static class JobLayout
             [JobGroup.PhysicalRanged] = new(.56f, .16f, .16f, .90f),
             [JobGroup.Caster] = new(.56f, .16f, .16f, .90f),
             [JobGroup.Limited] = new(.56f, .16f, .16f, .90f),
+            [JobGroup.Logs] = new(.56f, .16f, .16f, .90f),
             [JobGroup.Hand] = new(.36f, .30f, .24f, .90f),
             [JobGroup.Land] = new(.36f, .30f, .24f, .90f),
         }),
@@ -191,6 +206,7 @@ internal static class JobLayout
             [JobGroup.PhysicalRanged] = new(.20f, .13f, .08f, .88f),
             [JobGroup.Caster] = new(.18f, .08f, .15f, .88f),
             [JobGroup.Limited] = new(.14f, .14f, .16f, .88f),
+            [JobGroup.Logs] = new(.20f, .09f, .09f, .88f),
             [JobGroup.Hand] = new(.14f, .11f, .19f, .88f),
             [JobGroup.Land] = new(.08f, .16f, .15f, .88f),
         }),

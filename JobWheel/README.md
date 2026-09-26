@@ -38,14 +38,16 @@ the directions by feel. Groups run clockwise starting from the top.
 | Physical ranged (west) | BRD MCH DNC |
 | Magical ranged (west) | BLM SMN RDM PCT |
 
-**Crafting and gathering wheel** (tap RB or your chosen button to swap to it; crafters across the top, gatherers along the bottom):
+**Crafting and gathering wheel** (tap RB or your chosen button to swap to it; crafters across the top, then the logs and gatherers down the right side and bottom):
 
 | Group | Jobs |
 |---|---|
 | Hand | CRP BSM ARM GSM LTW WVR ALC CUL |
+| Logs | Crafting Log, Gathering Log |
 | Land | MIN BTN FSH |
 
 - Locked jobs leave their spot empty, and nothing else moves when you unlock one.
+- The **Crafting Log** and **Gathering Log** entries open those windows instead of switching job. They appear once the game has unlocked them.
 - The **Wheel layout** tab in settings lets you reorder jobs within their group (drag an icon sideways) and pick each group's color, or apply one of the color presets (Muted, Vivid, Soft, Classic roles, Dark) to the whole wheel. Groups stay where they are on the wheel.
 - If you have a class but not its job yet (e.g. Gladiator), the class shows in the job's spot.
 - The stick targets the slice it points into. Pointing at an empty slice (a locked job) targets the nearest unlocked job instead.

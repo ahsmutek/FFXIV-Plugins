@@ -23,6 +23,7 @@ internal sealed class ConfigWindow : Window
         (JobGroup.Caster, "Magical Ranged DPS"),
         (JobGroup.Hand, "Disciples of the Hand"),
         (JobGroup.Land, "Disciples of the Land"),
+        (JobGroup.Logs, "Crafting & Gathering Logs"),
     ];
 
     private static readonly GamepadButtons[] SwapButtons =
@@ -33,7 +34,7 @@ internal sealed class ConfigWindow : Window
     private readonly Action save;
     private readonly JobCatalog catalog;
     private readonly WheelOverlay overlay;
-    private readonly ITextureProvider textures;
+    private readonly IconCache icons;
     private readonly VirtualKey[] keys;
     private readonly string[] keyNames;
 
@@ -43,14 +44,14 @@ internal sealed class ConfigWindow : Window
     private bool dirty;
 
     public ConfigWindow(Configuration config, Action save, JobCatalog catalog, WheelOverlay overlay,
-                        ITextureProvider textures, IKeyState keyState)
+                        IconCache icons, IKeyState keyState)
         : base("Job Wheel Settings###JobWheelConfig")
     {
         this.config = config;
         this.save = save;
         this.catalog = catalog;
         this.overlay = overlay;
-        this.textures = textures;
+        this.icons = icons;
         keys = keyState.GetValidVirtualKeys()
                        .Where(k => k is not (VirtualKey.CONTROL or VirtualKey.SHIFT or VirtualKey.MENU or
                                              VirtualKey.LBUTTON or VirtualKey.RBUTTON or VirtualKey.MBUTTON))
@@ -296,8 +297,8 @@ internal sealed class ConfigWindow : Window
             ImGui.PushStyleColor(ImGuiCol.ButtonActive, color * new Vector4(1.7f, 1.7f, 1.7f, 1f));
             if (info is { } found)
             {
-                var wrap = textures.GetFromGameIcon(new GameIconLookup(found.IconId)).GetWrapOrEmpty();
-                ImGui.ImageButton(wrap.Handle, new Vector2(icon), Vector2.Zero, Vector2.One, 2, Vector4.Zero,
+                ImGui.ImageButton(icons.Handle(found.IconId, JobLayout.Commands.ContainsKey(abbreviation)), new Vector2(icon),
+                                  Vector2.Zero, Vector2.One, 2, Vector4.Zero,
                                   new Vector4(1f, 1f, 1f, unlocked ? 1f : .4f));
             }
             else
@@ -356,7 +357,7 @@ internal sealed class ConfigWindow : Window
 
         foreach (var (group, label) in GroupLabels)
         {
-            var inGroup = jobs.Where(j => j.Group == group).ToList();
+            var inGroup = jobs.Where(j => j.Group == group && j.CommandId == 0).ToList();
             if (inGroup.Count == 0)
                 continue;
 
@@ -365,8 +366,8 @@ internal sealed class ConfigWindow : Window
             foreach (var job in inGroup)
             {
                 ImGui.PushID(job.Abbreviation);
-                var wrap = textures.GetFromGameIcon(new GameIconLookup(job.IconId)).GetWrapOrEmpty();
-                ImGui.Image(wrap.Handle, new Vector2(ImGui.GetFrameHeight()));
+                var handle = icons.Handle(job.IconId, false);
+                ImGui.Image(handle, new Vector2(ImGui.GetFrameHeight()));
                 ImGui.SameLine();
                 ImGui.AlignTextToFramePadding();
                 ImGui.TextUnformatted(job.Name);

@@ -48,6 +48,7 @@ public sealed class Plugin : IDalamudPlugin
     private readonly ConfigWindow configWindow;
     private readonly WheelInput input;
     private readonly WheelOverlay overlay;
+    private readonly IconCache icons;
 
     public Plugin()
     {
@@ -56,9 +57,10 @@ public sealed class Plugin : IDalamudPlugin
         var catalog = new JobCatalog(Data, Unlocks, PlayerState, config);
         var switcher = new JobSwitcher(Condition, Toasts);
         input = new WheelInput(Framework, KeyState, Gamepad, Condition, PlayerState, catalog, switcher, config, Save);
-        overlay = new WheelOverlay(input, catalog, Textures, config, Save);
+        icons = new IconCache(Data, Textures);
+        overlay = new WheelOverlay(input, catalog, icons, config, Save);
 
-        configWindow = new ConfigWindow(config, Save, catalog, overlay, Textures, KeyState);
+        configWindow = new ConfigWindow(config, Save, catalog, overlay, icons, KeyState);
         windows.AddWindow(configWindow);
 
         PluginInterface.UiBuilder.Draw += Draw;
@@ -87,5 +89,6 @@ public sealed class Plugin : IDalamudPlugin
         PluginInterface.UiBuilder.OpenConfigUi -= configWindow.Toggle;
         PluginInterface.UiBuilder.OpenMainUi -= configWindow.Toggle;
         windows.RemoveAllWindows();
+        icons.Dispose();
     }
 }

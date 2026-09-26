@@ -11,7 +11,7 @@ namespace JobWheel;
 // Icons only; the role-colored band behind them groups the jobs. While the settings
 // window asks for a preview, the wheel is also drawn (behind other windows) with an
 // invisible handle over it so it can be dragged into place.
-internal sealed class WheelOverlay(WheelInput input, JobCatalog catalog, ITextureProvider textures, Configuration config, Action save)
+internal sealed class WheelOverlay(WheelInput input, JobCatalog catalog, IconCache icons, Configuration config, Action save)
 {
     // Smallest ring radius at scale 1; rings with many icons grow past it so they never touch.
     private const float MinRadius = 140f;
@@ -154,11 +154,10 @@ internal sealed class WheelOverlay(WheelInput input, JobCatalog catalog, ITextur
         var min = pos - new Vector2(size / 2);
         var max = pos + new Vector2(size / 2);
 
-        var alpha = job.GearsetIndex < 0 ? .4f : 1f;
-        var wrap = textures.GetFromGameIcon(new GameIconLookup(job.IconId)).GetWrapOrEmpty();
-        dl.AddImage(wrap.Handle, min, max, Vector2.Zero, Vector2.One,
+        // Jobs without a gear set are faded. Log entries never are.
+        var alpha = job.CommandId == 0 && job.GearsetIndex < 0 ? .4f : 1f;
+        dl.AddImage(icons.Handle(job.IconId, job.CommandId != 0), min, max, Vector2.Zero, Vector2.One,
                     ImGui.GetColorU32(new Vector4(1f, 1f, 1f, alpha)));
-
         // Current job: a small white dot just outside the band.
         if (job.IsCurrent)
         {

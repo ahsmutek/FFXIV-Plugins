@@ -1,5 +1,6 @@
 using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Plugin.Services;
+using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Misc;
 
 namespace JobWheel;
@@ -38,6 +39,15 @@ internal sealed class JobSwitcher(ICondition condition, IToastGui toasts)
 
     public unsafe void Switch(WheelJob job)
     {
+        // Log entries open their window the same way the game's own menu does.
+        if (job.CommandId != 0)
+        {
+            var ui = UIModule.Instance();
+            if (ui != null)
+                ui->ExecuteMainCommand(job.CommandId);
+            return;
+        }
+
         // Already on it: nothing to do, and nothing worth telling the player.
         if (job.IsCurrent)
             return;

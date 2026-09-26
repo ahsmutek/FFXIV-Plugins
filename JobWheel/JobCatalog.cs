@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using Dalamud.Game;
 using Dalamud.Plugin.Services;
+using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Misc;
 using Lumina.Excel.Sheets;
 
@@ -9,6 +10,7 @@ namespace JobWheel;
 
 // One icon on the wheel. RowId is what gets shown and switched to: the job, or
 // its base class when the job itself isn't unlocked yet (e.g. Gladiator).
+// Entries with a CommandId open a game window (e.g. the Crafting Log) instead.
 internal sealed record WheelJob(
     int Slot,
     string Abbreviation,
@@ -17,7 +19,8 @@ internal sealed record WheelJob(
     string Name,
     uint IconId,
     int GearsetIndex,
-    bool IsCurrent);
+    bool IsCurrent,
+    uint CommandId = 0);
 
 internal readonly record struct GearsetInfo(int Index, string Name, uint ClassJobId);
 
@@ -41,6 +44,13 @@ internal sealed class JobCatalog(IDataManager data, IUnlockState unlocks, IPlaye
         for (var slot = 0; slot < ring.Slots.Length; slot++)
         {
             var (abbreviation, group) = ring.Slots[slot];
+            if (JobLayout.Commands.TryGetValue(abbreviation, out var commandId))
+            {
+                if (CommandEntry(slot, abbreviation, group, commandId) is { } entry)
+                    jobs.Add(entry);
+                continue;
+            }
+
             if (!Lookup().TryGetValue(abbreviation, out var job))
                 continue;
 
@@ -87,9 +97,26 @@ internal sealed class JobCatalog(IDataManager data, IUnlockState unlocks, IPlaye
         return list;
     }
 
-    // Icon and name for any job in the layout, unlocked or not.
-    public (uint IconId, string Name)? Info(string abbreviation) =>
-        Lookup().TryGetValue(abbreviation, out var job) ? (JobIconBase + job.RowId, DisplayName(job)) : null;
+    // Icon and name for any entry in the layout, unlocked or not.
+    public (uint IconId, string Name)? Info(string abbreviation)
+    {
+        if (JobLayout.Commands.TryGetValue(abbreviation, out var commandId))
+            return data.GetExcelSheet<MainCommand>().TryGetRow(commandId, out var command)
+                ? ((uint)command.Icon, command.Name.ExtractText())
+                : null;
+
+        return Lookup().TryGetValue(abbreviation, out var job) ? (JobIconBase + job.RowId, DisplayName(job)) : null;
+    }
+
+    // A main command entry, shown once the game has unlocked that command.
+    private unsafe WheelJob? CommandEntry(int slot, string abbreviation, JobGroup group, uint commandId)
+    {
+        var ui = UIModule.Instance();
+        if (ui == null || !ui->IsMainCommandUnlocked(commandId) || Info(abbreviation) is not { } info)
+            return null;
+
+        return new WheelJob(slot, abbreviation, group, 0, info.Name, info.IconId, -1, false, commandId);
+    }
 
     public static string DisplayName(ClassJob job) =>
         CultureInfo.CurrentCulture.TextInfo.ToTitleCase(job.Name.ExtractText());
