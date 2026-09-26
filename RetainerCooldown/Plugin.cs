@@ -14,9 +14,10 @@ namespace RetainerCooldown;
 
 public sealed class Plugin : IDalamudPlugin
 {
-    public string Name => "Retainer Cooldown";
+    private const string CommandName = "/retcd";
 
     private readonly IDalamudPluginInterface pi;
+    private readonly ICommandManager commands;
     private readonly ITextureProvider textures;
     private readonly WindowSystem windows = new("RetainerCooldown");
     private readonly HudWindow hud;
@@ -32,6 +33,7 @@ public sealed class Plugin : IDalamudPlugin
     public Plugin(IDalamudPluginInterface pi, ICommandManager commands, ITextureProvider textures)
     {
         this.pi = pi;
+        this.commands = commands;
         this.textures = textures;
         Config = pi.GetPluginConfig() as Configuration ?? new Configuration();
         if (MigrateConfig()) Save();
@@ -43,11 +45,9 @@ public sealed class Plugin : IDalamudPlugin
         pi.UiBuilder.OpenConfigUi += ToggleConfig;
         // Dalamud expects a main UI callback for the installer's "open" button.
         pi.UiBuilder.OpenMainUi += ToggleConfig;
-        commands.AddHandler("/retcd", new CommandInfo(OnCommand) { HelpMessage = "Open Retainer Cooldown settings." });
-        CommandManager = commands;
+        commands.AddHandler(CommandName, new CommandInfo(OnCommand) { HelpMessage = "Open Retainer Cooldown settings." });
     }
 
-    private ICommandManager CommandManager { get; }
     internal void Save() => pi.SavePluginConfig(Config);
 
     // Saved configs from before the icon and duration presets keep their old values.
@@ -65,13 +65,15 @@ public sealed class Plugin : IDalamudPlugin
         return changed;
     }
 
+    internal bool IconExists(uint iconId) => textures.TryGetIconPath(new GameIconLookup(iconId), out _);
+
     // Resolve a game icon texture; false until loaded or if the ID is invalid.
     // TryGetIconPath avoids the IconNotFoundException that GetFromGameIcon throws.
     internal bool TryGetIcon(uint iconId, out IDalamudTextureWrap? wrap)
     {
         wrap = null;
         GameIconLookup lookup = iconId;
-        if (!textures.TryGetIconPath(lookup, out _)) return false;
+        if (!IconExists(iconId)) return false;
         try
         {
             return textures.GetFromGameIcon(lookup).TryGetWrap(out wrap, out _);
@@ -87,7 +89,7 @@ public sealed class Plugin : IDalamudPlugin
 
     public void Dispose()
     {
-        CommandManager.RemoveHandler("/retcd");
+        commands.RemoveHandler(CommandName);
         pi.UiBuilder.Draw -= windows.Draw;
         pi.UiBuilder.OpenConfigUi -= ToggleConfig;
         pi.UiBuilder.OpenMainUi -= ToggleConfig;

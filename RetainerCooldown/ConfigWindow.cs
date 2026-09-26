@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Numerics;
 using Dalamud.Interface.Windowing;
 using Dalamud.Bindings.ImGui;
@@ -10,8 +11,17 @@ internal sealed class ConfigWindow : Window
     // Number of consecutive icon IDs scanned per browser page.
     private const int PageSpan = 200;
 
+    private static readonly string[] DisplayModeLabels = ["Fastest to complete", "Latest to complete"];
+    private static readonly string[] LengthLabels =
+        Array.ConvertAll(Configuration.VentureLengthPresets, preset => preset.Label);
+
     private readonly Plugin plugin;
     private int browseStart = -1;
+    // Icon IDs on the current browser page that exist, found once per page.
+    private readonly List<uint> pageIcons = [];
+    private int pageIconsStart = -1;
+    // Sliders and the ID field change the config every frame; save once they're let go.
+    private bool dirty;
     // Which slot the ID field and grid write to.
     private bool editingComplete;
     // Icon IDs when the window was opened, so a pick can be undone.
@@ -31,6 +41,13 @@ internal sealed class ConfigWindow : Window
         savedCompleteIconId = plugin.Config.CompleteIconId;
     }
 
+    public override void OnClose()
+    {
+        if (dirty)
+            plugin.Save();
+        dirty = false;
+    }
+
     public override void Draw()
     {
         var changed = false;
@@ -47,7 +64,7 @@ internal sealed class ConfigWindow : Window
         }
 
         var mode = (int)plugin.Config.DisplayMode;
-        if (ImGui.Combo("Show venture", ref mode, new[] { "Fastest to complete", "Latest to complete" }, 2))
+        if (ImGui.Combo("Show venture", ref mode, DisplayModeLabels, DisplayModeLabels.Length))
         {
             plugin.Config.DisplayMode = (VentureDisplayMode)mode;
             changed = true;
@@ -59,9 +76,7 @@ internal sealed class ConfigWindow : Window
         var durationIndex = 0;
         for (var i = 0; i < lengths.Length; i++)
             if (lengths[i].Minutes == plugin.Config.VentureDurationMinutes) { durationIndex = i; break; }
-        var lengthLabels = new string[lengths.Length];
-        for (var i = 0; i < lengths.Length; i++) lengthLabels[i] = lengths[i].Label;
-        if (ImGui.Combo("Radial duration", ref durationIndex, lengthLabels, lengthLabels.Length))
+        if (ImGui.Combo("Radial duration", ref durationIndex, LengthLabels, LengthLabels.Length))
         {
             plugin.Config.VentureDurationMinutes = lengths[durationIndex].Minutes;
             changed = true;
@@ -75,7 +90,12 @@ internal sealed class ConfigWindow : Window
         var hide = plugin.Config.HideWhenNoVentures;
         if (ImGui.Checkbox("Hide when no ventures are active", ref hide)) { plugin.Config.HideWhenNoVentures = hide; changed = true; }
 
-        if (changed) plugin.Save();
+        dirty |= changed;
+        if (dirty && !ImGui.IsAnyItemActive())
+        {
+            plugin.Save();
+            dirty = false;
+        }
     }
 
     // Icon face selector: two slots (running / all complete), numeric entry, and a clickable grid.
@@ -121,11 +141,11 @@ internal sealed class ConfigWindow : Window
         const float cell = 48f;
         var cols = Math.Max(1, (int)(ImGui.GetContentRegionAvail().X / (cell + 8f)));
         var shown = 0;
-        for (var id = (uint)browseStart; id < browseStart + PageSpan; id++)
+        foreach (var id in PageIcons())
         {
             if (!plugin.TryGetIcon(id, out var w) || w == null) continue;
 
-            ImGui.PushID(id.ToString());
+            ImGui.PushID((int)id);
             var selectedId = editingComplete ? plugin.Config.CompleteIconId : plugin.Config.IconId;
             var selected = id == selectedId;
             if (selected)
@@ -150,6 +170,20 @@ internal sealed class ConfigWindow : Window
         ImGui.EndChild();
 
         return changed;
+    }
+
+    // The existing icon IDs on the current page; rescanned only when the page changes.
+    private List<uint> PageIcons()
+    {
+        if (pageIconsStart == browseStart)
+            return pageIcons;
+
+        pageIcons.Clear();
+        for (var id = (uint)browseStart; id < browseStart + PageSpan; id++)
+            if (plugin.IconExists(id))
+                pageIcons.Add(id);
+        pageIconsStart = browseStart;
+        return pageIcons;
     }
 
     // Selectable preview for one HUD icon slot. Clicking it points the picker at that slot.

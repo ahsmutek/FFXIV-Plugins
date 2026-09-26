@@ -5,7 +5,6 @@ using System.Numerics;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Game.ClientState.GamePad;
 using Dalamud.Game.ClientState.Keys;
-using Dalamud.Interface.Textures;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin.Services;
 
@@ -29,6 +28,12 @@ internal sealed class ConfigWindow : Window
     private static readonly GamepadButtons[] SwapButtons =
         [GamepadButtons.L1, GamepadButtons.R1, GamepadButtons.L2, GamepadButtons.R2];
     private static readonly string[] SwapButtonNames = ["LB", "RB", "LT", "RT"];
+
+    private static readonly string[] ConfirmNames = ["I let go of the shortcut", "The stick returns to center"];
+    private static readonly string[] ModifierNames = ["None", "Ctrl", "Shift", "Alt"];
+    private static readonly string[] WheelNames = ["Combat wheel", "Crafting & gathering wheel"];
+    private static readonly (WheelKind Kind, string Title)[] WheelTitles =
+        [(WheelKind.Combat, "Combat wheel"), (WheelKind.Crafting, "Crafting & gathering wheel")];
 
     private readonly Configuration config;
     private readonly Action save;
@@ -104,6 +109,9 @@ internal sealed class ConfigWindow : Window
             ImGui.EndTabBar();
         }
 
+        if (changed)
+            overlay.InvalidatePreview();
+
         // Sliders, color pickers and icon drags change the config every frame;
         // write it to disk once they're let go instead.
         dirty |= changed;
@@ -151,7 +159,7 @@ internal sealed class ConfigWindow : Window
         ImGui.TextWrapped("How far the stick has to tilt to target a job.");
 
         var confirm = (int)config.Confirm;
-        if (ImGui.Combo("Switch job when", ref confirm, ["I let go of the shortcut", "The stick returns to center"], 2))
+        if (ImGui.Combo("Switch job when", ref confirm, ConfirmNames, ConfirmNames.Length))
         {
             config.Confirm = (ConfirmMode)confirm;
             changed = true;
@@ -164,7 +172,7 @@ internal sealed class ConfigWindow : Window
         ImGui.TextDisabled("Shortcut (hold)");
         var modifier = (int)config.Modifier;
         ImGui.SetNextItemWidth(100f);
-        if (ImGui.Combo("##modifier", ref modifier, ["None", "Ctrl", "Shift", "Alt"], 4))
+        if (ImGui.Combo("##modifier", ref modifier, ModifierNames, ModifierNames.Length))
         {
             config.Modifier = (HotkeyModifier)modifier;
             changed = true;
@@ -204,7 +212,7 @@ internal sealed class ConfigWindow : Window
         ImGui.TextDisabled("Color presets");
         changed |= DrawColorPresets();
 
-        foreach (var (kind, title) in new[] { (WheelKind.Combat, "Combat wheel"), (WheelKind.Crafting, "Crafting & gathering wheel") })
+        foreach (var (kind, title) in WheelTitles)
         {
             ImGui.Spacing();
             ImGui.Separator();
@@ -243,7 +251,7 @@ internal sealed class ConfigWindow : Window
         ImGui.SameLine();
         var kind = (int)overlay.PreviewKind;
         ImGui.SetNextItemWidth(170f);
-        if (ImGui.Combo("##previewKind", ref kind, ["Combat wheel", "Crafting & gathering wheel"], 2))
+        if (ImGui.Combo("##previewKind", ref kind, WheelNames, WheelNames.Length))
             overlay.PreviewKind = (WheelKind)kind;
         ImGui.TextDisabled("Drag the preview to move the wheel.");
     }

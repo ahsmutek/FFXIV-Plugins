@@ -14,7 +14,6 @@ namespace JobWheel;
 // hotkey switches to it; optionally the stick returning to center switches.
 // Letting go of the hotkey with no target cancels, so the wheel can never get
 // stuck open. B cancels.
-// stuck open. B cancels.
 internal sealed class WheelInput : IDisposable
 {
     // Game stick axes run -99..99.
@@ -238,7 +237,6 @@ internal sealed class WheelInput : IDisposable
         StickDirection = length > 0.0001f ? v / length : Vector2.Zero;
     }
 
-    // Nearest shown icon to the stick direction, sticky toward the current target.
     // The job whose slice the stick points into, sticky toward the current target.
     // If that slice is empty (a locked job), the nearest shown icon takes it.
     private WheelJob? Pick(WheelJob? current)

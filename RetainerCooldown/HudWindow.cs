@@ -10,6 +10,10 @@ namespace RetainerCooldown;
 internal sealed class HudWindow : Window
 {
     private readonly Plugin plugin;
+    // Read in DrawConditions and reused by Draw the same frame.
+    private RetainerSnapshot[] retainers = [];
+    // Moved since the last save; written once the drag ends.
+    private bool positionDirty;
 
     public HudWindow(Plugin plugin) : base("Retainer Cooldown HUD###RetainerCooldownHud",
         ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse |
@@ -37,11 +41,16 @@ internal sealed class HudWindow : Window
             Flags |= ImGuiWindowFlags.NoMove;
     }
 
+    // When hidden, skip the window entirely so no empty window sits over the game.
+    public override bool DrawConditions()
+    {
+        retainers = plugin.ReadRetainers();
+        return !plugin.Config.HideWhenNoVentures || retainers.Any(x => x.VentureId != 0);
+    }
+
     public override void Draw()
     {
-        var retainers = plugin.ReadRetainers();
         var ventures = retainers.Where(x => x.VentureId != 0).ToArray();
-        if (ventures.Length == 0 && plugin.Config.HideWhenNoVentures) return;
 
         var size = plugin.Config.IconSize;
         var p = ImGui.GetCursorScreenPos();
@@ -96,14 +105,19 @@ internal sealed class HudWindow : Window
         if (plugin.Config.Locked) return;
 
         var pos = ImGui.GetWindowPos();
-        if (Math.Abs(pos.X - plugin.Config.IconPosX) < 0.5f && Math.Abs(pos.Y - plugin.Config.IconPosY) < 0.5f)
-            return;
+        if (Math.Abs(pos.X - plugin.Config.IconPosX) >= 0.5f || Math.Abs(pos.Y - plugin.Config.IconPosY) >= 0.5f)
+        {
+            plugin.Config.IconPosX = pos.X;
+            plugin.Config.IconPosY = pos.Y;
+            positionDirty = true;
+        }
 
-        plugin.Config.IconPosX = pos.X;
-        plugin.Config.IconPosY = pos.Y;
         // Only write to disk once the drag ends to avoid saving every frame.
-        if (!ImGui.IsMouseDown(ImGuiMouseButton.Left))
+        if (positionDirty && !ImGui.IsMouseDown(ImGuiMouseButton.Left))
+        {
             plugin.Save();
+            positionDirty = false;
+        }
     }
 
     // Slot face: the real game icon texture, framed like a hotbar slot.

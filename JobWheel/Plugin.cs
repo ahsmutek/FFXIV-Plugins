@@ -84,8 +84,8 @@ public sealed class Plugin : IDalamudPlugin
     public void Dispose()
     {
         CommandManager.RemoveHandler(CommandName);
-        input.Dispose();
         PluginInterface.UiBuilder.Draw -= Draw;
+        input.Dispose();
         PluginInterface.UiBuilder.OpenConfigUi -= configWindow.Toggle;
         PluginInterface.UiBuilder.OpenMainUi -= configWindow.Toggle;
         windows.RemoveAllWindows();

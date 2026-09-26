@@ -2,8 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
-using Dalamud.Interface.Textures;
-using Dalamud.Plugin.Services;
 
 namespace JobWheel;
 
@@ -26,6 +24,18 @@ internal sealed class WheelOverlay(WheelInput input, JobCatalog catalog, IconCac
     public bool Preview { get; set; }
     public WheelKind PreviewKind { get; set; }
 
+    // Rebuild the preview wheel this often (ms) so new unlocks and gear sets show up.
+    private const long PreviewRefresh = 1000;
+
+    // The preview wheel, kept between frames instead of rebuilt on every draw.
+    private WheelRing? previewRing;
+    private List<WheelJob> previewJobs = [];
+    private WheelKind previewBuiltKind;
+    private long previewBuiltAt;
+
+    // Called by the settings window when the layout, colors or gear sets change.
+    public void InvalidatePreview() => previewRing = null;
+
     public void Draw()
     {
         if (input.IsOpen)
@@ -35,8 +45,16 @@ internal sealed class WheelOverlay(WheelInput input, JobCatalog catalog, IconCac
         }
         else if (Preview)
         {
-            var ring = JobLayout.Build(PreviewKind, config);
-            DrawWheel(ImGui.GetBackgroundDrawList(), ring, catalog.Build(ring), null);
+            var now = Environment.TickCount64;
+            if (previewRing == null || previewBuiltKind != PreviewKind || now - previewBuiltAt > PreviewRefresh)
+            {
+                previewRing = JobLayout.Build(PreviewKind, config);
+                previewJobs = catalog.Build(previewRing);
+                previewBuiltKind = PreviewKind;
+                previewBuiltAt = now;
+            }
+
+            DrawWheel(ImGui.GetBackgroundDrawList(), previewRing, previewJobs, null);
             DrawDragHandle();
         }
     }
