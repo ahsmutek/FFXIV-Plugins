@@ -63,7 +63,7 @@ This covers being in combat, in a duty, casting, crafting, or not having a gear 
 
 - Wheel scale
 - Icon size
-- Offset from screen center
+- Position: tick **Show wheel preview** and drag the wheel with the mouse, type an offset from screen center, or press **Center** to reset it
 - Stick selection threshold
 - The shortcut, and which pad button (RB, LB, LT or RT) swaps wheels
 - Job order within each group, each group's color, and color presets

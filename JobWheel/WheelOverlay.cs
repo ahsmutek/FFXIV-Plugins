@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Textures;
@@ -6,9 +7,11 @@ using Dalamud.Plugin.Services;
 
 namespace JobWheel;
 
-// Draws the wheel straight onto the foreground draw list: no window, no focus,
-// nothing to click. Icons only; the role-colored band behind them groups the jobs.
-internal sealed class WheelOverlay(WheelInput input, ITextureProvider textures, Configuration config)
+// Draws the wheel straight onto a draw list: no window, no focus, nothing to click.
+// Icons only; the role-colored band behind them groups the jobs. While the settings
+// window asks for a preview, the wheel is also drawn (behind other windows) with an
+// invisible handle over it so it can be dragged into place.
+internal sealed class WheelOverlay(WheelInput input, JobCatalog catalog, ITextureProvider textures, Configuration config, Action save)
 {
     // Smallest ring radius at scale 1; rings with many icons grow past it so they never touch.
     private const float MinRadius = 140f;
@@ -19,45 +22,90 @@ internal sealed class WheelOverlay(WheelInput input, ITextureProvider textures, 
     // ABGR
     private const uint White = 0xF2FFFFFF;
 
+    // Set by the settings window while its preview checkbox is ticked.
+    public bool Preview { get; set; }
+
     public void Draw()
     {
-        if (!input.IsOpen)
-            return;
-        input.MarkDrawn();
+        if (input.IsOpen)
+        {
+            input.MarkDrawn();
+            DrawWheel(ImGui.GetForegroundDrawList(), input.Ring, input.Jobs, input.Target);
+        }
+        else if (Preview)
+        {
+            var ring = JobLayout.Build(config.LastWheel, config);
+            DrawWheel(ImGui.GetBackgroundDrawList(), ring, catalog.Build(ring), null);
+            DrawDragHandle();
+        }
+    }
 
-        var dl = ImGui.GetForegroundDrawList();
-        var io = ImGui.GetIO();
+    private (Vector2 Center, float Radius, float Icon) Geometry()
+    {
         var scale = Math.Clamp(config.Scale, 0.3f, 3f);
         var icon = config.IconSize * scale;
-        var center = io.DisplaySize / 2 + new Vector2(config.OffsetX, config.OffsetY);
-        // Grow the ring if the icons are too big to fit around it.
-        var ring = input.Ring;
-        // Both wheels share the size the bigger one needs, so swapping doesn't resize.
-        var slots = JobLayout.MaxSlots;
-        var radius = Math.Max(MinRadius * scale, slots * icon * 1.35f / MathF.Tau);
+        var center = ImGui.GetIO().DisplaySize / 2 + new Vector2(config.OffsetX, config.OffsetY);
+        // Both wheels share the size the bigger one needs, so swapping doesn't resize;
+        // the ring grows if the icons are too big to fit around it.
+        var radius = Math.Max(MinRadius * scale, JobLayout.MaxSlots * icon * 1.35f / MathF.Tau);
+        return (center, radius, icon);
+    }
 
-        DrawRing(dl, ring, center, radius, icon);
+    private void DrawWheel(ImDrawListPtr dl, WheelRing ring, IReadOnlyList<WheelJob> jobs, WheelJob? target)
+    {
+        var (center, radius, icon) = Geometry();
+        DrawRing(dl, ring, center, radius, icon, target);
 
-        foreach (var job in input.Jobs)
+        foreach (var job in jobs)
         {
-            if (job != input.Target)
+            if (job != target)
                 DrawIcon(dl, ring, center, radius, icon, job, false);
         }
 
         // Targeted icon last so its enlarged frame sits on top of its neighbours.
-        if (input.Target is { } target)
+        if (target != null)
             DrawIcon(dl, ring, center, radius, icon, target, true);
+    }
+
+    // An invisible window over the preview; dragging it moves the wheel.
+    private void DrawDragHandle()
+    {
+        var (center, radius, icon) = Geometry();
+        var outer = radius + icon * BandWidth / 2;
+        ImGui.SetNextWindowPos(center - new Vector2(outer));
+        ImGui.SetNextWindowSize(new Vector2(outer * 2));
+        ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, Vector2.Zero);
+        const ImGuiWindowFlags flags = ImGuiWindowFlags.NoDecoration | ImGuiWindowFlags.NoBackground |
+                                       ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.NoMove |
+                                       ImGuiWindowFlags.NoFocusOnAppearing | ImGuiWindowFlags.NoBringToFrontOnFocus |
+                                       ImGuiWindowFlags.NoNav;
+        if (ImGui.Begin("##JobWheelPreview", flags))
+        {
+            ImGui.InvisibleButton("##drag", new Vector2(outer * 2));
+            if (ImGui.IsItemHovered() || ImGui.IsItemActive())
+                ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeAll);
+            if (ImGui.IsItemActive())
+            {
+                var delta = ImGui.GetIO().MouseDelta;
+                config.OffsetX += delta.X;
+                config.OffsetY += delta.Y;
+            }
+            if (ImGui.IsItemDeactivated())
+                save();
+        }
+        ImGui.End();
+        ImGui.PopStyleVar();
     }
 
     // A thick band split into role-colored arcs, with the glyph icons sitting on it.
     // The targeted job's whole slice, center to rim, fills with its role color.
-    private void DrawRing(ImDrawListPtr dl, WheelRing ring, Vector2 center, float radius, float icon)
+    private void DrawRing(ImDrawListPtr dl, WheelRing ring, Vector2 center, float radius, float icon, WheelJob? target)
     {
         var band = icon * BandWidth;
         var outer = radius + band / 2;
         var slots = ring.Slots;
 
-        if (input.Target is { } target)
+        if (target != null)
         {
             var a0 = ring.StartOf(target.Slot);
             var a1 = ring.EndOf(target.Slot);
@@ -79,7 +127,7 @@ internal sealed class WheelOverlay(WheelInput input, ITextureProvider textures, 
         }
 
         // The targeted slot's part of the band in a brighter shade of its role.
-        if (input.Target is { } lit)
+        if (target is { } lit)
         {
             var color = Vector4.Min(Color(lit.Group) * new Vector4(1.7f, 1.7f, 1.7f, 1f), Vector4.One);
             StrokeArc(dl, center, radius, ring.StartOf(lit.Slot), ring.EndOf(lit.Slot), band, ImGui.GetColorU32(color));

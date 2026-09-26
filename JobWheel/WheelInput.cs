@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Numerics;
 using System.Runtime.InteropServices;
+using Dalamud.Bindings.ImGui;
 using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Game.ClientState.GamePad;
 using Dalamud.Game.ClientState.Keys;
@@ -174,8 +175,10 @@ internal sealed class WheelInput : IDisposable
 
         // Stops the right stick from also turning the camera. Dalamud still
         // reports the stick values to us before it blanks them for the game.
+        // If Dalamud's own gamepad mode is already on, input is already blocked; leave it be.
         savedGamepadNav = gamepad.EnableGamepadNav;
-        gamepad.EnableGamepadNav = true;
+        if (!savedGamepadNav)
+            SetPadBlockQuietly(true);
     }
 
     private void Commit()
@@ -184,6 +187,18 @@ internal sealed class WheelInput : IDisposable
         Close();
         if (target != null)
             switcher.Switch(target);
+    }
+
+    // Dalamud's setter also opens its "gamepad mode" notifier, which dims the screen,
+    // whenever ImGui has a gamepad. Hide that flag just for the set so only the input
+    // blocking happens.
+    private void SetPadBlockQuietly(bool on)
+    {
+        var io = ImGui.GetIO();
+        var flags = io.BackendFlags;
+        io.BackendFlags = flags & ~ImGuiBackendFlags.HasGamepad;
+        gamepad.EnableGamepadNav = on;
+        io.BackendFlags = flags;
     }
 
     // Called by the overlay each frame it draws the wheel.
@@ -195,7 +210,8 @@ internal sealed class WheelInput : IDisposable
         Target = null;
         Jobs = [];
         StickTilt = 0;
-        gamepad.EnableGamepadNav = savedGamepadNav;
+        if (!savedGamepadNav)
+            SetPadBlockQuietly(false);
 
         // Remember which wheel was up so it opens again next time.
         if (config.LastWheel != Kind)

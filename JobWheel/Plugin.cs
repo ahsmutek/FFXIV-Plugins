@@ -56,9 +56,9 @@ public sealed class Plugin : IDalamudPlugin
         var catalog = new JobCatalog(Data, Unlocks, PlayerState, config);
         var switcher = new JobSwitcher(Condition, Toasts);
         input = new WheelInput(Framework, KeyState, Gamepad, Condition, PlayerState, catalog, switcher, config, Save);
-        overlay = new WheelOverlay(input, Textures, config);
+        overlay = new WheelOverlay(input, catalog, Textures, config, Save);
 
-        configWindow = new ConfigWindow(config, Save, catalog, Textures, KeyState);
+        configWindow = new ConfigWindow(config, Save, catalog, overlay, Textures, KeyState);
         windows.AddWindow(configWindow);
 
         PluginInterface.UiBuilder.Draw += Draw;

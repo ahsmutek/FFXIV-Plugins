@@ -32,6 +32,7 @@ internal sealed class ConfigWindow : Window
     private readonly Configuration config;
     private readonly Action save;
     private readonly JobCatalog catalog;
+    private readonly WheelOverlay overlay;
     private readonly ITextureProvider textures;
     private readonly VirtualKey[] keys;
     private readonly string[] keyNames;
@@ -41,12 +42,14 @@ internal sealed class ConfigWindow : Window
     private List<WheelJob> jobs = [];
     private bool dirty;
 
-    public ConfigWindow(Configuration config, Action save, JobCatalog catalog, ITextureProvider textures, IKeyState keyState)
+    public ConfigWindow(Configuration config, Action save, JobCatalog catalog, WheelOverlay overlay,
+                        ITextureProvider textures, IKeyState keyState)
         : base("Job Wheel Settings###JobWheelConfig")
     {
         this.config = config;
         this.save = save;
         this.catalog = catalog;
+        this.overlay = overlay;
         this.textures = textures;
         keys = keyState.GetValidVirtualKeys()
                        .Where(k => k is not (VirtualKey.CONTROL or VirtualKey.SHIFT or VirtualKey.MENU or
@@ -69,6 +72,7 @@ internal sealed class ConfigWindow : Window
         if (dirty)
             save();
         dirty = false;
+        overlay.Preview = false;
     }
 
     public override void Draw()
@@ -124,6 +128,19 @@ internal sealed class ConfigWindow : Window
             config.OffsetY = offset.Y;
             changed = true;
         }
+        ImGui.SameLine();
+        if (ImGui.SmallButton("Center"))
+        {
+            config.OffsetX = 0;
+            config.OffsetY = 0;
+            changed = true;
+        }
+
+        var preview = overlay.Preview;
+        if (ImGui.Checkbox("Show wheel preview", ref preview))
+            overlay.Preview = preview;
+        ImGui.SameLine();
+        ImGui.TextDisabled("(drag the wheel to move it)");
 
         ImGui.Spacing();
         ImGui.TextDisabled("Stick");
