@@ -22,6 +22,8 @@ internal sealed class WheelInput : IDisposable
     // Retarget only while the stick is near its furthest tilt this gesture, so the
     // spring back to center can't drift onto a neighbour.
     private const float PeakFraction = 0.85f;
+    // Close the wheel if the overlay hasn't drawn it for this long (ms).
+    private const long NotDrawnTimeout = 1000;
 
     private static readonly ConditionFlag[] ForceClose =
     [
@@ -41,14 +43,18 @@ internal sealed class WheelInput : IDisposable
     private readonly JobCatalog catalog;
     private readonly JobSwitcher switcher;
     private readonly Configuration config;
+    private readonly Action save;
 
     // Hotkey stayed down after the wheel closed; wait for a real release before reopening.
     private bool waitForRelease;
     private bool savedGamepadNav;
     private float gesturePeak;
+    private bool swapWasDown;
+    private long lastDrawn;
 
     public bool IsOpen { get; private set; }
-    public WheelRing Ring { get; private set; } = JobLayout.Combat;
+    public WheelKind Kind { get; private set; }
+    public WheelRing Ring { get; private set; } = null!;
     public IReadOnlyList<WheelJob> Jobs { get; private set; } = [];
     public WheelJob? Target { get; private set; }
     // Stick direction (screen space, unit length) and tilt 0-1.
@@ -56,7 +62,7 @@ internal sealed class WheelInput : IDisposable
     public float StickTilt { get; private set; }
 
     public WheelInput(IFramework framework, IKeyState keys, IGamepadState gamepad, ICondition condition,
-                      IPlayerState player, JobCatalog catalog, JobSwitcher switcher, Configuration config)
+                      IPlayerState player, JobCatalog catalog, JobSwitcher switcher, Configuration config, Action save)
     {
         this.framework = framework;
         this.keys = keys;
@@ -66,6 +72,7 @@ internal sealed class WheelInput : IDisposable
         this.catalog = catalog;
         this.switcher = switcher;
         this.config = config;
+        this.save = save;
         framework.Update += OnUpdate;
     }
 
@@ -98,7 +105,9 @@ internal sealed class WheelInput : IDisposable
             return;
         }
 
-        if (!CanOpen())
+        // Zoning, cutscenes, or the wheel not being drawn (game UI hidden, gpose):
+        // close rather than keep blocking the pad with nothing on screen.
+        if (!CanOpen() || Environment.TickCount64 - lastDrawn > NotDrawnTimeout)
         {
             Close();
             return;
@@ -117,15 +126,15 @@ internal sealed class WheelInput : IDisposable
 
         ReadStick();
 
-        // Pressing or letting go of LB swaps wheels while open.
-        var ring = JobLayout.For(HeldKind());
-        if (ring != Ring)
+        // Tapping the swap button flips between the combat and crafting wheels.
+        var swapDown = gamepad.Raw(config.SwapButton) > 0;
+        if (swapDown && !swapWasDown)
         {
-            Ring = ring;
-            Jobs = catalog.Build(Ring);
+            Show(Kind == WheelKind.Combat ? WheelKind.Crafting : WheelKind.Combat);
             Target = null;
             gesturePeak = 0;
         }
+        swapWasDown = swapDown;
 
         if (!held)
         {
@@ -147,15 +156,21 @@ internal sealed class WheelInput : IDisposable
 
     private void Open()
     {
-        Ring = JobLayout.For(HeldKind());
-        Jobs = catalog.Build(Ring);
+        // Reopen the wheel used last time; fall back to the other if it has no jobs.
+        Show(config.LastWheel);
+        if (Jobs.Count == 0)
+            Show(config.LastWheel == WheelKind.Combat ? WheelKind.Crafting : WheelKind.Combat);
         if (Jobs.Count == 0)
             return;
+
+        // A swap button already held while opening isn't a tap.
+        swapWasDown = gamepad.Raw(config.SwapButton) > 0;
 
         Target = null;
         gesturePeak = 0;
         StickTilt = 0;
         IsOpen = true;
+        lastDrawn = Environment.TickCount64;
 
         // Stops the right stick from also turning the camera. Dalamud still
         // reports the stick values to us before it blanks them for the game.
@@ -171,6 +186,9 @@ internal sealed class WheelInput : IDisposable
             switcher.Switch(target);
     }
 
+    // Called by the overlay each frame it draws the wheel.
+    public void MarkDrawn() => lastDrawn = Environment.TickCount64;
+
     private void Close()
     {
         IsOpen = false;
@@ -178,6 +196,13 @@ internal sealed class WheelInput : IDisposable
         Jobs = [];
         StickTilt = 0;
         gamepad.EnableGamepadNav = savedGamepadNav;
+
+        // Remember which wheel was up so it opens again next time.
+        if (config.LastWheel != Kind)
+        {
+            config.LastWheel = Kind;
+            save();
+        }
     }
 
     private void ReadStick()
@@ -231,9 +256,13 @@ internal sealed class WheelInput : IDisposable
         return JobLayout.AngleDistance(angle, Ring.AngleOf(slot)) <= halfWidth;
     }
 
-    // LB held shows crafters and gatherers instead of combat jobs.
-    private WheelKind HeldKind() =>
-        gamepad.Raw(GamepadButtons.L1) > 0 ? WheelKind.Crafting : WheelKind.Combat;
+    // Switch the open wheel to the given kind and load its jobs.
+    private void Show(WheelKind kind)
+    {
+        Kind = kind;
+        Ring = JobLayout.Build(kind, config);
+        Jobs = catalog.Build(Ring);
+    }
 
     private bool CanOpen() => player.IsLoaded && !condition.Any(ForceClose);
 

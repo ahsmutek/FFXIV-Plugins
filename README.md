@@ -30,10 +30,11 @@ event (no hooks or memory writes). Command: `/cbarding "Sophic"` or
 
 ### [Job Wheel](JobWheel/)
 A controller radial menu for switching jobs. Hold `Ctrl + ,`, flick the right stick
-toward a job, and let go to switch. Hold LB to swap to the crafting and
-gathering wheel instead. Every unlocked job has a fixed, role-grouped
-spot on the wheel so you can learn the directions by feel, and each job can use a
-gear set of your choice. Command: `/jobwheel` (settings).
+toward a job, and let go to switch. Tap RB (or another shoulder button) to swap
+between the combat and crafting/gathering wheels; it reopens on the one you used
+last. Every unlocked job has a fixed, role-grouped spot on the wheel so you can
+learn the directions by feel, and you can reorder jobs within a group, recolor the
+groups, and pick a gear set per job. Command: `/jobwheel` (settings).
 
 ## Building
 

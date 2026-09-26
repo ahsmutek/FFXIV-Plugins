@@ -23,6 +23,7 @@ internal sealed class WheelOverlay(WheelInput input, ITextureProvider textures, 
     {
         if (!input.IsOpen)
             return;
+        input.MarkDrawn();
 
         var dl = ImGui.GetForegroundDrawList();
         var io = ImGui.GetIO();
@@ -32,7 +33,7 @@ internal sealed class WheelOverlay(WheelInput input, ITextureProvider textures, 
         // Grow the ring if the icons are too big to fit around it.
         var ring = input.Ring;
         // Both wheels share the size the bigger one needs, so swapping doesn't resize.
-        var slots = Math.Max(JobLayout.Combat.Slots.Length, JobLayout.Crafting.Slots.Length);
+        var slots = JobLayout.MaxSlots;
         var radius = Math.Max(MinRadius * scale, slots * icon * 1.35f / MathF.Tau);
 
         DrawRing(dl, ring, center, radius, icon);
@@ -60,7 +61,7 @@ internal sealed class WheelOverlay(WheelInput input, ITextureProvider textures, 
         {
             var a0 = ring.StartOf(target.Slot);
             var a1 = ring.EndOf(target.Slot);
-            var color = RoleColor(target.Group);
+            var color = Color(target.Group);
             dl.PathLineTo(center);
             dl.PathArcTo(center, outer, a0 - MathF.PI / 2, a1 - MathF.PI / 2, Segments(a0, a1));
             dl.PathFillConvex(ImGui.GetColorU32(color with { W = .6f }));
@@ -73,14 +74,14 @@ internal sealed class WheelOverlay(WheelInput input, ITextureProvider textures, 
                 continue;
 
             StrokeArc(dl, center, radius, ring.StartOf(start), ring.EndOf(i - 1), band,
-                      ImGui.GetColorU32(RoleColor(slots[start].Group)));
+                      ImGui.GetColorU32(Color(slots[start].Group)));
             start = i;
         }
 
         // The targeted slot's part of the band in a brighter shade of its role.
         if (input.Target is { } lit)
         {
-            var color = Vector4.Min(RoleColor(lit.Group) * new Vector4(1.7f, 1.7f, 1.7f, 1f), Vector4.One);
+            var color = Vector4.Min(Color(lit.Group) * new Vector4(1.7f, 1.7f, 1.7f, 1f), Vector4.One);
             StrokeArc(dl, center, radius, ring.StartOf(lit.Slot), ring.EndOf(lit.Slot), band, ImGui.GetColorU32(color));
         }
 
@@ -125,17 +126,7 @@ internal sealed class WheelOverlay(WheelInput input, ITextureProvider textures, 
         dl.PathStroke(color, ImDrawFlags.None, thickness);
     }
 
-    private static int Segments(float a0, float a1) => Math.Max(4, (int)MathF.Ceiling((a1 - a0) / MathF.Tau * 96));
+    private Vector4 Color(JobGroup group) => JobLayout.ColorOf(group, config);
 
-    // Muted versions of the game's role colors, dark enough for the gold glyphs to read on.
-    private static Vector4 RoleColor(JobGroup group) => group switch
-    {
-        JobGroup.Tank => new Vector4(.16f, .26f, .52f, .88f),
-        JobGroup.Healer => new Vector4(.17f, .38f, .16f, .88f),
-        JobGroup.Melee => new Vector4(.48f, .14f, .14f, .88f),
-        JobGroup.PhysicalRanged => new Vector4(.50f, .24f, .10f, .88f),
-        JobGroup.Caster => new Vector4(.42f, .13f, .33f, .88f),
-        JobGroup.Hand => new Vector4(.33f, .22f, .45f, .88f),
-        _ => new Vector4(.14f, .36f, .34f, .88f),
-    };
+    private static int Segments(float a0, float a1) => Math.Max(4, (int)MathF.Ceiling((a1 - a0) / MathF.Tau * 96));
 }

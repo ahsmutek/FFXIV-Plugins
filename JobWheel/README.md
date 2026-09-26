@@ -7,8 +7,8 @@ confirm button or open a list.
 ## Usage
 
 1. Hold **Ctrl + ,**. On a controller, map a button to it with reWASD or Steam Input.
-   This opens the combat wheel. Hold **LB** to show the crafting and gathering wheel
-   instead. It swaps back and forth as you press and let go of LB, even while the wheel is open.
+   The wheel opens on whichever wheel you used last (combat or crafting and gathering).
+   Tap **RB** (or LB, LT or RT, set in settings) while it's open to swap between them.
 2. Tilt the right stick toward a job. Its whole slice of the wheel fills with its role color.
 3. Let go of the shortcut. The wheel closes and the job's gear set is equipped.
    The stick can spring back to center first; the target stays until you flick
@@ -30,11 +30,12 @@ the directions by feel. Groups run clockwise starting from the top.
 |---|---|
 | Tanks (north) | PLD WAR DRK GNB |
 | Melee (east) | MNK DRG NIN SAM RPR VPR |
+| Limited (east) | BLU BST |
 | Healers (south) | WHM SCH AST SGE |
 | Physical ranged (west) | BRD MCH DNC |
-| Magical ranged (west) | BLM SMN RDM PCT BLU |
+| Magical ranged (west) | BLM SMN RDM PCT |
 
-**Crafting and gathering wheel** (hold LB; crafters across the top, gatherers along the bottom):
+**Crafting and gathering wheel** (tap RB or your chosen button to swap to it; crafters across the top, gatherers along the bottom):
 
 | Group | Jobs |
 |---|---|
@@ -42,9 +43,10 @@ the directions by feel. Groups run clockwise starting from the top.
 | Land | MIN BTN FSH |
 
 - Locked jobs leave their spot empty, and nothing else moves when you unlock one.
+- The **Wheel layout** tab in settings lets you reorder jobs within their group (drag an icon sideways) and pick each group's color, or apply one of the color presets (Muted, Vivid, Soft, Classic roles, Dark) to the whole wheel. Groups stay where they are on the wheel.
 - If you have a class but not its job yet (e.g. Gladiator), the class shows in the job's spot.
 - The stick targets the slice it points into. Pointing at an empty slice (a locked job) targets the nearest unlocked job instead.
-- The ring is a band colored by role (blue tanks, green healers, reds for DPS, purple crafters, teal gatherers), with the job glyphs on top. The targeted job's slice fills with its role color and your current job has a white dot. The east and west sides split the space left between tanks and healers evenly, so their slots are slightly wider (melee) or narrower (ranged and casters).
+- The ring is a band colored by role (blue tanks, green healers, reds for DPS, grey limited jobs, purple crafters, teal gatherers), with the job glyphs on top. The targeted job's slice fills with its role color and your current job has a white dot. The east and west sides split the space left between tanks and healers evenly, so slots on the two sides can be slightly wider or narrower than tank and healer slots.
 
 ## Switching
 
@@ -63,7 +65,8 @@ This covers being in combat, in a duty, casting, crafting, or not having a gear 
 - Icon size
 - Offset from screen center
 - Stick selection threshold
-- The shortcut
+- The shortcut, and which pad button (RB, LB, LT or RT) swaps wheels
+- Job order within each group, each group's color, and color presets
 - Gear set per job
 
 ## Build

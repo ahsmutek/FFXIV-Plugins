@@ -87,6 +87,10 @@ internal sealed class JobCatalog(IDataManager data, IUnlockState unlocks, IPlaye
         return list;
     }
 
+    // Icon and name for any job in the layout, unlocked or not.
+    public (uint IconId, string Name)? Info(string abbreviation) =>
+        Lookup().TryGetValue(abbreviation, out var job) ? (JobIconBase + job.RowId, DisplayName(job)) : null;
+
     public static string DisplayName(ClassJob job) =>
         CultureInfo.CurrentCulture.TextInfo.ToTitleCase(job.Name.ExtractText());
 
