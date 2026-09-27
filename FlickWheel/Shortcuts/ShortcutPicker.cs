@@ -6,7 +6,7 @@ using Dalamud.Interface.Utility;
 
 namespace FlickWheel;
 
-// The add-a-shortcut popup: tabs for game windows, actions, items and plugin commands.
+// The add-a-shortcut popup: tabs for game windows, actions, items, macros and plugin commands.
 internal sealed class ShortcutPicker(ShortcutCatalog catalog, IconCache icons)
 {
     private const string Popup = "##addShortcut";
@@ -21,6 +21,7 @@ internal sealed class ShortcutPicker(ShortcutCatalog catalog, IconCache icons)
     private List<ShortcutChoice>? menus;
     private List<ShortcutChoice>? actions;
     private List<ShortcutChoice> items = [];
+    private List<ShortcutChoice> macros = [];
 
     // Call at the same ImGui ID level as Draw, or the popup won't find its opener.
     public void Open(ShortcutGroup group)
@@ -28,6 +29,7 @@ internal sealed class ShortcutPicker(ShortcutCatalog catalog, IconCache icons)
         target = group;
         search = string.Empty;
         items = catalog.Items();
+        macros = catalog.Macros();
         ImGui.OpenPopup(Popup);
     }
 
@@ -67,6 +69,11 @@ internal sealed class ShortcutPicker(ShortcutCatalog catalog, IconCache icons)
             if (ImGui.BeginTabItem("Items"))
             {
                 changed |= DrawChoices(items, "No usable items in your bags match.");
+                ImGui.EndTabItem();
+            }
+            if (ImGui.BeginTabItem("Macros"))
+            {
+                changed |= DrawChoices(macros, "No macros match.");
                 ImGui.EndTabItem();
             }
             if (ImGui.BeginTabItem("Commands"))

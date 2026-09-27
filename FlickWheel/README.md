@@ -9,7 +9,7 @@ the hotkey to use it. You don't press a confirm button or open a list.
 It has two parts, each of which can be turned off in settings:
 
 - **Jobs** – a combat wheel and a crafting & gathering wheel with every job in a fixed spot.
-- **Shortcuts** – a wheel of your own shortcuts (game windows, Teleport, items, plugin commands) in groups you name and color.
+- **Shortcuts** – a wheel of your own shortcuts (game windows, Teleport, items, macros, plugin commands) in groups you name and color.
 
 ## Usage
 
@@ -96,11 +96,14 @@ It starts with three groups, all of which you can change:
 
 In the **Shortcuts** settings tab:
 
-- **+** adds a shortcut to a group. The picker has four tabs:
+- **+** adds a shortcut to a group. The picker has five tabs:
   - **Menus** – any main-menu window: Character, Armoury Chest, Inventory, Currency,
     Achievements, Blue Magic Spellbook, Master's Bestiary, Hunting Log, Duty Finder…
   - **Actions** – general actions (Teleport, Return, Sprint, Mount Roulette, Repair…) and the Aether Compass.
   - **Items** – usable items in your bags. The wheel shows how many you have left, and fades the icon at 0.
+  - **Macros** – your individual and shared macros, with their own name and icon. Handy for
+    things only a macro can do, like `/hudlayout 2`. The shortcut remembers the macro's slot, so
+    editing the macro changes what it does; if you clear the slot, the shortcut shows dimmed.
   - **Commands** – any plugin command, with your own label and icon ID. It only shows on the
     wheel while that plugin is loaded.
 - Drag a shortcut sideways to reorder it. Right-click it to change its label or icon,

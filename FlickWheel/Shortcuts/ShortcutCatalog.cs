@@ -5,6 +5,8 @@ using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
+using FFXIVClientStructs.FFXIV.Client.UI.Misc;
+using FFXIVClientStructs.FFXIV.Client.UI.Shell;
 using Lumina.Excel.Sheets;
 using LuminaAction = Lumina.Excel.Sheets.Action;
 
@@ -36,7 +38,7 @@ internal sealed class ShortcutCatalog
     }
 
     /// <summary>The name and icon an entry shows with, or null if its row doesn't exist.</summary>
-    public (string Name, uint IconId, bool KeyOutIcon)? Describe(ShortcutEntry entry)
+    public unsafe (string Name, uint IconId, bool KeyOutIcon)? Describe(ShortcutEntry entry)
     {
         (string Name, uint Icon)? found = entry.Kind switch
         {
@@ -49,6 +51,7 @@ internal sealed class ShortcutCatalog
             ShortcutKind.Item => data.GetExcelSheet<Item>().TryGetRow(entry.RowId, out var row)
                 ? (row.Name.ExtractText(), (uint)row.Icon) : null,
             ShortcutKind.Command => (entry.Command ?? string.Empty, 0u),
+            ShortcutKind.Macro => entry.RowId < MacroSlots * 2 ? DescribeMacro(entry.RowId) : null,
             _ => null,
         };
 
@@ -70,6 +73,9 @@ internal sealed class ShortcutCatalog
                 return ui != null && ui->IsMainCommandUnlocked(entry.RowId);
             case ShortcutKind.Command:
                 return CommandName(entry.Command) is { } name && commands.Commands.ContainsKey(name);
+            case ShortcutKind.Macro:
+                var macro = MacroOf(entry.RowId);
+                return macro != null && macro->IsNotEmpty();
             default:
                 return true;
         }
@@ -109,6 +115,12 @@ internal sealed class ShortcutCatalog
             case ShortcutKind.Command:
                 if (!string.IsNullOrWhiteSpace(entry.Command))
                     commands.ProcessCommand(entry.Command.Trim());
+                break;
+            case ShortcutKind.Macro:
+                var macro = MacroOf(entry.RowId);
+                var shell = RaptureShellModule.Instance();
+                if (macro != null && macro->IsNotEmpty() && shell != null)
+                    shell->ExecuteMacro(macro);
                 break;
         }
     }
@@ -167,6 +179,21 @@ internal sealed class ShortcutCatalog
         return choices.OrderBy(choice => choice.Name).ToList();
     }
 
+    // Your macros, individual then shared, in slot order. Empty slots are left out.
+    public unsafe List<ShortcutChoice> Macros()
+    {
+        var choices = new List<ShortcutChoice>();
+        for (uint id = 0; id < MacroSlots * 2; id++)
+        {
+            var macro = MacroOf(id);
+            if (macro == null || !macro->IsNotEmpty())
+                continue;
+            choices.Add(new ShortcutChoice(ShortcutKind.Macro, id, MacroName(macro, id), macro->IconId,
+                                           id < MacroSlots ? "Individual" : "Shared"));
+        }
+        return choices;
+    }
+
     public List<string> PluginCommands() => commands.Commands.Keys.Order().ToList();
 
     // "the Aether Compass" → "Aether Compass".
@@ -174,6 +201,29 @@ internal sealed class ShortcutCatalog
     {
         var name = row.Name.ExtractText();
         return name.StartsWith("the ", StringComparison.Ordinal) ? char.ToUpper(name[4]) + name[5..] : name;
+    }
+
+    private const uint MacroSlots = 100;
+
+    // RowId 0–99 is individual macro slot N, 100–199 shared slot N − 100.
+    private static unsafe RaptureMacroModule.Macro* MacroOf(uint id)
+    {
+        var module = RaptureMacroModule.Instance();
+        return module == null || id >= MacroSlots * 2 ? null : module->GetMacro(id / MacroSlots, id % MacroSlots);
+    }
+
+    // An emptied slot keeps its entry, named after the slot and without an icon.
+    private static unsafe (string, uint) DescribeMacro(uint id)
+    {
+        var macro = MacroOf(id);
+        return macro != null && macro->IsNotEmpty() ? (MacroName(macro, id), macro->IconId) : (MacroName(null, id), 0u);
+    }
+
+    // The macro's own name, or e.g. "Shared macro 12" when it has none.
+    private static unsafe string MacroName(RaptureMacroModule.Macro* macro, uint id)
+    {
+        var name = macro != null ? macro->Name.ToString().Trim() : string.Empty;
+        return name.Length > 0 ? name : $"{(id < MacroSlots ? "Individual" : "Shared")} macro {id % MacroSlots}";
     }
 
     private static string? CommandName(string? command) =>

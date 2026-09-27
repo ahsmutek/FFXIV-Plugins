@@ -34,6 +34,7 @@ public enum ShortcutKind
     Action,        // an action used from the hotbar, e.g. the Aether Compass (Action row)
     Item,          // uses an item from your bags (Item row)
     Command,       // runs a plugin's chat command, e.g. /cbarding job
+    Macro,         // runs one of your macros (RowId 0–99 individual slot, 100–199 shared slot)
 }
 
 public sealed class ShortcutEntry

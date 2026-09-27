@@ -174,9 +174,12 @@ internal sealed class ShortcutsSettings(Configuration config, ShortcutCatalog ca
             return new RowIcon(entry.Uid, null, "?", "This shortcut no longer exists in the game.", true);
 
         var available = catalog.Available(entry);
-        var tooltip = available ? info.Name : entry.Kind == ShortcutKind.Command
-            ? $"{info.Name} (the plugin for this command isn't loaded)"
-            : $"{info.Name} (locked)";
+        var tooltip = available ? info.Name : entry.Kind switch
+        {
+            ShortcutKind.Command => $"{info.Name} (the plugin for this command isn't loaded)",
+            ShortcutKind.Macro => $"{info.Name} (this macro slot is empty)",
+            _ => $"{info.Name} (locked)",
+        };
         var texture = info.IconId != 0 ? icons.Handle(info.IconId, info.KeyOutIcon) : (ImTextureID?)null;
         return new RowIcon(entry.Uid, texture, Short(info.Name), tooltip, !available);
     }
