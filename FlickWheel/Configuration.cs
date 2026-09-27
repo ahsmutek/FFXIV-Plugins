@@ -35,6 +35,7 @@ public enum ShortcutKind
     Item,          // uses an item from your bags (Item row)
     Command,       // runs a plugin's chat command, e.g. /cbarding job
     Macro,         // runs one of your macros (RowId 0–99 individual slot, 100–199 shared slot)
+    Toggle,        // one of Flick Wheel's own toggles (see ShortcutCatalog.Toggles)
 }
 
 public sealed class ShortcutEntry

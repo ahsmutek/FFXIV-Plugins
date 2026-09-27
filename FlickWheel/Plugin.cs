@@ -54,6 +54,7 @@ public sealed class Plugin : IDalamudPlugin
     private readonly WheelInput input;
     private readonly WheelOverlay overlay;
     private readonly IconCache icons;
+    private readonly ChatLogToggle chatLog;
 
     public Plugin()
     {
@@ -70,7 +71,8 @@ public sealed class Plugin : IDalamudPlugin
         var catalog = new JobCatalog(Data, Unlocks, PlayerState, config);
         var switcher = new JobSwitcher(Condition, Toasts);
         wheels.Add(new JobsModule(config, catalog, switcher, icons, overlay));
-        wheels.Add(new ShortcutsModule(config, Save, new ShortcutCatalog(Data, CommandManager), icons, overlay));
+        chatLog = new ChatLogToggle(Framework);
+        wheels.Add(new ShortcutsModule(config, Save, new ShortcutCatalog(Data, CommandManager, chatLog), icons, overlay));
 
         configWindow = new ConfigWindow(config, Save, wheels, overlay, KeyState);
         windows.AddWindow(configWindow);
@@ -79,14 +81,23 @@ public sealed class Plugin : IDalamudPlugin
         PluginInterface.UiBuilder.OpenConfigUi += configWindow.Toggle;
         PluginInterface.UiBuilder.OpenMainUi += configWindow.Toggle;
 
-        CommandManager.AddHandler(CommandName, new CommandInfo((_, _) => configWindow.Toggle())
+        CommandManager.AddHandler(CommandName, new CommandInfo(OnCommand)
         {
-            HelpMessage = "Open Flick Wheel settings. Hold your hotkey (Ctrl+, by default) and flick the right stick toward an entry.",
+            HelpMessage = "Open Flick Wheel settings. Hold your hotkey (Ctrl+, by default) and flick the right stick toward an entry.\n" +
+                          "/flick chat → Hide or show the chat log.",
         });
-        CommandManager.AddHandler(OldCommandName, new CommandInfo((_, _) => configWindow.Toggle())
+        CommandManager.AddHandler(OldCommandName, new CommandInfo(OnCommand)
         {
             ShowInHelp = false,
         });
+    }
+
+    private void OnCommand(string command, string args)
+    {
+        if (args.Trim().Equals("chat", StringComparison.OrdinalIgnoreCase))
+            chatLog.Toggle();
+        else
+            configWindow.Toggle();
     }
 
     // First load after the rename from Job Wheel: carry the old settings over. The old
@@ -132,6 +143,7 @@ public sealed class Plugin : IDalamudPlugin
         CommandManager.RemoveHandler(OldCommandName);
         PluginInterface.UiBuilder.Draw -= Draw;
         input.Dispose();
+        chatLog.Dispose();
         PluginInterface.UiBuilder.OpenConfigUi -= configWindow.Toggle;
         PluginInterface.UiBuilder.OpenMainUi -= configWindow.Toggle;
         windows.RemoveAllWindows();

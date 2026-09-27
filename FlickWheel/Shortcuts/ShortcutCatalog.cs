@@ -25,15 +25,21 @@ internal sealed class ShortcutCatalog
         26988, // the Aether Compass
     ];
 
+    // Toggle rows. The chat log uses the Log Window Settings menu icon.
+    private const uint ChatLogToggleRow = 0;
+    private const uint ChatLogIcon = 45;
+
     private readonly IDataManager data;
     private readonly ICommandManager commands;
+    private readonly ChatLogToggle chatLog;
     // Main menu icons are a gold glyph on a red tile; those get keyed out to match the job glyphs.
     private readonly HashSet<uint> menuIcons;
 
-    public ShortcutCatalog(IDataManager data, ICommandManager commands)
+    public ShortcutCatalog(IDataManager data, ICommandManager commands, ChatLogToggle chatLog)
     {
         this.data = data;
         this.commands = commands;
+        this.chatLog = chatLog;
         menuIcons = data.GetExcelSheet<MainCommand>().Where(row => row.Icon > 0).Select(row => (uint)row.Icon).ToHashSet();
     }
 
@@ -52,6 +58,8 @@ internal sealed class ShortcutCatalog
                 ? (row.Name.ExtractText(), (uint)row.Icon) : null,
             ShortcutKind.Command => (entry.Command ?? string.Empty, 0u),
             ShortcutKind.Macro => entry.RowId < MacroSlots * 2 ? DescribeMacro(entry.RowId) : null,
+            ShortcutKind.Toggle => entry.RowId == ChatLogToggleRow
+                ? (chatLog.Hidden ? "Show chat log" : "Hide chat log", ChatLogIcon) : null,
             _ => null,
         };
 
@@ -122,6 +130,9 @@ internal sealed class ShortcutCatalog
                 if (macro != null && macro->IsNotEmpty() && shell != null)
                     shell->ExecuteMacro(macro);
                 break;
+            case ShortcutKind.Toggle when entry.RowId == ChatLogToggleRow:
+                chatLog.Toggle();
+                break;
         }
     }
 
@@ -150,7 +161,8 @@ internal sealed class ShortcutCatalog
         var other = PickerActions.Where(id => actions.HasRow(id))
                                  .Select(id => actions.GetRow(id))
                                  .Select(row => new ShortcutChoice(ShortcutKind.Action, row.RowId, ActionName(row), (uint)row.Icon, "Other"));
-        return general.Concat(other).ToList();
+        var toggles = new[] { new ShortcutChoice(ShortcutKind.Toggle, ChatLogToggleRow, "Hide or show chat log", ChatLogIcon, "Flick Wheel") };
+        return general.Concat(other).Concat(toggles).ToList();
     }
 
     public unsafe List<ShortcutChoice> Items()

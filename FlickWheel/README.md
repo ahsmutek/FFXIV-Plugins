@@ -30,7 +30,7 @@ It has two parts, each of which can be turned off in settings:
 - Pressing **B** closes the wheel with no change, even with an entry targeted.
 - Letting go of the hotkey without targeting anything closes the wheel with no change.
 - Picking the job you're already on just closes the wheel.
-- `/flick` opens settings (`/jobwheel` still works).
+- `/flick` opens settings (`/jobwheel` still works). `/flick chat` hides or shows the chat log.
 
 ## Job wheels
 
@@ -99,7 +99,10 @@ In the **Shortcuts** settings tab:
 - **+** adds a shortcut to a group. The picker has five tabs:
   - **Menus** – any main-menu window: Character, Armoury Chest, Inventory, Currency,
     Achievements, Blue Magic Spellbook, Master's Bestiary, Hunting Log, Duty Finder…
-  - **Actions** – general actions (Teleport, Return, Sprint, Mount Roulette, Repair…) and the Aether Compass.
+  - **Actions** – general actions (Teleport, Return, Sprint, Mount Roulette, Repair…), the Aether Compass,
+    and **Hide or show chat log**. The hidden chat log stays hidden through cutscenes and zoning,
+    comes back while you're typing, and is shown again when the plugin unloads. `/flick chat` does
+    the same from a macro or the chat line.
   - **Items** – usable items in your bags. The wheel shows how many you have left, and fades the icon at 0.
   - **Macros** – your individual and shared macros, with their own name and icon. Handy for
     things only a macro can do, like `/hudlayout 2`. The shortcut remembers the macro's slot, so
