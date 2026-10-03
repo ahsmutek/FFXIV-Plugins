@@ -38,6 +38,13 @@ fixed, role-grouped spot so you can learn the directions by feel. The shortcuts 
 holds your own groups of game windows, Teleport and other actions, items (with how many
 are left) and plugin commands such as `/cbarding job`. Command: `/flick` (settings).
 
+### [Job Profiles](JobProfiles/)
+Switches your HUD layout and/or runs a macro whenever your job changes, however you
+change it (a gear set, `/gs`, Flick Wheel). Set one per role group (tanks, healers,
+melee, crafters…) and override it for single jobs; a class uses its job's profile.
+Waits out zoning, cutscenes and running macros, and can also apply on login. Command:
+`/jobprofiles` (settings), `/jobprofiles apply`.
+
 ## Building
 
 Each plugin is a standard Dalamud project. From a plugin's folder:

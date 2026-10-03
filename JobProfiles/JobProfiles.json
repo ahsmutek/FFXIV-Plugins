@@ -1,0 +1,13 @@
+{
+  "Author": "Kotanna",
+  "Name": "Job Profiles",
+  "Punchline": "Switch HUD layout and run a macro when you change job.",
+  "Description": "Pick a HUD layout and/or a macro for each role (tanks, healers, melee, crafters…), and override them for single jobs. Whenever your job changes, however you change it, the layout is applied and the macro runs. /jobprofiles opens settings; /jobprofiles apply re-applies the current job's profile.",
+  "ApplicableVersion": "any",
+  "Tags": [
+    "job",
+    "hud",
+    "layout",
+    "macro"
+  ]
+}
