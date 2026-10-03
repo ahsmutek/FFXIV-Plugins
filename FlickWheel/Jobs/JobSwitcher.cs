@@ -7,15 +7,13 @@ namespace FlickWheel;
 
 internal sealed class JobSwitcher(ICondition condition, IToastGui toasts)
 {
-    // States where the game won't let you change gear sets.
+    // States where the game won't let you change gear sets. Duties aren't listed: some allow it
+    // (the Diadem, between gatherers), and where they don't, the game refuses the gear set itself.
     private static readonly ConditionFlag[] Blocking =
     [
         ConditionFlag.InCombat,
         ConditionFlag.Casting,
         ConditionFlag.Casting87,
-        ConditionFlag.BoundByDuty,
-        ConditionFlag.BoundByDuty56,
-        ConditionFlag.BoundByDuty95,
         ConditionFlag.BetweenAreas,
         ConditionFlag.BetweenAreas51,
         ConditionFlag.Occupied,
