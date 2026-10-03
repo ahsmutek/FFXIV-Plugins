@@ -1,0 +1,13 @@
+{
+  "Author": "Kotanna",
+  "Name": "ControllerKeeper",
+  "Punchline": "Keeps your controller working: no needless rescans, and always your chosen pad.",
+  "Description": "The game stops reading the controller for a moment every time Windows reports any hardware change, and can end up on the wrong device afterwards. ControllerKeeper only lets the game rescan when the set of connected controllers actually changed, and switches the game back to the controller you picked whenever it lands on another one. /controllerkeeper opens settings.",
+  "ApplicableVersion": "any",
+  "Tags": [
+    "controller",
+    "gamepad",
+    "input",
+    "fix"
+  ]
+}

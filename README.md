@@ -1,7 +1,8 @@
 # FFXIV Plugins
 
 A collection of my [Dalamud](https://github.com/goatcorp/Dalamud) plugins for
-Final Fantasy XIV. Each plugin lives in its own folder.
+Final Fantasy XIV. Each plugin lives in its own folder; `shared/` holds code compiled into
+more than one of them (Flick Wheel's shortcut picker, also used by Job Profiles).
 
 These were all made for my own personal use. They're shared as-is, without support
 or guarantees, and aren't published to any plugin repository.
@@ -39,10 +40,13 @@ holds your own groups of game windows, Teleport and other actions, items (with h
 are left) and plugin commands such as `/cbarding job`. Command: `/flick` (settings).
 
 ### [Job Profiles](JobProfiles/)
-Switches your HUD layout and/or runs macros whenever your job changes, however you
-change it (a gear set, `/gs`, Flick Wheel). Set one per role group (tanks, healers,
+Switches your HUD layout and runs macros or commands whenever your job changes, however
+you change it (a gear set, `/gs`, Flick Wheel). Set one per role group (tanks, healers,
 melee, crafters…) and override it for single jobs; a class uses its job's profile.
-Waits out zoning, cutscenes and running macros, and can also apply on login. Command:
+Waits out zoning, cutscenes and running macros, and can also apply on login. Also
+runs them from pad buttons, combos and keys (paddles via reWASD), picking them by
+job or role and by duty type with ordered rules. Lists can hold anything Flick Wheel's
+shortcuts can (macros, menus, actions, items) plus any chat command. Command:
 `/jobprofiles` (settings), `/jobprofiles apply`.
 
 ### [Minimap Zoom](MinimapZoom/)
@@ -51,6 +55,12 @@ you see more of the area around you, e.g. when gathering. Your zoom is kept when
 change job, zone or log in. Checks the zoom value against the map image before
 writing, so a game update can't make it write to the wrong place. Command:
 `/minimapzoom` (settings), `/minimapzoom reset`.
+
+### [ControllerKeeper](ControllerKeeper/)
+Keeps your controller working: the game only rescans controllers when one was actually
+added, removed or swapped (no pad freeze when a USB stick or virtual drive comes and goes),
+and it's switched back to the controller you picked whenever it lands on another device.
+Command: `/controllerkeeper` (settings).
 
 ## Building
 
