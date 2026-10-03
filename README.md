@@ -45,6 +45,13 @@ melee, crafters…) and override it for single jobs; a class uses its job's prof
 Waits out zoning, cutscenes and running macros, and can also apply on login. Command:
 `/jobprofiles` (settings), `/jobprofiles apply`.
 
+### [Minimap Zoom](MinimapZoom/)
+Lets the minimap's − button zoom out past the game's limit (1.25), down to 0.25, so
+you see more of the area around you, e.g. when gathering. Your zoom is kept when you
+change job, zone or log in. Checks the zoom value against the map image before
+writing, so a game update can't make it write to the wrong place. Command:
+`/minimapzoom` (settings), `/minimapzoom reset`.
+
 ## Building
 
 Each plugin is a standard Dalamud project. From a plugin's folder:
