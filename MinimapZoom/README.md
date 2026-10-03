@@ -26,10 +26,8 @@ ClientStructs doesn't map the minimap's zoom, so the plugin reads it at a fixed 
 in the `_NaviMap` addon. Before writing, it checks that the value matches the map
 image's scale, which the game keeps equal to the zoom. If a game update moves the value,
 the check fails and the plugin leaves the minimap alone; settings then show the zoom
-as unknown.
-
-Debug builds also have `/minimapzoomdebug`: memory and UI-node snapshots and diffs,
-event logging and button unlocking, used to find the zoom value.
+as unknown. The game also keeps the zoom as a percentage, which it uses to rebuild the
+minimap after zoning, so the plugin keeps that copy in step too.
 
 ## Build
 

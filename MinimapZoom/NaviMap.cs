@@ -21,6 +21,9 @@ internal static unsafe class NaviMap
     public const int ZoomOutParam = 3;
 
     private const int ZoomOffset = 0x264;
+    // The same zoom as a percentage (125 = 1.25) in the low 16 bits. The game rebuilds parts of
+    // the minimap from it after zoning, so it's kept in step with the float.
+    private const int ZoomPercentOffset = 0x1A8;
     private const uint MarkersNodeId = 18; // the component holding the map image and markers
     private const uint MapImageNodeId = 6; // the map image inside it
     private const uint ZoomOutNodeId = 3;  // the − button
@@ -60,7 +63,22 @@ internal static unsafe class NaviMap
             return false;
 
         *(float*)((byte*)addon + ZoomOffset) = zoom;
+
+        // Only when it still looks like a percentage, in case a patch moves it.
+        var percent = (ushort*)((byte*)addon + ZoomPercentOffset);
+        if (*percent is >= 5 and <= 2000)
+            *percent = (ushort)MathF.Round(zoom * 100f);
         return true;
+    }
+
+    /// <summary>Whether the percentage copy of the zoom agrees with it (or can't be read).</summary>
+    public static bool PercentInStep(float zoom)
+    {
+        var addon = Addon();
+        if (addon == null)
+            return true;
+        var percent = *(ushort*)((byte*)addon + ZoomPercentOffset);
+        return percent is < 5 or > 2000 || percent == (ushort)MathF.Round(zoom * 100f);
     }
 
     /// <summary>Greys the − button out or makes it clickable again.</summary>

@@ -23,16 +23,6 @@ public sealed class Plugin : IDalamudPlugin
     [PluginService]
     private static IAddonLifecycle AddonLifecycle { get; set; } = null!;
 
-#if DEBUG
-    [PluginService]
-    private static IChatGui Chat { get; set; } = null!;
-
-    [PluginService]
-    private static IPluginLog Log { get; set; } = null!;
-
-    private readonly DebugProbe debugProbe;
-#endif
-
     private readonly Configuration config;
     private readonly WindowSystem windows = new("MinimapZoom");
     private readonly ConfigWindow configWindow;
@@ -53,10 +43,6 @@ public sealed class Plugin : IDalamudPlugin
         {
             HelpMessage = "Open Minimap Zoom settings.\n/minimapzoom reset → Back to the game's furthest zoom (1.25).",
         });
-
-#if DEBUG
-        debugProbe = new DebugProbe(CommandManager, Framework, Chat, Log, AddonLifecycle);
-#endif
     }
 
     private void OnCommand(string command, string args)
@@ -71,9 +57,6 @@ public sealed class Plugin : IDalamudPlugin
 
     public void Dispose()
     {
-#if DEBUG
-        debugProbe.Dispose();
-#endif
         CommandManager.RemoveHandler(CommandName);
         PluginInterface.UiBuilder.Draw -= windows.Draw;
         PluginInterface.UiBuilder.OpenConfigUi -= configWindow.Toggle;

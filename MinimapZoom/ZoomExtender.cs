@@ -26,6 +26,7 @@ internal sealed class ZoomExtender : IDisposable
     private float? beforeClick;
     private long lastWheel;
 
+
     public ZoomExtender(IFramework framework, IAddonLifecycle lifecycle, Configuration config, Action save)
     {
         this.framework = framework;
@@ -41,19 +42,25 @@ internal sealed class ZoomExtender : IDisposable
     {
         framework.Update -= OnUpdate;
         lifecycle.UnregisterListener(OnPreEvent, OnPostEvent);
-        ResetToGame();
+        // Leave the game a zoom it knows, but keep yours for next time (logging in tomorrow).
+        ShowGameZoom();
     }
 
     /// <summary>Back to the game's own furthest zoom, and forget the extended one.</summary>
     public void ResetToGame()
     {
-        if (NaviMap.Zoom() is { } zoom && zoom < NaviMap.GameMinimum - NaviMap.Epsilon)
-            NaviMap.SetZoom(NaviMap.GameMinimum);
+        ShowGameZoom();
         if (config.Zoom != null)
         {
             config.Zoom = null;
             save();
         }
+    }
+
+    private static void ShowGameZoom()
+    {
+        if (NaviMap.Zoom() is { } zoom && zoom < NaviMap.GameMinimum - NaviMap.Epsilon)
+            NaviMap.SetZoom(NaviMap.GameMinimum);
     }
 
     private static int? ZoomClick(AddonArgs args) =>
@@ -105,7 +112,7 @@ internal sealed class ZoomExtender : IDisposable
         }
 
         // The game reset the minimap (job change, zoning, login): put the extended zoom back.
-        if (config.Zoom is { } wanted && MathF.Abs(zoom - wanted) > NaviMap.Epsilon)
+        if (config.Zoom is { } wanted && (MathF.Abs(zoom - wanted) > NaviMap.Epsilon || !NaviMap.PercentInStep(wanted)))
         {
             if (NaviMap.SetZoom(wanted))
                 zoom = wanted;
