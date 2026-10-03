@@ -11,8 +11,8 @@ using Dalamud.Plugin.Services;
 
 namespace JobProfiles;
 
-// One table: each role group's HUD layout and macro, and under it its jobs, each of
-// which can override the group.
+// The Job change tab (each role group's HUD layout and macros, with per-job overrides)
+// and the Buttons tab.
 internal sealed class ConfigWindow : Window
 {
     private static readonly string[] Layouts =
@@ -25,13 +25,11 @@ internal sealed class ConfigWindow : Window
     private readonly ITextureProvider textures;
     private readonly Action applyNow;
 
-    // Refreshed when the window opens so new and renamed macros show up.
-    private List<MacroChoice> macros = [];
-    // The open macro list's search text; only one list is open at a time.
-    private string search = string.Empty;
+    private readonly Widgets widgets;
+    private readonly ButtonsTab buttons;
 
     public ConfigWindow(Configuration config, Action save, JobGroups groups, IPlayerState player,
-                        ITextureProvider textures, Action applyNow)
+                        ITextureProvider textures, Action applyNow, Widgets widgets, ButtonsTab buttons)
         : base("Job Profiles###JobProfilesConfig")
     {
         this.config = config;
@@ -40,13 +38,47 @@ internal sealed class ConfigWindow : Window
         this.player = player;
         this.textures = textures;
         this.applyNow = applyNow;
+        this.widgets = widgets;
+        this.buttons = buttons;
         Size = new Vector2(620, 640);
         SizeCondition = ImGuiCond.FirstUseEver;
     }
 
-    public override void OnOpen() => macros = Actions.Macros();
+
+    public override void OnClose() => buttons.StopRecording();
 
     public override void Draw()
+    {
+        if (!ImGui.BeginTabBar("tabs"))
+            return;
+
+        if (ImGui.BeginTabItem("Job change"))
+        {
+            DrawJobChange();
+            ImGui.EndTabItem();
+        }
+
+        if (ImGui.BeginTabItem("Buttons"))
+        {
+            if (buttons.Draw())
+                save();
+            ImGui.EndTabItem();
+        }
+        else
+        {
+            buttons.StopRecording();
+        }
+
+        ImGui.EndTabBar();
+
+        // The add-a-step picker, opened by any list's Add.
+        if (widgets.DrawPicker())
+            save();
+    }
+
+    // Each role group's HUD layout and macros, and under it its jobs, each of which can
+    // override the group.
+    private void DrawJobChange()
     {
         var changed = false;
 
@@ -68,7 +100,7 @@ internal sealed class ConfigWindow : Window
         if (ImGui.SmallButton("Apply now"))
             applyNow();
 
-        ImGui.TextWrapped("Pick a HUD layout and/or a macro for each group. Tick Override on a job to give it its own. A class uses its job's profile (Gladiator uses Paladin's).");
+        ImGui.TextWrapped("Pick a HUD layout and what to run for each group: macros, menus, actions, items or any chat command. Tick Override on a job to give it its own. A class uses its job's profile (Gladiator uses Paladin's).");
         ImGui.Spacing();
 
         const ImGuiTableFlags flags = ImGuiTableFlags.RowBg | ImGuiTableFlags.BordersInnerH | ImGuiTableFlags.SizingStretchProp;
@@ -77,7 +109,7 @@ internal sealed class ConfigWindow : Window
             ImGui.TableSetupColumn("Group / job", ImGuiTableColumnFlags.WidthStretch, 2f);
             ImGui.TableSetupColumn("Override", ImGuiTableColumnFlags.WidthFixed);
             ImGui.TableSetupColumn("HUD layout", ImGuiTableColumnFlags.WidthStretch, 1.5f);
-            ImGui.TableSetupColumn("Macro", ImGuiTableColumnFlags.WidthStretch, 2f);
+            ImGui.TableSetupColumn("Run", ImGuiTableColumnFlags.WidthStretch, 2f);
             ImGui.TableHeadersRow();
 
             foreach (var (group, label, jobs) in JobGroups.All)
@@ -106,13 +138,13 @@ internal sealed class ConfigWindow : Window
 
         config.Groups.TryGetValue(group, out var profile);
         var hud = profile?.HudLayout;
-        var list = profile?.Macros is { } saved ? new List<uint>(saved) : [];
+        var list = profile?.Steps is { } saved ? saved.Select(s => s.Copy()).ToList() : [];
 
         ImGui.TableNextColumn();
         if (HudCombo(ref hud, forJob: false))
             changed = true;
         ImGui.TableNextColumn();
-        if (MacroList(list))
+        if (widgets.StepList(list, label, step => AddToGroup(group, step)))
             changed = true;
 
         if (changed)
@@ -120,7 +152,7 @@ internal sealed class ConfigWindow : Window
             if (hud == null && list.Count == 0)
                 config.Groups.Remove(group);
             else
-                config.Groups[group] = new Profile { HudLayout = hud, Macros = list.Count > 0 ? list : null };
+                config.Groups[group] = new Profile { HudLayout = hud, Steps = list.Count > 0 ? list : null };
         }
 
         ImGui.PopID();
@@ -179,16 +211,16 @@ internal sealed class ConfigWindow : Window
             // Ticked: the group's macros. Unticked: this job's own list, starting as a copy
             // of the group's; an empty list runs none.
             ImGui.TableNextColumn();
-            var useGroup = profile.Macros == null;
-            if (ImGui.Checkbox("Use group's macros", ref useGroup))
+            var useGroup = profile.Steps == null;
+            if (ImGui.Checkbox("Use group's list", ref useGroup))
             {
-                profile.Macros = useGroup ? null : new List<uint>(fromGroup?.Macros ?? []);
+                profile.Steps = useGroup ? null : (fromGroup?.Steps ?? []).Select(s => s.Copy()).ToList();
                 changed = true;
             }
-            if (profile.Macros == null)
-                ImGui.TextDisabled(MacroNames(fromGroup?.Macros));
+            if (profile.Steps == null)
+                ImGui.TextDisabled(widgets.StepNames(fromGroup?.Steps));
             else
-                changed |= MacroList(profile.Macros);
+                changed |= widgets.StepList(profile.Steps, JobGroups.DisplayName(job), step => (profile.Steps ??= []).Add(step));
         }
         else
         {
@@ -198,11 +230,19 @@ internal sealed class ConfigWindow : Window
             ImGui.TextDisabled(fromGroup?.HudLayout is { } layout ? Layouts[layout] : "—");
             ImGui.TableNextColumn();
             ImGui.AlignTextToFramePadding();
-            ImGui.TextDisabled(MacroNames(fromGroup?.Macros));
+            ImGui.TextDisabled(widgets.StepNames(fromGroup?.Steps));
         }
 
         ImGui.PopID();
         return changed;
+    }
+
+    // A step picked for a group goes into its saved profile, made if it has none yet.
+    private void AddToGroup(JobGroup group, Step step)
+    {
+        if (!config.Groups.TryGetValue(group, out var profile))
+            config.Groups[group] = profile = new Profile();
+        (profile.Steps ??= []).Add(step);
     }
 
     // Groups: Don't change, Layout 1–4. Jobs also get Use group first.
@@ -215,101 +255,6 @@ internal sealed class ConfigWindow : Window
         for (var i = 0; i < Layouts.Length; i++)
             options.Add((i, Layouts[i]));
 
-        return Combo("##hud", ref value, options);
-    }
-
-    // The macros run in order: a dropdown and remove button for each, then Add macro.
-    private bool MacroList(List<uint> list)
-    {
-        var changed = false;
-        int? remove = null;
-        var removeWidth = ImGui.GetFrameHeight();
-        for (var i = 0; i < list.Count; i++)
-        {
-            ImGui.PushID(i);
-            var id = list[i];
-            if (MacroCombo(ref id, ImGui.GetContentRegionAvail().X - removeWidth - ImGui.GetStyle().ItemSpacing.X))
-            {
-                list[i] = id;
-                changed = true;
-            }
-            ImGui.SameLine();
-            if (ImGuiComponents.IconButton(FontAwesomeIcon.Times))
-                remove = i;
-            if (ImGui.IsItemHovered())
-                ImGui.SetTooltip("Remove this macro");
-            ImGui.PopID();
-        }
-
-        if (remove is { } index)
-        {
-            list.RemoveAt(index);
-            changed = true;
-        }
-
-        // Starts on your first macro; pick another from its dropdown.
-        if (ImGui.SmallButton("Add macro") && macros.Count > 0)
-        {
-            list.Add(macros[0].Id);
-            changed = true;
-        }
-        if (macros.Count == 0 && ImGui.IsItemHovered())
-            ImGui.SetTooltip("You don't have any macros yet.");
-
-        return changed;
-    }
-
-    // Your macros. A picked macro whose slot has since been cleared stays listed so the
-    // choice isn't silently lost.
-    private bool MacroCombo(ref uint value, float width)
-    {
-        var options = macros.Select(m => (m.Id, m.Name)).ToList();
-        var current = value;
-        if (macros.All(m => m.Id != current))
-            options.Add((current, $"{Actions.MacroName(current)} (empty)"));
-
-        return Combo("##macro", ref value, options, searchable: true, width: width);
-    }
-
-    // The group's macros, as a job that uses them shows them.
-    private static string MacroNames(List<uint>? list) =>
-        list is { Count: > 0 } ? string.Join(", ", list.Select(Actions.MacroName)) : "—";
-
-    private bool Combo<T>(string id, ref T value, List<(T Value, string Label)> options, bool searchable = false,
-                          float width = -1)
-    {
-        var current = value;
-        var selected = Math.Max(0, options.FindIndex(o => EqualityComparer<T>.Default.Equals(o.Value, current)));
-        var changed = false;
-        ImGui.SetNextItemWidth(width);
-        if (ImGui.BeginCombo(id, options[selected].Label, searchable ? ImGuiComboFlags.HeightLarge : ImGuiComboFlags.None))
-        {
-            // A search box at the top, empty and focused each time the list opens.
-            if (searchable)
-            {
-                if (ImGui.IsWindowAppearing())
-                {
-                    search = string.Empty;
-                    ImGui.SetKeyboardFocusHere();
-                }
-                ImGui.SetNextItemWidth(-1);
-                ImGui.InputTextWithHint("##search", "Search", ref search, 64);
-            }
-
-            for (var i = 0; i < options.Count; i++)
-            {
-                if (search.Length > 0 && searchable &&
-                    !options[i].Label.Contains(search, StringComparison.CurrentCultureIgnoreCase))
-                    continue;
-                if (ImGui.Selectable($"{options[i].Label}##{i}", i == selected) && i != selected)
-                {
-                    value = options[i].Value;
-                    changed = true;
-                }
-            }
-            ImGui.EndCombo();
-        }
-
-        return changed;
+        return widgets.Combo("##hud", ref value, options);
     }
 }

@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Plugin.Services;
 
 namespace JobProfiles;
@@ -16,38 +15,24 @@ internal sealed class ProfileWatcher : IDisposable
     private const long AfterJobChangeMs = 500;
     private const long AfterLoginMs = 3000;
 
-    private static readonly ConditionFlag[] Waiting =
-    [
-        ConditionFlag.BetweenAreas,
-        ConditionFlag.BetweenAreas51,
-        ConditionFlag.WatchingCutscene,
-        ConditionFlag.WatchingCutscene78,
-        ConditionFlag.OccupiedInCutSceneEvent,
-        ConditionFlag.LoggingOut,
-    ];
-
     private readonly IFramework framework;
     private readonly IPlayerState player;
-    private readonly ICondition condition;
     private readonly Configuration config;
     private readonly JobGroups groups;
-    private readonly Actions actions;
+    private readonly MacroRunner runner;
 
     // 0 = not logged in (or turned off), so the next job seen counts as a login.
     private uint lastJob;
     private long? applyAt;
-    // The profile's macros still to run, one per frame once the one before has finished.
-    private readonly Queue<uint> macroQueue = new();
 
-    public ProfileWatcher(IFramework framework, IPlayerState player, ICondition condition, Configuration config,
-                          JobGroups groups, Actions actions)
+    public ProfileWatcher(IFramework framework, IPlayerState player, Configuration config, JobGroups groups,
+                          MacroRunner runner)
     {
         this.framework = framework;
         this.player = player;
-        this.condition = condition;
         this.config = config;
         this.groups = groups;
-        this.actions = actions;
+        this.runner = runner;
         framework.Update += OnUpdate;
     }
 
@@ -57,7 +42,7 @@ internal sealed class ProfileWatcher : IDisposable
     public void ApplyNow() => applyAt = Environment.TickCount64;
 
     /// <summary>The job's group profile with its override on top. Null HUD layout = don't change.</summary>
-    public (int? HudLayout, List<uint> Macros) Resolve(uint classJobId)
+    public (int? HudLayout, List<Step> Steps) Resolve(uint classJobId)
     {
         if (groups.Of(classJobId) is not var (abbreviation, group))
             return (null, []);
@@ -65,8 +50,8 @@ internal sealed class ProfileWatcher : IDisposable
         config.Groups.TryGetValue(group, out var forGroup);
         config.Jobs.TryGetValue(abbreviation, out var forJob);
         var hud = forJob?.HudLayout ?? forGroup?.HudLayout;
-        var macros = forJob?.Macros ?? forGroup?.Macros ?? [];
-        return (hud is >= 0 ? hud : null, macros);
+        var steps = forJob?.Steps ?? forGroup?.Steps ?? [];
+        return (hud is >= 0 ? hud : null, steps);
     }
 
     private void OnUpdate(IFramework _)
@@ -75,7 +60,6 @@ internal sealed class ProfileWatcher : IDisposable
         {
             lastJob = 0;
             applyAt = null;
-            macroQueue.Clear();
             return;
         }
 
@@ -84,7 +68,7 @@ internal sealed class ProfileWatcher : IDisposable
         if (job != lastJob)
         {
             // The old job's macros that haven't run yet are dropped.
-            macroQueue.Clear();
+            runner.Clear();
             if (lastJob != 0)
                 applyAt = now + AfterJobChangeMs;
             else if (config.ApplyOnLogin)
@@ -92,22 +76,13 @@ internal sealed class ProfileWatcher : IDisposable
             lastJob = job;
         }
 
-        if (condition.Any(Waiting) || Actions.MacroRunning())
+        if (applyAt is not { } at || now < at || runner.Busy)
             return;
 
-        if (applyAt is { } at && now >= at)
-        {
-            applyAt = null;
-            macroQueue.Clear();
-            var (hud, macros) = Resolve(job);
-            if (hud is { } layout)
-                Actions.ChangeHudLayout(layout);
-            foreach (var macro in macros)
-                macroQueue.Enqueue(macro);
-        }
-
-        // One macro per frame, so the next only starts once the game has picked this one up.
-        if (macroQueue.TryDequeue(out var next))
-            actions.RunMacro(next);
+        applyAt = null;
+        var (hud, steps) = Resolve(job);
+        if (hud is { } layout)
+            Actions.ChangeHudLayout(layout);
+        runner.Enqueue(steps);
     }
 }

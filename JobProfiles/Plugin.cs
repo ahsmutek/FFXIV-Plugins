@@ -4,6 +4,7 @@ using Dalamud.Interface.Windowing;
 using Dalamud.IoC;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
+using Shortcuts;
 
 namespace JobProfiles;
 
@@ -33,12 +34,24 @@ public sealed class Plugin : IDalamudPlugin
     private static ITextureProvider Textures { get; set; } = null!;
 
     [PluginService]
-    private static IToastGui Toasts { get; set; } = null!;
+    private static IClientState ClientState { get; set; } = null!;
+
+    [PluginService]
+    private static IGamepadState Gamepad { get; set; } = null!;
+
+    [PluginService]
+    private static IKeyState KeyState { get; set; } = null!;
+
+    [PluginService]
+    private static IBuddyList Buddies { get; set; } = null!;
 
     private readonly Configuration config;
     private readonly WindowSystem windows = new("JobProfiles");
     private readonly ConfigWindow configWindow;
+    private readonly IconCache icons;
+    private readonly MacroRunner runner;
     private readonly ProfileWatcher watcher;
+    private readonly BindingWatcher bindings;
 
     public Plugin()
     {
@@ -47,9 +60,16 @@ public sealed class Plugin : IDalamudPlugin
             Save();
 
         var groups = new JobGroups(Data);
-        watcher = new ProfileWatcher(Framework, PlayerState, Condition, config, groups, new Actions(Toasts));
+        var duties = new Duties(ClientState, Data);
+        var catalog = new ShortcutCatalog(Data, CommandManager, Buddies);
+        icons = new IconCache(Data, Textures);
+        runner = new MacroRunner(Framework, Condition, catalog);
+        watcher = new ProfileWatcher(Framework, PlayerState, config, groups, runner);
+        bindings = new BindingWatcher(Framework, Gamepad, KeyState, PlayerState, config, groups, duties, runner);
 
-        configWindow = new ConfigWindow(config, Save, groups, PlayerState, Textures, watcher.ApplyNow);
+        var widgets = new Widgets(catalog, new ShortcutPicker(catalog, icons), icons);
+        var buttonsTab = new ButtonsTab(config, groups, duties, bindings, widgets, KeyState);
+        configWindow = new ConfigWindow(config, Save, groups, PlayerState, Textures, watcher.ApplyNow, widgets, buttonsTab);
         windows.AddWindow(configWindow);
         PluginInterface.UiBuilder.Draw += windows.Draw;
         PluginInterface.UiBuilder.OpenConfigUi += configWindow.Toggle;
@@ -79,6 +99,9 @@ public sealed class Plugin : IDalamudPlugin
         PluginInterface.UiBuilder.OpenConfigUi -= configWindow.Toggle;
         PluginInterface.UiBuilder.OpenMainUi -= configWindow.Toggle;
         windows.RemoveAllWindows();
+        bindings.Dispose();
         watcher.Dispose();
+        runner.Dispose();
+        icons.Dispose();
     }
 }
