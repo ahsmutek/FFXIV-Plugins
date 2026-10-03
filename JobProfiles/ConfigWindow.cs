@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
+using Dalamud.Interface;
+using Dalamud.Interface.Components;
 using Dalamud.Interface.Textures;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin.Services;
@@ -104,21 +106,21 @@ internal sealed class ConfigWindow : Window
 
         config.Groups.TryGetValue(group, out var profile);
         var hud = profile?.HudLayout;
-        var macro = profile?.MacroId;
+        var list = profile?.Macros is { } saved ? new List<uint>(saved) : [];
 
         ImGui.TableNextColumn();
         if (HudCombo(ref hud, forJob: false))
             changed = true;
         ImGui.TableNextColumn();
-        if (MacroCombo(ref macro, forJob: false))
+        if (MacroList(list))
             changed = true;
 
         if (changed)
         {
-            if (hud == null && macro == null)
+            if (hud == null && list.Count == 0)
                 config.Groups.Remove(group);
             else
-                config.Groups[group] = new Profile { HudLayout = hud, MacroId = macro };
+                config.Groups[group] = new Profile { HudLayout = hud, Macros = list.Count > 0 ? list : null };
         }
 
         ImGui.PopID();
@@ -152,6 +154,7 @@ internal sealed class ConfigWindow : Window
             ImGui.SetTooltip(unlocked ? JobGroups.DisplayName(job) : $"{JobGroups.DisplayName(job)} (locked)");
         ImGui.Unindent();
 
+        config.Groups.TryGetValue(group, out var fromGroup);
         ImGui.TableNextColumn();
         var overridden = config.Jobs.TryGetValue(abbreviation, out var profile);
         if (ImGui.Checkbox("##override", ref overridden))
@@ -166,30 +169,36 @@ internal sealed class ConfigWindow : Window
         if (overridden && config.Jobs.TryGetValue(abbreviation, out profile))
         {
             var hud = profile.HudLayout;
-            var macro = profile.MacroId;
             ImGui.TableNextColumn();
             if (HudCombo(ref hud, forJob: true))
             {
                 profile.HudLayout = hud;
                 changed = true;
             }
+
+            // Ticked: the group's macros. Unticked: this job's own list, starting as a copy
+            // of the group's; an empty list runs none.
             ImGui.TableNextColumn();
-            if (MacroCombo(ref macro, forJob: true))
+            var useGroup = profile.Macros == null;
+            if (ImGui.Checkbox("Use group's macros", ref useGroup))
             {
-                profile.MacroId = macro;
+                profile.Macros = useGroup ? null : new List<uint>(fromGroup?.Macros ?? []);
                 changed = true;
             }
+            if (profile.Macros == null)
+                ImGui.TextDisabled(MacroNames(fromGroup?.Macros));
+            else
+                changed |= MacroList(profile.Macros);
         }
         else
         {
             // Show what the group gives this job.
-            config.Groups.TryGetValue(group, out var fromGroup);
             ImGui.TableNextColumn();
             ImGui.AlignTextToFramePadding();
             ImGui.TextDisabled(fromGroup?.HudLayout is { } layout ? Layouts[layout] : "—");
             ImGui.TableNextColumn();
             ImGui.AlignTextToFramePadding();
-            ImGui.TextDisabled(fromGroup?.MacroId is { } id ? Actions.MacroName(id) : "—");
+            ImGui.TextDisabled(MacroNames(fromGroup?.Macros));
         }
 
         ImGui.PopID();
@@ -209,27 +218,70 @@ internal sealed class ConfigWindow : Window
         return Combo("##hud", ref value, options);
     }
 
-    // Groups: None, then your macros. Jobs also get Use group first. A picked macro whose
-    // slot has since been cleared stays listed so the choice isn't silently lost.
-    private bool MacroCombo(ref uint? value, bool forJob)
+    // The macros run in order: a dropdown and remove button for each, then Add macro.
+    private bool MacroList(List<uint> list)
     {
-        var options = new List<(uint? Value, string Label)>();
-        if (forJob)
-            options.Add((null, "Use group"));
-        options.Add((forJob ? Profile.NoMacro : null, "None"));
-        options.AddRange(macros.Select(m => ((uint?)m.Id, m.Name)));
-        if (value is { } id && id != Profile.NoMacro && macros.All(m => m.Id != id))
-            options.Add((id, $"{Actions.MacroName(id)} (empty)"));
+        var changed = false;
+        int? remove = null;
+        var removeWidth = ImGui.GetFrameHeight();
+        for (var i = 0; i < list.Count; i++)
+        {
+            ImGui.PushID(i);
+            var id = list[i];
+            if (MacroCombo(ref id, ImGui.GetContentRegionAvail().X - removeWidth - ImGui.GetStyle().ItemSpacing.X))
+            {
+                list[i] = id;
+                changed = true;
+            }
+            ImGui.SameLine();
+            if (ImGuiComponents.IconButton(FontAwesomeIcon.Times))
+                remove = i;
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip("Remove this macro");
+            ImGui.PopID();
+        }
 
-        return Combo("##macro", ref value, options, searchable: true);
+        if (remove is { } index)
+        {
+            list.RemoveAt(index);
+            changed = true;
+        }
+
+        // Starts on your first macro; pick another from its dropdown.
+        if (ImGui.SmallButton("Add macro") && macros.Count > 0)
+        {
+            list.Add(macros[0].Id);
+            changed = true;
+        }
+        if (macros.Count == 0 && ImGui.IsItemHovered())
+            ImGui.SetTooltip("You don't have any macros yet.");
+
+        return changed;
     }
 
-    private bool Combo<T>(string id, ref T value, List<(T Value, string Label)> options, bool searchable = false)
+    // Your macros. A picked macro whose slot has since been cleared stays listed so the
+    // choice isn't silently lost.
+    private bool MacroCombo(ref uint value, float width)
+    {
+        var options = macros.Select(m => (m.Id, m.Name)).ToList();
+        var current = value;
+        if (macros.All(m => m.Id != current))
+            options.Add((current, $"{Actions.MacroName(current)} (empty)"));
+
+        return Combo("##macro", ref value, options, searchable: true, width: width);
+    }
+
+    // The group's macros, as a job that uses them shows them.
+    private static string MacroNames(List<uint>? list) =>
+        list is { Count: > 0 } ? string.Join(", ", list.Select(Actions.MacroName)) : "—";
+
+    private bool Combo<T>(string id, ref T value, List<(T Value, string Label)> options, bool searchable = false,
+                          float width = -1)
     {
         var current = value;
         var selected = Math.Max(0, options.FindIndex(o => EqualityComparer<T>.Default.Equals(o.Value, current)));
         var changed = false;
-        ImGui.SetNextItemWidth(-1);
+        ImGui.SetNextItemWidth(width);
         if (ImGui.BeginCombo(id, options[selected].Label, searchable ? ImGuiComboFlags.HeightLarge : ImGuiComboFlags.None))
         {
             // A search box at the top, empty and focused each time the list opens.

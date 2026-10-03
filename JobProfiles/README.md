@@ -18,19 +18,22 @@ change it: a gear set, `/gs`, the Flick Wheel, or another plugin.
 | Disciples of the Hand | CRP BSM ARM GSM LTW WVR ALC CUL |
 | Disciples of the Land | MIN BTN FSH |
 
-- Give a group a **HUD layout** (Layout 1–4, or Don't change) and/or a **macro**
-  (any individual or shared macro, or None). Type in the box at the top of the macro
-  list to search your macros by name.
-- Tick **Override** on a job to give it its own. Each of its two choices can stay on
-  **Use group**, or be set to Don't change / None to skip what the group would do.
+- Give a group a **HUD layout** (Layout 1–4, or Don't change) and any number of
+  **macros** (individual or shared). **Add macro** adds one, its dropdown picks which
+  (type in the box at the top to search by name), and **×** removes it.
+- Tick **Override** on a job to give it its own. Its HUD layout can stay on **Use group**
+  or be set to Don't change. Untick **Use group's macros** to give it its own list,
+  which starts as a copy of the group's; an empty list runs no macros.
 - A class uses its job's profile: Gladiator uses Paladin's, Conjurer uses White Mage's.
 - When the job changes, the HUD layout switches (if it isn't already the one in use),
-  then the macro runs. It waits until zoning, a cutscene or another running macro is over.
+  then the macros run in order, each once the one before has finished. It waits until
+  zoning, a cutscene or another running macro is over. Changing job again drops the
+  previous job's macros that haven't run yet.
 - **Also apply after logging in** applies your current job's profile once after login.
 - `/jobprofiles apply` (or **Apply now**) applies your current job's profile again.
-- If a picked macro's slot has been cleared, a toast says so and nothing runs.
+- If a picked macro's slot has been cleared, a toast says so and that macro is skipped.
 
-The macro can do anything a macro can, e.g. `/hudlayout`, `/gs`, `/echo`, or plugin
+A macro can do anything a macro can, e.g. `/hudlayout`, `/gs`, `/echo`, or plugin
 commands such as `/cbarding job`.
 
 ## Build

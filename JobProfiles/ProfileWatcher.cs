@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Plugin.Services;
 
@@ -35,6 +36,8 @@ internal sealed class ProfileWatcher : IDisposable
     // 0 = not logged in (or turned off), so the next job seen counts as a login.
     private uint lastJob;
     private long? applyAt;
+    // The profile's macros still to run, one per frame once the one before has finished.
+    private readonly Queue<uint> macroQueue = new();
 
     public ProfileWatcher(IFramework framework, IPlayerState player, ICondition condition, Configuration config,
                           JobGroups groups, Actions actions)
@@ -53,21 +56,17 @@ internal sealed class ProfileWatcher : IDisposable
     /// <summary>Applies the current job's profile as soon as nothing is in the way.</summary>
     public void ApplyNow() => applyAt = Environment.TickCount64;
 
-    /// <summary>The job's group profile with its override on top. Null fields = do nothing.</summary>
-    public Profile Resolve(uint classJobId)
+    /// <summary>The job's group profile with its override on top. Null HUD layout = don't change.</summary>
+    public (int? HudLayout, List<uint> Macros) Resolve(uint classJobId)
     {
         if (groups.Of(classJobId) is not var (abbreviation, group))
-            return new Profile();
+            return (null, []);
 
         config.Groups.TryGetValue(group, out var forGroup);
         config.Jobs.TryGetValue(abbreviation, out var forJob);
         var hud = forJob?.HudLayout ?? forGroup?.HudLayout;
-        var macro = forJob?.MacroId ?? forGroup?.MacroId;
-        return new Profile
-        {
-            HudLayout = hud is >= 0 ? hud : null,
-            MacroId = macro == Profile.NoMacro ? null : macro,
-        };
+        var macros = forJob?.Macros ?? forGroup?.Macros ?? [];
+        return (hud is >= 0 ? hud : null, macros);
     }
 
     private void OnUpdate(IFramework _)
@@ -76,6 +75,7 @@ internal sealed class ProfileWatcher : IDisposable
         {
             lastJob = 0;
             applyAt = null;
+            macroQueue.Clear();
             return;
         }
 
@@ -83,6 +83,8 @@ internal sealed class ProfileWatcher : IDisposable
         var job = player.ClassJob.RowId;
         if (job != lastJob)
         {
+            // The old job's macros that haven't run yet are dropped.
+            macroQueue.Clear();
             if (lastJob != 0)
                 applyAt = now + AfterJobChangeMs;
             else if (config.ApplyOnLogin)
@@ -90,14 +92,22 @@ internal sealed class ProfileWatcher : IDisposable
             lastJob = job;
         }
 
-        if (applyAt is not { } at || now < at || condition.Any(Waiting) || Actions.MacroRunning())
+        if (condition.Any(Waiting) || Actions.MacroRunning())
             return;
 
-        applyAt = null;
-        var profile = Resolve(job);
-        if (profile.HudLayout is { } layout)
-            Actions.ChangeHudLayout(layout);
-        if (profile.MacroId is { } macro)
-            actions.RunMacro(macro);
+        if (applyAt is { } at && now >= at)
+        {
+            applyAt = null;
+            macroQueue.Clear();
+            var (hud, macros) = Resolve(job);
+            if (hud is { } layout)
+                Actions.ChangeHudLayout(layout);
+            foreach (var macro in macros)
+                macroQueue.Enqueue(macro);
+        }
+
+        // One macro per frame, so the next only starts once the game has picked this one up.
+        if (macroQueue.TryDequeue(out var next))
+            actions.RunMacro(next);
     }
 }

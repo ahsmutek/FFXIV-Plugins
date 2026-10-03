@@ -43,6 +43,8 @@ public sealed class Plugin : IDalamudPlugin
     public Plugin()
     {
         config = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
+        if (config.Migrate())
+            Save();
 
         var groups = new JobGroups(Data);
         watcher = new ProfileWatcher(Framework, PlayerState, Condition, config, groups, new Actions(Toasts));
