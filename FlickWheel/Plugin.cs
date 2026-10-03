@@ -6,6 +6,8 @@ using Dalamud.IoC;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
 
+using Shortcuts;
+
 namespace FlickWheel;
 
 public sealed class Plugin : IDalamudPlugin

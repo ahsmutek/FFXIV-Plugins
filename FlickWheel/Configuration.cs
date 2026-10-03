@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Dalamud.Configuration;
 using Dalamud.Game.ClientState.GamePad;
 using Dalamud.Game.ClientState.Keys;
+using Shortcuts;
 
 namespace FlickWheel;
 
@@ -27,20 +28,7 @@ public sealed class Hotkey
     public VirtualKey Key { get; set; }
 }
 
-public enum ShortcutKind
-{
-    MainCommand,   // opens a game window, like the main menu does (MainCommand row)
-    GeneralAction, // Teleport, Return, Sprint… (GeneralAction row)
-    Action,        // an action used from the hotbar, e.g. the Aether Compass (Action row)
-    Item,          // uses an item from your bags (Item row)
-    Command,       // runs a plugin's chat command, e.g. /cbarding job
-    Macro,         // runs one of your macros (RowId 0–99 individual slot, 100–199 shared slot)
-    Toggle,        // one of Flick Wheel's own toggles (see ShortcutCatalog.Toggles)
-    Window,        // opens a game window the main menu doesn't list, e.g. Wondrous Tails (see ShortcutCatalog.Windows)
-    BuddyAction,   // a chocobo command: Follow, the stances, Withdraw (BuddyAction row)
-}
-
-public sealed class ShortcutEntry
+public sealed class ShortcutEntry : IShortcut
 {
     // Stable id so the settings can keep hold of an entry while it's dragged around.
     public string Uid { get; set; } = Guid.NewGuid().ToString("N");

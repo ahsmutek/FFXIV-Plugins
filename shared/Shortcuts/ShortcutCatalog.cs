@@ -4,6 +4,7 @@ using System.Linq;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.Game.UI;
+using FFXIVClientStructs.FFXIV.Client.System.String;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using FFXIVClientStructs.FFXIV.Client.UI.Misc;
@@ -11,7 +12,7 @@ using FFXIVClientStructs.FFXIV.Client.UI.Shell;
 using Lumina.Excel.Sheets;
 using LuminaAction = Lumina.Excel.Sheets.Action;
 
-namespace FlickWheel;
+namespace Shortcuts;
 
 // Something the picker offers: what it would add, and how it's listed.
 internal readonly record struct ShortcutChoice(ShortcutKind Kind, uint RowId, string Name, uint IconId, string Category);
@@ -43,11 +44,12 @@ internal sealed class ShortcutCatalog
     private readonly IDataManager data;
     private readonly ICommandManager commands;
     private readonly IBuddyList buddies;
-    private readonly ChatLogToggle chatLog;
+    // Flick Wheel's chat log toggle; null in plugins that don't offer it.
+    private readonly ChatLogToggle? chatLog;
     // Main menu icons are a gold glyph on a red tile; those get keyed out to match the job glyphs.
     private readonly HashSet<uint> menuIcons;
 
-    public ShortcutCatalog(IDataManager data, ICommandManager commands, IBuddyList buddies, ChatLogToggle chatLog)
+    public ShortcutCatalog(IDataManager data, ICommandManager commands, IBuddyList buddies, ChatLogToggle? chatLog = null)
     {
         this.data = data;
         this.commands = commands;
@@ -57,7 +59,7 @@ internal sealed class ShortcutCatalog
     }
 
     /// <summary>The name and icon an entry shows with, or null if its row doesn't exist.</summary>
-    public unsafe (string Name, uint IconId, bool KeyOutIcon)? Describe(ShortcutEntry entry)
+    public unsafe (string Name, uint IconId, bool KeyOutIcon)? Describe(IShortcut entry)
     {
         (string Name, uint Icon)? found = entry.Kind switch
         {
@@ -69,9 +71,9 @@ internal sealed class ShortcutCatalog
                 ? (ActionName(row), (uint)row.Icon) : null,
             ShortcutKind.Item => data.GetExcelSheet<Item>().TryGetRow(entry.RowId, out var row)
                 ? (row.Name.ExtractText(), (uint)row.Icon) : null,
-            ShortcutKind.Command => (entry.Command ?? string.Empty, 0u),
+            ShortcutKind.Command or ShortcutKind.Text => (entry.Command?.Trim() ?? string.Empty, 0u),
             ShortcutKind.Macro => entry.RowId < MacroSlots * 2 ? DescribeMacro(entry.RowId) : null,
-            ShortcutKind.Toggle => entry.RowId == ChatLogToggleRow
+            ShortcutKind.Toggle => entry.RowId == ChatLogToggleRow && chatLog != null
                 ? (chatLog.Hidden ? "Show chat log" : "Hide chat log", ChatLogIcon) : null,
             ShortcutKind.Window => entry.RowId < Windows.Length
                 ? (WindowName(entry.RowId), Windows[entry.RowId].Icon) : null,
@@ -89,7 +91,7 @@ internal sealed class ShortcutCatalog
     }
 
     /// <summary>Whether the entry can be used now: the menu is unlocked, the plugin command exists.</summary>
-    public unsafe bool Available(ShortcutEntry entry)
+    public unsafe bool Available(IShortcut entry)
     {
         switch (entry.Kind)
         {
@@ -98,6 +100,8 @@ internal sealed class ShortcutCatalog
                 return ui != null && ui->IsMainCommandUnlocked(entry.RowId);
             case ShortcutKind.Command:
                 return CommandName(entry.Command) is { } name && commands.Commands.ContainsKey(name);
+            case ShortcutKind.Text:
+                return entry.Command?.TrimStart().StartsWith('/') == true;
             case ShortcutKind.Macro:
                 var macro = MacroOf(entry.RowId);
                 return macro != null && macro->IsNotEmpty();
@@ -112,7 +116,7 @@ internal sealed class ShortcutCatalog
     }
 
     /// <summary>How many of an item you have (normal and high quality), or null for other kinds.</summary>
-    public unsafe int? Count(ShortcutEntry entry)
+    public unsafe int? Count(IShortcut entry)
     {
         if (entry.Kind != ShortcutKind.Item)
             return null;
@@ -122,7 +126,7 @@ internal sealed class ShortcutCatalog
         return inventory->GetInventoryItemCount(entry.RowId) + inventory->GetInventoryItemCount(entry.RowId, true);
     }
 
-    public unsafe void Run(ShortcutEntry entry)
+    public unsafe void Run(IShortcut entry)
     {
         switch (entry.Kind)
         {
@@ -149,13 +153,17 @@ internal sealed class ShortcutCatalog
                 if (!string.IsNullOrWhiteSpace(entry.Command))
                     commands.ProcessCommand(entry.Command.Trim());
                 break;
+            case ShortcutKind.Text:
+                if (entry.Command is { } line)
+                    RunLine(line);
+                break;
             case ShortcutKind.Macro:
                 var macro = MacroOf(entry.RowId);
                 var shell = RaptureShellModule.Instance();
                 if (macro != null && macro->IsNotEmpty() && shell != null)
                     shell->ExecuteMacro(macro);
                 break;
-            case ShortcutKind.Toggle when entry.RowId == ChatLogToggleRow:
+            case ShortcutKind.Toggle when entry.RowId == ChatLogToggleRow && chatLog != null:
                 chatLog.Toggle();
                 break;
             case ShortcutKind.Window when entry.RowId < Windows.Length:
@@ -209,7 +217,8 @@ internal sealed class ShortcutCatalog
         var chocobo = data.GetExcelSheet<BuddyAction>()
                           .Where(row => row.Icon > 0 && row.Name.ExtractText().Length > 0)
                           .Select(row => new ShortcutChoice(ShortcutKind.BuddyAction, row.RowId, row.Name.ExtractText(), (uint)row.Icon, "Companion"));
-        var toggles = new[] { new ShortcutChoice(ShortcutKind.Toggle, ChatLogToggleRow, "Hide or show chat log", ChatLogIcon, "Flick Wheel") };
+        var toggles = chatLog == null ? []
+            : new[] { new ShortcutChoice(ShortcutKind.Toggle, ChatLogToggleRow, "Hide or show chat log", ChatLogIcon, "Toggles") };
         return general.Concat(chocobo).Concat(other).Concat(toggles).ToList();
     }
 
@@ -255,6 +264,25 @@ internal sealed class ShortcutCatalog
     }
 
     public List<string> PluginCommands() => commands.Commands.Keys.Order().ToList();
+
+    /// <summary>Whether the line starts with a command a loaded plugin registered.</summary>
+    public bool IsPluginCommand(string? line) => CommandName(line) is { } name && commands.Commands.ContainsKey(name);
+
+    // A line as if typed in chat: a plugin's command through Dalamud, anything else through
+    // the game. Only lines starting with / run, so nothing is ever said in chat by accident.
+    private unsafe void RunLine(string line)
+    {
+        line = line.Trim();
+        if (!line.StartsWith('/') || commands.ProcessCommand(line))
+            return;
+
+        var ui = UIModule.Instance();
+        if (ui == null)
+            return;
+        var text = Utf8String.FromString(line);
+        ui->ProcessChatBoxEntry(text);
+        text->Dtor(true);
+    }
 
     // "the Aether Compass" → "Aether Compass".
     private static string ActionName(LuminaAction row)

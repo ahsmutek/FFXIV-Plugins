@@ -4,6 +4,8 @@ using System.Linq;
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
 
+using Shortcuts;
+
 namespace FlickWheel;
 
 // The Shortcuts settings tab: color style, then each group with its shortcuts.
@@ -44,7 +46,11 @@ internal sealed class ShortcutsSettings(Configuration config, ShortcutCatalog ca
         }
 
         if (addTo != null)
-            picker.Open(addTo);
+            picker.Open(addTo.Name, shortcut => addTo.Entries.Add(new ShortcutEntry
+            {
+                Kind = shortcut.Kind, RowId = shortcut.RowId, Command = shortcut.Command, Label = shortcut.Label,
+                IconId = shortcut.IconId,
+            }));
         changed |= picker.Draw();
 
         if (changed)
@@ -177,6 +183,7 @@ internal sealed class ShortcutsSettings(Configuration config, ShortcutCatalog ca
         var tooltip = available ? info.Name : entry.Kind switch
         {
             ShortcutKind.Command => $"{info.Name} (the plugin for this command isn't loaded)",
+            ShortcutKind.Text => $"{info.Name} (commands have to start with /)",
             ShortcutKind.Macro => $"{info.Name} (this macro slot is empty)",
             ShortcutKind.Window => $"{info.Name} (you don't have the journal this week)",
             ShortcutKind.BuddyAction => $"{info.Name} (your chocobo isn't out)",
@@ -209,7 +216,7 @@ internal sealed class ShortcutsSettings(Configuration config, ShortcutCatalog ca
             changed = true;
         }
 
-        if (entry.Kind == ShortcutKind.Command)
+        if (entry.Kind is ShortcutKind.Command or ShortcutKind.Text)
         {
             var command = entry.Command ?? string.Empty;
             ImGui.SetNextItemWidth(200f);

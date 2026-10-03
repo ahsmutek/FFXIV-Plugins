@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 
+using Shortcuts;
+
 namespace FlickWheel;
 
 // A wheel of your own shortcuts: game windows, Teleport and other general actions,

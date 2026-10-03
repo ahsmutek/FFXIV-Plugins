@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using System.Linq;
 
+using Shortcuts;
+
 namespace FlickWheel;
 
 // The combat and crafting & gathering wheels: every job in a fixed, role-grouped spot,

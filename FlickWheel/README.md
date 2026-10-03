@@ -107,8 +107,9 @@ In the **Shortcuts** settings tab:
   - **Macros** – your individual and shared macros, with their own name and icon. Handy for
     things only a macro can do, like `/hudlayout 2`. The shortcut remembers the macro's slot, so
     editing the macro changes what it does; if you clear the slot, the shortcut shows dimmed.
-  - **Commands** – any plugin command, with your own label and icon ID. It only shows on the
-    wheel while that plugin is loaded.
+  - **Commands** – any chat command, with your own label and icon ID: a game command like
+    `/gs change 3` or `/hudlayout 2`, or a plugin's, like `/cbarding job`. A plugin's command
+    only shows on the wheel while that plugin is loaded.
 - Drag a shortcut sideways to reorder it. Right-click it to change its label or icon,
   move it to another group, or remove it.
 - Each group has a name, a color, arrows to move it around the wheel, and **Pin to top**.

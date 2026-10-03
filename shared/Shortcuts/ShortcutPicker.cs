@@ -4,14 +4,16 @@ using System.Numerics;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Utility;
 
-namespace FlickWheel;
+namespace Shortcuts;
 
-// The add-a-shortcut popup: tabs for game windows, actions, items, macros and plugin commands.
+// The add-a-shortcut popup: tabs for game windows, actions, items, macros and commands. What
+// was picked is handed back, for each plugin to store its own way.
 internal sealed class ShortcutPicker(ShortcutCatalog catalog, IconCache icons)
 {
     private const string Popup = "##addShortcut";
 
-    private ShortcutGroup? target;
+    private string? targetName;
+    private Action<PickedShortcut>? add;
     private string search = string.Empty;
     // Commands tab fields.
     private string newLabel = string.Empty;
@@ -24,9 +26,10 @@ internal sealed class ShortcutPicker(ShortcutCatalog catalog, IconCache icons)
     private List<ShortcutChoice> macros = [];
 
     // Call at the same ImGui ID level as Draw, or the popup won't find its opener.
-    public void Open(ShortcutGroup group)
+    public void Open(string name, Action<PickedShortcut> onPick)
     {
-        target = group;
+        targetName = name;
+        add = onPick;
         search = string.Empty;
         items = catalog.Items();
         macros = catalog.Macros();
@@ -39,7 +42,7 @@ internal sealed class ShortcutPicker(ShortcutCatalog catalog, IconCache icons)
         if (!ImGui.BeginPopup(Popup))
             return false;
 
-        if (target == null)
+        if (add == null)
         {
             ImGui.CloseCurrentPopup();
             ImGui.EndPopup();
@@ -50,7 +53,7 @@ internal sealed class ShortcutPicker(ShortcutCatalog catalog, IconCache icons)
         // otherwise wrapped text would stretch the popup across the screen.
         var changed = false;
         ImGui.BeginChild("##pickerBody", new Vector2(600f, 500f) * ImGuiHelpers.GlobalScale);
-        ImGui.TextDisabled($"Add to {(target.Name.Length > 0 ? target.Name : "this group")}");
+        ImGui.TextDisabled($"Add to {(string.IsNullOrEmpty(targetName) ? "this list" : targetName)}");
         ImGui.SetNextItemWidth(-1);
         ImGui.InputTextWithHint("##search", "Search", ref search, 64);
 
@@ -114,7 +117,7 @@ internal sealed class ShortcutPicker(ShortcutCatalog catalog, IconCache icons)
             ImGui.AlignTextToFramePadding();
             if (ImGui.Selectable($"{choice.Name}##{choice.Kind}-{choice.RowId}"))
             {
-                target!.Entries.Add(new ShortcutEntry { Kind = choice.Kind, RowId = choice.RowId });
+                add!(new PickedShortcut(choice.Kind, choice.RowId));
                 changed = true;
                 ImGui.CloseCurrentPopup();
             }
@@ -132,11 +135,11 @@ internal sealed class ShortcutPicker(ShortcutCatalog catalog, IconCache icons)
     private bool DrawCommandForm()
     {
         var changed = false;
-        ImGui.TextWrapped("Runs a plugin's command, like /cbarding job. It only shows on the wheel while that plugin is loaded.");
+        ImGui.TextWrapped("Runs a command as if typed in chat: a game command like /gs change 3 or /hudlayout 2, or a plugin's, like /cbarding job. A plugin's command only shows while that plugin is loaded.");
         ImGui.SetNextItemWidth(-90f);
         ImGui.InputTextWithHint("Command", "/command arguments", ref newCommand, 128);
         ImGui.SetNextItemWidth(-90f);
-        ImGui.InputTextWithHint("Label", "Shown in the middle of the wheel", ref newLabel, 64);
+        ImGui.InputTextWithHint("Label", "Name to show instead of the command", ref newLabel, 64);
         ImGui.SetNextItemWidth(-90f);
         ImGui.InputInt("Icon ID", ref newIcon);
         newIcon = Math.Max(0, newIcon);
@@ -149,13 +152,11 @@ internal sealed class ShortcutPicker(ShortcutCatalog catalog, IconCache icons)
         ImGui.BeginDisabled(newCommand.Trim().Length == 0 || !newCommand.TrimStart().StartsWith('/'));
         if (ImGui.Button("Add"))
         {
-            target!.Entries.Add(new ShortcutEntry
-            {
-                Kind = ShortcutKind.Command,
-                Command = newCommand.Trim(),
-                Label = newLabel.Trim().Length > 0 ? newLabel.Trim() : null,
-                IconId = (uint)newIcon,
-            });
+            // A loaded plugin's command only shows while that plugin is loaded; anything else
+            // is sent as typed, so game commands (/gs, /hudlayout, /wait…) work too.
+            var command = newCommand.Trim();
+            add!(new PickedShortcut(catalog.IsPluginCommand(command) ? ShortcutKind.Command : ShortcutKind.Text, 0, command,
+                                    newLabel.Trim().Length > 0 ? newLabel.Trim() : null, (uint)newIcon));
             newCommand = newLabel = string.Empty;
             newIcon = 0;
             changed = true;

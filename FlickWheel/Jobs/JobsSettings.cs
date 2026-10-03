@@ -3,6 +3,8 @@ using System.Linq;
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
 
+using Shortcuts;
+
 namespace FlickWheel;
 
 // The Job layout and Gear sets settings tabs.

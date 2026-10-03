@@ -4,6 +4,8 @@ using System.Linq;
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
 
+using Shortcuts;
+
 namespace FlickWheel;
 
 // Draws the wheel straight onto a draw list: no window, no focus, nothing to click.

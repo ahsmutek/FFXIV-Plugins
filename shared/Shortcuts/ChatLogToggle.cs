@@ -4,7 +4,7 @@ using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 
-namespace FlickWheel;
+namespace Shortcuts;
 
 // Hides the game's chat log until toggled back. The game shows it again on its own (after
 // cutscenes, zoning, the HUD toggle), so it's re-hidden every frame while hidden. It comes

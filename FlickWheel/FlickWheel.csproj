@@ -6,4 +6,9 @@
     <PackageLicenseExpression>AGPL-3.0-or-later</PackageLicenseExpression>
     <IsPackable>false</IsPackable>
   </PropertyGroup>
+
+  <!-- Shortcut catalog, picker and icons, shared with Job Profiles. -->
+  <ItemGroup>
+    <Compile Include="../shared/Shortcuts/*.cs" LinkBase="shared/Shortcuts" />
+  </ItemGroup>
 </Project>
