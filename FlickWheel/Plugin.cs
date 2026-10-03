@@ -48,6 +48,9 @@ public sealed class Plugin : IDalamudPlugin
     [PluginService]
     private static IToastGui Toasts { get; set; } = null!;
 
+    [PluginService]
+    private static IBuddyList Buddies { get; set; } = null!;
+
     private readonly Configuration config;
     private readonly WindowSystem windows = new("FlickWheel");
     private readonly ConfigWindow configWindow;
@@ -72,7 +75,7 @@ public sealed class Plugin : IDalamudPlugin
         var switcher = new JobSwitcher(Condition, Toasts);
         wheels.Add(new JobsModule(config, catalog, switcher, icons, overlay));
         chatLog = new ChatLogToggle(Framework);
-        wheels.Add(new ShortcutsModule(config, Save, new ShortcutCatalog(Data, CommandManager, chatLog), icons, overlay));
+        wheels.Add(new ShortcutsModule(config, Save, new ShortcutCatalog(Data, CommandManager, Buddies, chatLog), icons, overlay));
 
         configWindow = new ConfigWindow(config, Save, wheels, overlay, KeyState);
         windows.AddWindow(configWindow);

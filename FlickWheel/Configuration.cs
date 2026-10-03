@@ -36,6 +36,8 @@ public enum ShortcutKind
     Command,       // runs a plugin's chat command, e.g. /cbarding job
     Macro,         // runs one of your macros (RowId 0–99 individual slot, 100–199 shared slot)
     Toggle,        // one of Flick Wheel's own toggles (see ShortcutCatalog.Toggles)
+    Window,        // opens a game window the main menu doesn't list, e.g. Wondrous Tails (see ShortcutCatalog.Windows)
+    BuddyAction,   // a chocobo command: Follow, the stances, Withdraw (BuddyAction row)
 }
 
 public sealed class ShortcutEntry

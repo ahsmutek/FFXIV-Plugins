@@ -178,6 +178,8 @@ internal sealed class ShortcutsSettings(Configuration config, ShortcutCatalog ca
         {
             ShortcutKind.Command => $"{info.Name} (the plugin for this command isn't loaded)",
             ShortcutKind.Macro => $"{info.Name} (this macro slot is empty)",
+            ShortcutKind.Window => $"{info.Name} (you don't have the journal this week)",
+            ShortcutKind.BuddyAction => $"{info.Name} (your chocobo isn't out)",
             _ => $"{info.Name} (locked)",
         };
         var texture = info.IconId != 0 ? icons.Handle(info.IconId, info.KeyOutIcon) : (ImTextureID?)null;

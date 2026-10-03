@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.Game;
+using FFXIVClientStructs.FFXIV.Client.Game.UI;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using FFXIVClientStructs.FFXIV.Client.UI.Misc;
@@ -29,16 +30,28 @@ internal sealed class ShortcutCatalog
     private const uint ChatLogToggleRow = 0;
     private const uint ChatLogIcon = 45;
 
+    // Game windows the main menu doesn't list, by RowId. Names come from the Addon sheet.
+    // The Mogpendium's icon is the one it has in the Collection (McGuffinUIData row 6).
+    private static readonly (AgentId Agent, uint NameRow, uint Icon)[] Windows =
+    [
+        (AgentId.WeeklyBingo, 5600, 25987),       // Wondrous Tails
+        (AgentId.MoogleCollection, 15870, 26067), // Mogpendium
+    ];
+    private const uint WondrousTailsRow = 0;
+    private const uint WondrousTailsJournal = 2002023; // EventItem row
+
     private readonly IDataManager data;
     private readonly ICommandManager commands;
+    private readonly IBuddyList buddies;
     private readonly ChatLogToggle chatLog;
     // Main menu icons are a gold glyph on a red tile; those get keyed out to match the job glyphs.
     private readonly HashSet<uint> menuIcons;
 
-    public ShortcutCatalog(IDataManager data, ICommandManager commands, ChatLogToggle chatLog)
+    public ShortcutCatalog(IDataManager data, ICommandManager commands, IBuddyList buddies, ChatLogToggle chatLog)
     {
         this.data = data;
         this.commands = commands;
+        this.buddies = buddies;
         this.chatLog = chatLog;
         menuIcons = data.GetExcelSheet<MainCommand>().Where(row => row.Icon > 0).Select(row => (uint)row.Icon).ToHashSet();
     }
@@ -60,6 +73,10 @@ internal sealed class ShortcutCatalog
             ShortcutKind.Macro => entry.RowId < MacroSlots * 2 ? DescribeMacro(entry.RowId) : null,
             ShortcutKind.Toggle => entry.RowId == ChatLogToggleRow
                 ? (chatLog.Hidden ? "Show chat log" : "Hide chat log", ChatLogIcon) : null,
+            ShortcutKind.Window => entry.RowId < Windows.Length
+                ? (WindowName(entry.RowId), Windows[entry.RowId].Icon) : null,
+            ShortcutKind.BuddyAction => data.GetExcelSheet<BuddyAction>().TryGetRow(entry.RowId, out var row)
+                ? (row.Name.ExtractText(), (uint)row.Icon) : null,
             _ => null,
         };
 
@@ -84,6 +101,11 @@ internal sealed class ShortcutCatalog
             case ShortcutKind.Macro:
                 var macro = MacroOf(entry.RowId);
                 return macro != null && macro->IsNotEmpty();
+            case ShortcutKind.Window when entry.RowId == WondrousTailsRow:
+                var player = PlayerState.Instance();
+                return player != null && player->HasWeeklyBingoJournal;
+            case ShortcutKind.BuddyAction:
+                return buddies.CompanionBuddy != null;
             default:
                 return true;
         }
@@ -115,6 +137,9 @@ internal sealed class ShortcutCatalog
             case ShortcutKind.Action:
                 ActionManager.Instance()->UseAction(ActionType.Action, entry.RowId);
                 break;
+            case ShortcutKind.BuddyAction:
+                ActionManager.Instance()->UseAction(ActionType.BuddyAction, entry.RowId);
+                break;
             case ShortcutKind.Item:
                 var agent = AgentInventoryContext.Instance();
                 if (agent != null)
@@ -133,23 +158,43 @@ internal sealed class ShortcutCatalog
             case ShortcutKind.Toggle when entry.RowId == ChatLogToggleRow:
                 chatLog.Toggle();
                 break;
+            case ShortcutKind.Window when entry.RowId < Windows.Length:
+                // Opens the window, or closes it if it's already up, as the main menu does.
+                var window = AgentModule.Instance()->GetAgentByInternalId(Windows[entry.RowId].Agent);
+                if (window == null)
+                    break;
+                if (window->IsAgentActive())
+                    window->Hide();
+                else if (entry.RowId == WondrousTailsRow)
+                    // Showing its window directly leaves it closed: the journal has to be
+                    // used, like from Key Items, so the game fetches this week's card.
+                    ActionManager.Instance()->UseAction(ActionType.EventItem, WondrousTailsJournal);
+                else
+                    window->Show();
+                break;
         }
     }
 
     // Game windows, grouped by the main menu's own categories. Settings sub-pages and
-    // menu headings (no category or no icon) are left out.
+    // menu headings (no category or no icon) are left out. Windows the menu doesn't
+    // list come last, under Other.
     public List<ShortcutChoice> Menus()
     {
         var categories = data.GetExcelSheet<MainCommandCategory>();
-        return data.GetExcelSheet<MainCommand>()
-                   .Where(row => row.Icon > 0 && row.MainCommandCategory.RowId != 0 && row.Name.ExtractText().Trim().Length > 0)
-                   .Select(row => new ShortcutChoice(
-                       ShortcutKind.MainCommand, row.RowId, row.Name.ExtractText(), (uint)row.Icon,
-                       categories.TryGetRow(row.MainCommandCategory.RowId, out var category) ? category.Name.ExtractText() : string.Empty))
-                   .OrderBy(choice => choice.Category)
-                   .ThenBy(choice => choice.Name)
-                   .ToList();
+        var menus = data.GetExcelSheet<MainCommand>()
+                        .Where(row => row.Icon > 0 && row.MainCommandCategory.RowId != 0 && row.Name.ExtractText().Trim().Length > 0)
+                        .Select(row => new ShortcutChoice(
+                            ShortcutKind.MainCommand, row.RowId, row.Name.ExtractText(), (uint)row.Icon,
+                            categories.TryGetRow(row.MainCommandCategory.RowId, out var category) ? category.Name.ExtractText() : string.Empty))
+                        .OrderBy(choice => choice.Category)
+                        .ThenBy(choice => choice.Name);
+        var other = Enumerable.Range(0, Windows.Length)
+                              .Select(i => new ShortcutChoice(ShortcutKind.Window, (uint)i, WindowName((uint)i), Windows[i].Icon, "Other"));
+        return menus.Concat(other).ToList();
     }
+
+    private string WindowName(uint id) =>
+        data.GetExcelSheet<Addon>().TryGetRow(Windows[id].NameRow, out var row) ? row.Text.ExtractText() : string.Empty;
 
     public List<ShortcutChoice> Actions()
     {
@@ -161,8 +206,11 @@ internal sealed class ShortcutCatalog
         var other = PickerActions.Where(id => actions.HasRow(id))
                                  .Select(id => actions.GetRow(id))
                                  .Select(row => new ShortcutChoice(ShortcutKind.Action, row.RowId, ActionName(row), (uint)row.Icon, "Other"));
+        var chocobo = data.GetExcelSheet<BuddyAction>()
+                          .Where(row => row.Icon > 0 && row.Name.ExtractText().Length > 0)
+                          .Select(row => new ShortcutChoice(ShortcutKind.BuddyAction, row.RowId, row.Name.ExtractText(), (uint)row.Icon, "Companion"));
         var toggles = new[] { new ShortcutChoice(ShortcutKind.Toggle, ChatLogToggleRow, "Hide or show chat log", ChatLogIcon, "Flick Wheel") };
-        return general.Concat(other).Concat(toggles).ToList();
+        return general.Concat(chocobo).Concat(other).Concat(toggles).ToList();
     }
 
     public unsafe List<ShortcutChoice> Items()
