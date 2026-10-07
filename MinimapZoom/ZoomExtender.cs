@@ -1,47 +1,63 @@
 using System;
+using Dalamud.Game.Addon.Events;
 using Dalamud.Game.Addon.Lifecycle;
 using Dalamud.Game.Addon.Lifecycle.AddonArgTypes;
 using Dalamud.Plugin.Services;
-using Dalamud.Game.Addon.Events;
 
 namespace MinimapZoom;
 
 /// <summary>
 /// Lets the minimap's − button keep zooming out past the game's limit, down to the minimum
-/// you set, and keeps that zoom when the game resets it. The game's click handler stops at
-/// its own limit, so below it the zoom is written here after the game has handled the click.
-/// Zooming back in to the game's range hands everything back to the game.
+/// you set, and puts that zoom back when the game resets the minimap (changing job or zone,
+/// logging in). The game's click handler stops at its own limit, so below it the zoom is
+/// written here after the game has handled the click. Zooming back in to the game's range
+/// hands everything back to the game.
 /// </summary>
 internal sealed class ZoomExtender : IDisposable
 {
+    // How long after a job change, zoning, login or the minimap being rebuilt a different
+    // zoom counts as the game's reset (put yours back); outside that it's you zooming.
+    private const long RestoreWindowMs = 5000;
+
     private readonly IFramework framework;
     private readonly IAddonLifecycle lifecycle;
+    private readonly IClientState clientState;
     private readonly Configuration config;
     private readonly Action save;
-
-    // How long after a mouse wheel event a zoom change counts as yours, not a game reset.
-    private const long WheelMs = 500;
+    private readonly IPluginLog log;
 
     // The zoom when a + or − click arrived, before the game handled it.
     private float? beforeClick;
-    private long lastWheel;
+    private long restoreUntil;
 
-
-    public ZoomExtender(IFramework framework, IAddonLifecycle lifecycle, Configuration config, Action save)
+    public ZoomExtender(IFramework framework, IAddonLifecycle lifecycle, IClientState clientState, Configuration config,
+                        Action save, IPluginLog log)
     {
         this.framework = framework;
         this.lifecycle = lifecycle;
+        this.clientState = clientState;
         this.config = config;
         this.save = save;
+        this.log = log;
         lifecycle.RegisterListener(AddonEvent.PreReceiveEvent, NaviMap.AddonName, OnPreEvent);
         lifecycle.RegisterListener(AddonEvent.PostReceiveEvent, NaviMap.AddonName, OnPostEvent);
+        // A rebuilt minimap (HUD layout change, login) starts at the game's zoom.
+        lifecycle.RegisterListener(AddonEvent.PostSetup, NaviMap.AddonName, OnMinimapSetup);
+        clientState.TerritoryChanged += OnTerritoryChanged;
+        clientState.ClassJobChanged += OnClassJobChanged;
+        clientState.Login += OpenRestoreWindow;
         framework.Update += OnUpdate;
+        // Also right after loading the plugin (reload, game start).
+        OpenRestoreWindow();
     }
 
     public void Dispose()
     {
         framework.Update -= OnUpdate;
-        lifecycle.UnregisterListener(OnPreEvent, OnPostEvent);
+        clientState.TerritoryChanged -= OnTerritoryChanged;
+        clientState.ClassJobChanged -= OnClassJobChanged;
+        clientState.Login -= OpenRestoreWindow;
+        lifecycle.UnregisterListener(OnPreEvent, OnPostEvent, OnMinimapSetup);
         // Leave the game a zoom it knows, but keep yours for next time (logging in tomorrow).
         ShowGameZoom();
     }
@@ -63,6 +79,11 @@ internal sealed class ZoomExtender : IDisposable
             NaviMap.SetZoom(NaviMap.GameMinimum);
     }
 
+    private void OpenRestoreWindow() => restoreUntil = Environment.TickCount64 + RestoreWindowMs;
+    private void OnTerritoryChanged(uint _) => OpenRestoreWindow();
+    private void OnClassJobChanged(uint _) => OpenRestoreWindow();
+    private void OnMinimapSetup(AddonEvent type, AddonArgs args) => OpenRestoreWindow();
+
     private static int? ZoomClick(AddonArgs args) =>
         args is AddonReceiveEventArgs { AtkEventType: AddonEventType.ButtonClick } e &&
         e.EventParam is NaviMap.ZoomInParam or NaviMap.ZoomOutParam
@@ -71,8 +92,6 @@ internal sealed class ZoomExtender : IDisposable
 
     private void OnPreEvent(AddonEvent type, AddonArgs args)
     {
-        if (args is AddonReceiveEventArgs { AtkEventType: AddonEventType.MouseWheel })
-            lastWheel = Environment.TickCount64;
         beforeClick = config.Enabled && ZoomClick(args) != null ? NaviMap.Zoom() : null;
     }
 
@@ -84,8 +103,7 @@ internal sealed class ZoomExtender : IDisposable
 
         // At or below the game's limit the game either does nothing (−) or knows nothing of
         // our zoom (+), so the step is done here.
-        var atOrBelowLimit = before <= NaviMap.GameMinimum + NaviMap.Epsilon;
-        if (!atOrBelowLimit)
+        if (before > NaviMap.GameMinimum + NaviMap.Epsilon)
             return;
 
         var target = param == NaviMap.ZoomOutParam
@@ -103,19 +121,29 @@ internal sealed class ZoomExtender : IDisposable
         if (!config.Enabled || NaviMap.Zoom() is not { } zoom)
             return;
 
-        // You zoomed with the mouse wheel: that is the zoom to keep now.
-        if (config.Zoom is { } kept && MathF.Abs(zoom - kept) > NaviMap.Epsilon &&
-            Environment.TickCount64 - lastWheel < WheelMs)
+        if (config.Zoom is { } wanted)
         {
-            config.Zoom = zoom < NaviMap.GameMinimum - NaviMap.Epsilon ? zoom : null;
-            save();
-        }
-
-        // The game reset the minimap (job change, zoning, login): put the extended zoom back.
-        if (config.Zoom is { } wanted && (MathF.Abs(zoom - wanted) > NaviMap.Epsilon || !NaviMap.PercentInStep(wanted)))
-        {
-            if (NaviMap.SetZoom(wanted))
-                zoom = wanted;
+            if (MathF.Abs(zoom - wanted) > NaviMap.Epsilon)
+            {
+                if (Environment.TickCount64 < restoreUntil)
+                {
+                    // The game reset the minimap: put your zoom back.
+                    if (NaviMap.SetZoom(wanted))
+                        zoom = wanted;
+                }
+                else
+                {
+                    // You zoomed (mouse wheel, a keybind…): that's the zoom to keep now.
+                    config.Zoom = zoom < NaviMap.GameMinimum - NaviMap.Epsilon ? zoom : null;
+                    save();
+                    log.Information($"Keeping zoom {zoom:0.##}.");
+                }
+            }
+            else if (!NaviMap.PercentInStep(wanted))
+            {
+                // The game's percentage copy of the zoom drifted (after zoning): put it in step.
+                NaviMap.SetZoom(wanted);
+            }
         }
 
         // At or below the game's limit, − stays clickable until the minimum you set.

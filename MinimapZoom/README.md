@@ -10,7 +10,8 @@ area around you, e.g. when gathering.
 - **+** zooms back in as usual. Once you're back at 1.25 or closer, the game is in
   charge again and the plugin does nothing.
 - The game resets the minimap when you change job, zone or log in. The plugin puts
-  your zoom back each time.
+  your zoom back each time. Zooming yourself, with the buttons or the mouse wheel, is
+  kept as your new zoom.
 - `/minimapzoom` opens settings, which show the current zoom. `/minimapzoom reset`
   (or **Back to 1.25**) returns to the game's furthest zoom.
 - Turning the plugin off or unloading it also returns the minimap to 1.25.

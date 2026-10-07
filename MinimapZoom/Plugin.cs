@@ -23,6 +23,12 @@ public sealed class Plugin : IDalamudPlugin
     [PluginService]
     private static IAddonLifecycle AddonLifecycle { get; set; } = null!;
 
+    [PluginService]
+    private static IPluginLog Log { get; set; } = null!;
+
+    [PluginService]
+    private static IClientState ClientState { get; set; } = null!;
+
     private readonly Configuration config;
     private readonly WindowSystem windows = new("MinimapZoom");
     private readonly ConfigWindow configWindow;
@@ -31,7 +37,7 @@ public sealed class Plugin : IDalamudPlugin
     public Plugin()
     {
         config = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
-        extender = new ZoomExtender(Framework, AddonLifecycle, config, Save);
+        extender = new ZoomExtender(Framework, AddonLifecycle, ClientState, config, Save, Log);
 
         configWindow = new ConfigWindow(config, Save, extender);
         windows.AddWindow(configWindow);
