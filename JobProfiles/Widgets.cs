@@ -19,9 +19,8 @@ internal sealed class Widgets(ShortcutCatalog catalog, ShortcutPicker picker, Ic
     // A list whose Add was clicked; the picker opens for it at the window's top level.
     private (string Name, Action<Step> Add)? pendingAdd;
 
-    // The steps run in order: icon and name for each (a command can be edited in place), a
-    // remove button, then Add, which opens the picker. add puts the picked step in the
-    // saved list (the one drawn may be a copy).
+    // The steps, in order, with Add opening the picker. add puts the picked step in the saved
+    // list (the one drawn may be a copy).
     public bool StepList(List<Step> list, string name, Action<Step> add)
     {
         var changed = false;
@@ -62,7 +61,6 @@ internal sealed class Widgets(ShortcutCatalog catalog, ShortcutPicker picker, Ic
                     ImGui.TextDisabled(label);
             }
 
-            // The remove button sits at the right edge on every row.
             if (editable)
                 ImGui.SameLine();
             else

@@ -11,9 +11,8 @@ using FFXIVClientStructs.FFXIV.Client.UI;
 namespace JobProfiles;
 
 /// <summary>
-/// Runs a binding's macros when its pad combo or key is pressed: the first of its rules
-/// that matches your job and where you are. When several pad bindings are held at once
-/// (R3 and LT+R3), the one with the most buttons wins. Nothing fires while you're typing.
+/// Runs a button's (or combo's) behaviour when it's pressed: the most specific of its rules
+/// for your job and where you are. Nothing fires while you're typing.
 /// </summary>
 internal sealed class BindingWatcher : IDisposable
 {
@@ -32,8 +31,13 @@ internal sealed class BindingWatcher : IDisposable
     // A rule acting as a key: the binding whose button holds it down, and the rule.
     private (Binding Binding, Rule Rule)? holding;
 
-    // Keys that were down last frame, to fire once per press.
-    private readonly HashSet<VirtualKey> keysDown = [];
+    // Pad buttons that were down last frame, to fire once per press.
+    private GamepadButtons lastHeld;
+
+    // Bound keys that were down last frame, to fire once per press.
+    private HashSet<VirtualKey> lastKeys = [];
+
+    private static readonly VirtualKey[] Modifiers = [VirtualKey.CONTROL, VirtualKey.SHIFT, VirtualKey.MENU];
 
     public BindingWatcher(IFramework framework, IGamepadState gamepad, IKeyState keys, IPlayerState player,
                           Configuration config, JobGroups groups, Duties duties, MacroRunner runner)
@@ -58,7 +62,6 @@ internal sealed class BindingWatcher : IDisposable
     /// <summary>Set while settings are recording a new combo, so pressing it doesn't run it.</summary>
     public bool Paused { get; set; }
 
-    /// <summary>Every pad button held right now.</summary>
     public GamepadButtons HeldButtons()
     {
         var held = GamepadButtons.None;
@@ -71,28 +74,45 @@ internal sealed class BindingWatcher : IDisposable
         return held;
     }
 
-    /// <summary>The first rule of the binding that fits your current job and where you are.</summary>
+    /// <summary>
+    /// The rule of the binding that fits your job and where you are, the most specific one
+    /// winning: a job's beats its role's, which beats everyone's; within that, one kind of
+    /// duty beats any duty or outside duties, which beats anywhere.
+    /// </summary>
     public Rule? Match(Binding binding)
     {
         var job = groups.Of(player.ClassJob.RowId);
         var (inDuty, contentType) = duties.Current();
-        return binding.Rules.FirstOrDefault(rule =>
-            (rule.Job != null ? job?.Abbreviation == rule.Job : rule.Group == null || job?.Group == rule.Group) &&
-            rule.Where switch
-            {
-                DutyScope.OutsideDuty => !inDuty,
-                DutyScope.AnyDuty => inDuty,
-                DutyScope.ContentType => inDuty && contentType == rule.ContentType,
-                _ => true,
-            });
+        return binding.Rules
+                      .Where(rule =>
+                          (rule.Job != null ? job?.Abbreviation == rule.Job : rule.Group == null || job?.Group == rule.Group) &&
+                          rule.Where switch
+                          {
+                              DutyScope.OutsideDuty => !inDuty,
+                              DutyScope.AnyDuty => inDuty,
+                              DutyScope.ContentType => inDuty && contentType == rule.ContentType,
+                              _ => true,
+                          })
+                      .OrderByDescending(Specificity)
+                      .FirstOrDefault();
     }
+
+    private static int Specificity(Rule rule) =>
+        (rule.Job != null ? 20 : rule.Group != null ? 10 : 0) +
+        rule.Where switch
+        {
+            DutyScope.ContentType => 2,
+            DutyScope.AnyDuty or DutyScope.OutsideDuty => 1,
+            _ => 0,
+        };
 
     private void OnUpdate(IFramework _)
     {
         if (Paused || !config.BindingsEnabled || config.Bindings.Count == 0 || !player.IsLoaded || Typing())
         {
-            keysDown.Clear();
             Release();
+            lastHeld = HeldButtons();
+            lastKeys = KeysDown();
             return;
         }
 
@@ -100,53 +120,69 @@ internal sealed class BindingWatcher : IDisposable
         if (holding is var (held, _) && !StillHeld(held))
             Release();
 
-        if (PadPress() is { } pad)
-            Fire(pad);
-        if (GameFocused() && KeyPress() is { } key)
-            Fire(key);
+        var pressed = Press();
+        HideHeldKeys();
+        if (pressed != null)
+            Fire(pressed);
     }
 
-    // The pad binding completed this frame: all its buttons held and one just pressed. The
-    // one with the most buttons wins, so LT+R3 doesn't also run R3.
-    private Binding? PadPress()
+    // The binding completed this frame: all its keys and buttons held, one of them just
+    // pressed, and no modifier held that isn't part of it. The biggest combo wins, so
+    // Ctrl + ' + A doesn't also run Ctrl + '. Presses are worked out here frame to frame,
+    // not from the game's "just pressed": hiding a button from the game (PadBlocker) makes
+    // the game see it pressed again every frame it's held.
+    private Binding? Press()
     {
-        var pressed = PadButtons.Where(b => gamepad.Pressed(b) > 0).Aggregate(GamepadButtons.None, (all, b) => all | b);
-        if (pressed == GamepadButtons.None)
+        var held = HeldButtons();
+        var pressedButtons = held & ~lastHeld;
+        lastHeld = held;
+
+        var keysDown = KeysDown();
+        var pressedKeys = keysDown.Where(k => !lastKeys.Contains(k)).ToHashSet();
+        lastKeys = keysDown;
+
+        if (pressedButtons == GamepadButtons.None && pressedKeys.Count == 0)
             return null;
 
-        var held = HeldButtons() | pressed;
         return config.Bindings
-                     .Where(b => !b.IsKeyboard && b.Buttons != 0 && (b.Buttons & pressed) != 0 && (b.Buttons & ~held) == 0)
-                     .MaxBy(b => BitOperations.PopCount((uint)b.Buttons));
+                     .Where(b => b.IsSet && Held(b, held, keysDown) &&
+                                 ((b.Buttons & pressedButtons) != 0 || b.Keys.Any(pressedKeys.Contains)))
+                     .MaxBy(b => b.Size);
     }
 
-    // A bound key pressed this frame with exactly its modifiers. The key is hidden from the
-    // game while held, so it doesn't also do whatever the game has on it.
-    private Binding? KeyPress()
+    // All of the binding's keys and buttons are down, and no modifier it doesn't use.
+    private static bool Held(Binding binding, GamepadButtons held, HashSet<VirtualKey> keysDown) =>
+        (binding.Buttons & ~held) == 0 && binding.Keys.All(keysDown.Contains) &&
+        Modifiers.All(m => binding.Keys.Contains(m) || !keysDown.Contains(m));
+
+    // The bound keys (and modifiers) down right now; none while the game isn't the window
+    // being typed into, since the keyboard is read directly.
+    private HashSet<VirtualKey> KeysDown()
     {
-        var ctrl = IsDown(VirtualKey.CONTROL);
-        var shift = IsDown(VirtualKey.SHIFT);
-        var alt = IsDown(VirtualKey.MENU);
-        Binding? fired = null;
-        foreach (var binding in config.Bindings.Where(b => b.IsKeyboard))
+        var down = new HashSet<VirtualKey>();
+        if (!GameFocused())
+            return down;
+        foreach (var key in config.Bindings.SelectMany(b => b.Keys).Concat(Modifiers).Distinct())
         {
-            var key = binding.Key;
-            if (!IsDown(key))
-            {
-                keysDown.Remove(key);
-                continue;
-            }
-
-            if (binding.Ctrl != ctrl || binding.Shift != shift || binding.Alt != alt)
-                continue;
-
-            if (keys.IsVirtualKeyValid(key))
-                keys[key] = false;
-            if (keysDown.Add(key))
-                fired ??= binding;
+            if (IsDown(key))
+                down.Add(key);
         }
+        return down;
+    }
 
-        return fired;
+    // A held combo's keys (not its modifiers) are hidden from the game, so they don't also do
+    // whatever the game has on them.
+    private void HideHeldKeys()
+    {
+        var held = HeldButtons();
+        foreach (var binding in config.Bindings.Where(b => b.HasKeys && Held(b, held, lastKeys)))
+        {
+            foreach (var key in binding.Keys.Where(k => !Modifiers.Contains(k)))
+            {
+                if (keys.IsVirtualKeyValid(key))
+                    keys[key] = false;
+            }
+        }
     }
 
     private void Fire(Binding binding)
@@ -165,7 +201,7 @@ internal sealed class BindingWatcher : IDisposable
     }
 
     private bool StillHeld(Binding binding) =>
-        binding.IsKeyboard ? IsDown(binding.Key) : (HeldButtons() & binding.Buttons) == binding.Buttons;
+        (HeldButtons() & binding.Buttons) == binding.Buttons && binding.Keys.All(IsDown);
 
     private void Release()
     {

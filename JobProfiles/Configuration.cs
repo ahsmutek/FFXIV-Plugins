@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using Dalamud.Configuration;
 using Dalamud.Game.ClientState.GamePad;
 using Dalamud.Game.ClientState.Keys;
@@ -57,7 +58,7 @@ public enum DutyScope
     ContentType, // a duty of one ContentType row (Dungeons, Trials, Raids…), see Rule.ContentType
 }
 
-// One line of a binding: who and where it applies, and the macros it runs.
+// One line of a binding: who and where it applies, and what it does there.
 public sealed class Rule
 {
     public string Uid { get; set; } = Guid.NewGuid().ToString("N");
@@ -80,22 +81,37 @@ public sealed class Rule
     public List<Step> Steps { get; set; } = new();
 }
 
-// A pad button combo or a keyboard key (with modifiers) and the rules it runs. The first rule
-// that matches your job and where you are wins.
+// A button, key or combo and its rules; the most specific rule for your job and where you
+// are wins.
 public sealed class Binding
 {
     public string Uid { get; set; } = Guid.NewGuid().ToString("N");
-    // Pad buttons that must all be down; fires when the last of them is pressed.
+    // Your name for it, e.g. "Emotes wheel"; empty = shown by its button or key.
+    public string Name { get; set; } = string.Empty;
+    // Keep the game from seeing these controller buttons while they do something here (for
+    // buttons you can't unbind in the game's settings).
+    public bool HideFromGame { get; set; } = true;
+    // What has to be held: controller buttons and keyboard keys (modifiers included, as
+    // CONTROL, SHIFT, MENU), in any mix, e.g. Ctrl + ' + A. Fires when the last one goes down.
     public GamepadButtons Buttons { get; set; }
-    // A keyboard key instead (paddles mapped to keys in reWASD); 0 = none.
+    public List<VirtualKey> Keys { get; set; } = new();
+    public List<Rule> Rules { get; set; } = new();
+
+    // Version 3 had one key with modifier flags; read for Migrate, never written back.
     public VirtualKey Key { get; set; }
     public bool Ctrl { get; set; }
     public bool Shift { get; set; }
     public bool Alt { get; set; }
-    public List<Rule> Rules { get; set; } = new();
+    public bool ShouldSerializeKey() => false;
+    public bool ShouldSerializeCtrl() => false;
+    public bool ShouldSerializeShift() => false;
+    public bool ShouldSerializeAlt() => false;
 
-    public bool IsKeyboard => Key != 0;
-    public bool IsSet => Key != 0 || Buttons != 0;
+    public bool HasKeys => Keys.Count > 0;
+    public bool IsSet => Keys.Count > 0 || Buttons != 0;
+
+    // How many keys and buttons it takes: the bigger combo wins when several are held.
+    public int Size => Keys.Count + BitOperations.PopCount((uint)Buttons);
 }
 
 public sealed class Configuration : IPluginConfiguration
@@ -107,13 +123,16 @@ public sealed class Configuration : IPluginConfiguration
     // Apply the current job's profile once after logging in, not only on changes.
     public bool ApplyOnLogin { get; set; } = true;
 
+    // Your names for the game's HUD layouts 1–4 (the game has none); empty = just the number.
+    public string[] HudLayoutNames { get; set; } = ["", "", "", ""];
+
     // Each role group's profile. Missing = do nothing.
     public Dictionary<JobGroup, Profile> Groups { get; set; } = new();
 
     // Job abbreviation (English, e.g. "WHM") -> override. Missing = use the group.
     public Dictionary<string, Profile> Jobs { get; set; } = new();
 
-    // Run macros from pad buttons and keys.
+    // Use the buttons and keys set up here.
     public bool BindingsEnabled { get; set; } = true;
     public List<Binding> Bindings { get; set; } = new();
 
@@ -136,6 +155,24 @@ public sealed class Configuration : IPluginConfiguration
                 profile.Macros = null;
                 changed = true;
             }
+        }
+
+        foreach (var binding in Bindings)
+        {
+            if (binding.Key == 0)
+                continue;
+            var keys = new List<VirtualKey>();
+            if (binding.Ctrl)
+                keys.Add(VirtualKey.CONTROL);
+            if (binding.Shift)
+                keys.Add(VirtualKey.SHIFT);
+            if (binding.Alt)
+                keys.Add(VirtualKey.MENU);
+            keys.Add(binding.Key);
+            binding.Keys = keys;
+            binding.Key = 0;
+            binding.Ctrl = binding.Shift = binding.Alt = false;
+            changed = true;
         }
 
         if (Version < 3)

@@ -43,6 +43,12 @@ public sealed class Plugin : IDalamudPlugin
     private static IKeyState KeyState { get; set; } = null!;
 
     [PluginService]
+    private static IGameInteropProvider Interop { get; set; } = null!;
+
+    [PluginService]
+    private static IPluginLog Log { get; set; } = null!;
+
+    [PluginService]
     private static IBuddyList Buddies { get; set; } = null!;
 
     private readonly Configuration config;
@@ -52,6 +58,7 @@ public sealed class Plugin : IDalamudPlugin
     private readonly MacroRunner runner;
     private readonly ProfileWatcher watcher;
     private readonly BindingWatcher bindings;
+    private readonly PadBlocker blocker;
 
     public Plugin()
     {
@@ -66,9 +73,10 @@ public sealed class Plugin : IDalamudPlugin
         runner = new MacroRunner(Framework, Condition, catalog);
         watcher = new ProfileWatcher(Framework, PlayerState, config, groups, runner);
         bindings = new BindingWatcher(Framework, Gamepad, KeyState, PlayerState, config, groups, duties, runner);
+        blocker = new PadBlocker(Interop, config, bindings, Log);
 
         var widgets = new Widgets(catalog, new ShortcutPicker(catalog, icons), icons);
-        var buttonsTab = new ButtonsTab(config, groups, duties, bindings, widgets, KeyState);
+        var buttonsTab = new ButtonsTab(config, duties, bindings, widgets, KeyState);
         configWindow = new ConfigWindow(config, Save, groups, PlayerState, Textures, watcher.ApplyNow, widgets, buttonsTab);
         windows.AddWindow(configWindow);
         PluginInterface.UiBuilder.Draw += windows.Draw;
@@ -99,6 +107,7 @@ public sealed class Plugin : IDalamudPlugin
         PluginInterface.UiBuilder.OpenConfigUi -= configWindow.Toggle;
         PluginInterface.UiBuilder.OpenMainUi -= configWindow.Toggle;
         windows.RemoveAllWindows();
+        blocker.Dispose();
         bindings.Dispose();
         watcher.Dispose();
         runner.Dispose();

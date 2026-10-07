@@ -8,9 +8,9 @@ using Shortcuts;
 namespace JobProfiles;
 
 /// <summary>
-/// Runs queued steps (macros, commands, menus, items…) one after another: each once a
-/// macro started before it has finished, and not while zoning, in a cutscene or logging out. "/wait N" pauses like
-/// it does in a macro. Job changes and button bindings both feed it.
+/// Runs queued steps (macros, commands, menus, items…) one after another: each once a macro
+/// started before it has finished, and not while zoning, in a cutscene or logging out.
+/// "/wait N" pauses as in a macro. Job changes and buttons both feed it.
 /// </summary>
 internal sealed class MacroRunner : IDisposable
 {
