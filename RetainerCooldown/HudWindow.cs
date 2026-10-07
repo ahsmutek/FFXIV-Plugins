@@ -17,7 +17,7 @@ internal sealed class HudWindow : Window
 
     public HudWindow(Plugin plugin) : base("Retainer Cooldown HUD###RetainerCooldownHud",
         ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse |
-        ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoBackground)
+        ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoBackground | ImGuiWindowFlags.NoNav)
     {
         this.plugin = plugin;
         IsOpen = true;
@@ -35,10 +35,15 @@ internal sealed class HudWindow : Window
         // Keep the icon clickable even when locked (only movement is disabled),
         // so clicking it always opens settings.
         Flags = ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse |
-                ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoBackground;
+                ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoBackground | ImGuiWindowFlags.NoNav;
         if (plugin.Config.Locked)
             Flags |= ImGuiWindowFlags.NoMove;
     }
+
+    // The HUD is always on (hiding is DrawConditions' job), but Dalamud closes any focused
+    // window when a controller's B is pressed, whatever RespectCloseHotkey says. NoNav keeps it
+    // from taking controller focus; this brings it back if a mouse click focused it first.
+    public override void OnClose() => IsOpen = true;
 
     // When hidden, skip the window entirely so no empty window sits over the game.
     public override bool DrawConditions()
