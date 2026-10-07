@@ -79,6 +79,8 @@ internal sealed class ShortcutCatalog
                 ? (WindowName(entry.RowId), Windows[entry.RowId].Icon) : null,
             ShortcutKind.BuddyAction => data.GetExcelSheet<BuddyAction>().TryGetRow(entry.RowId, out var row)
                 ? (row.Name.ExtractText(), (uint)row.Icon) : null,
+            ShortcutKind.Emote => data.GetExcelSheet<Emote>().TryGetRow(entry.RowId, out var row)
+                ? (row.Name.ExtractText(), (uint)row.Icon) : null,
             _ => null,
         };
 
@@ -110,6 +112,9 @@ internal sealed class ShortcutCatalog
                 return player != null && player->HasWeeklyBingoJournal;
             case ShortcutKind.BuddyAction:
                 return buddies.CompanionBuddy != null;
+            case ShortcutKind.Emote:
+                var state = UIState.Instance();
+                return state != null && state->IsEmoteUnlocked((ushort)entry.RowId);
             default:
                 return true;
         }
@@ -156,6 +161,11 @@ internal sealed class ShortcutCatalog
             case ShortcutKind.Text:
                 if (entry.Command is { } line)
                     RunLine(line);
+                break;
+            case ShortcutKind.Emote:
+                var emotes = AgentEmote.Instance();
+                if (emotes != null && emotes->CanUseEmote((ushort)entry.RowId))
+                    emotes->ExecuteEmote((ushort)entry.RowId, null, true, true);
                 break;
             case ShortcutKind.Macro:
                 var macro = MacroOf(entry.RowId);
@@ -243,6 +253,42 @@ internal sealed class ShortcutCatalog
                     continue;
                 choices.Add(new ShortcutChoice(ShortcutKind.Item, id, item.Name.ExtractText(), (uint)item.Icon, "Items"));
             }
+        }
+
+        return choices.OrderBy(choice => choice.Name).ToList();
+    }
+
+    // Your favourite emotes (the Emotes window's Favorites), in their order.
+    public unsafe List<ShortcutChoice> FavoriteEmotes()
+    {
+        var choices = new List<ShortcutChoice>();
+        var history = EmoteHistoryModule.Instance();
+        if (history == null)
+            return choices;
+
+        var sheet = data.GetExcelSheet<Emote>();
+        foreach (var id in history->Favorites)
+        {
+            if (id != 0 && sheet.TryGetRow(id, out var emote))
+                choices.Add(new ShortcutChoice(ShortcutKind.Emote, id, emote.Name.ExtractText(), (uint)emote.Icon, "Favorites"));
+        }
+
+        return choices;
+    }
+
+    // Every emote you've unlocked, by name.
+    public unsafe List<ShortcutChoice> UnlockedEmotes()
+    {
+        var state = UIState.Instance();
+        if (state == null)
+            return [];
+
+        var choices = new List<ShortcutChoice>();
+        foreach (var emote in data.GetExcelSheet<Emote>())
+        {
+            var name = emote.Name.ExtractText();
+            if (emote.Icon > 0 && name.Length > 0 && state->IsEmoteUnlocked((ushort)emote.RowId))
+                choices.Add(new ShortcutChoice(ShortcutKind.Emote, emote.RowId, name, (uint)emote.Icon, "All emotes"));
         }
 
         return choices.OrderBy(choice => choice.Name).ToList();

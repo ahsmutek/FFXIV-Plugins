@@ -14,6 +14,7 @@ public enum ShortcutKind
     Window,        // opens a game window the main menu doesn't list, e.g. Wondrous Tails (see ShortcutCatalog.Windows)
     BuddyAction,   // a chocobo command: Follow, the stances, Withdraw (BuddyAction row)
     Text,          // a line typed as if in chat: any game or plugin command, e.g. /gs change 3
+    Emote,         // an emote (Emote row), as the Emotes window plays it
 }
 
 // A saved shortcut, as each plugin stores it (Flick Wheel's ShortcutEntry, Job Profiles' Step).

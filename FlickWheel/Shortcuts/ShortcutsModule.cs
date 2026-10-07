@@ -26,17 +26,34 @@ internal sealed class ShortcutsModule : IWheelModule
             save();
         }
 
-        var settings = new ShortcutsSettings(config, catalog, icons, overlay, new ShortcutPicker(catalog, icons));
-        Wheels = [new ShortcutsWheel(this)];
+        var settings = new ShortcutsSettings(config, this, catalog, icons, overlay, new ShortcutPicker(catalog, icons));
         SettingsTabs = [new("Shortcuts", settings.Draw)];
     }
 
     public string Id => "shortcuts";
     public string Name => "Shortcuts";
-    public IReadOnlyList<IWheel> Wheels { get; }
+    // The first Shortcuts wheel, then any you added, in order.
+    public IReadOnlyList<IWheel> Wheels => AllWheels().Select(Wrap).ToList();
     public IReadOnlyList<SettingsTab> SettingsTabs { get; }
 
-    private ShortcutWheel Wheel => config.Shortcuts!;
+    // Wheel objects are kept per saved wheel, so the same one comes back each time.
+    private readonly Dictionary<string, ShortcutsWheel> wrappers = new();
+
+    public IEnumerable<ShortcutWheel> AllWheels() => config.MoreShortcutWheels.Prepend(config.Shortcuts!);
+
+    // "shortcuts" for the first wheel (as before), "shortcuts-<uid>" for added ones.
+    public string IdOf(ShortcutWheel wheel) => wheel == config.Shortcuts ? WheelId : $"{WheelId}-{wheel.Uid}";
+
+    public static string TitleOf(ShortcutWheel wheel) =>
+        $"{(wheel.Name.Length > 0 ? wheel.Name : "Shortcuts")} wheel";
+
+    private ShortcutsWheel Wrap(ShortcutWheel wheel)
+    {
+        var id = IdOf(wheel);
+        if (!wrappers.TryGetValue(id, out var wrapper) || wrapper.Data != wheel)
+            wrappers[id] = wrapper = new ShortcutsWheel(this, wheel, id);
+        return wrapper;
+    }
 
     public void OnSettingsOpen() { }
 
@@ -85,14 +102,16 @@ internal sealed class ShortcutsModule : IWheelModule
         ],
     };
 
-    private sealed class ShortcutsWheel(ShortcutsModule module) : IWheel
+    private sealed class ShortcutsWheel(ShortcutsModule module, ShortcutWheel data, string id) : IWheel
     {
-        public string Id => WheelId;
-        public string Title => "Shortcuts wheel";
+        public ShortcutWheel Data => data;
+        public string Id => id;
+        public string Title => TitleOf(data);
+        public bool InCycle => data.InCycle;
 
         public WheelRing Layout()
         {
-            var wheel = module.Wheel;
+            var wheel = data;
             var slots = wheel.Groups
                              .SelectMany((group, index) => group.Entries.Select(entry =>
                                  new RingSlot(entry.Uid, index, ColorOf(group, wheel.Style))))
@@ -105,7 +124,7 @@ internal sealed class ShortcutsModule : IWheelModule
         // leave their slot empty. Items you're out of stay, faded.
         public List<WheelEntry> Entries(WheelRing ring)
         {
-            var byUid = module.Wheel.Groups.SelectMany(g => g.Entries).ToDictionary(e => e.Uid);
+            var byUid = data.Groups.SelectMany(g => g.Entries).ToDictionary(e => e.Uid);
             var entries = new List<WheelEntry>();
             for (var slot = 0; slot < ring.Slots.Length; slot++)
             {

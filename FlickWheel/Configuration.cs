@@ -55,6 +55,14 @@ public sealed class ShortcutGroup
 
 public sealed class ShortcutWheel
 {
+    // Stable id for the extra wheels (their wheel id is "shortcuts-" + Uid); the first
+    // Shortcuts wheel keeps the id "shortcuts".
+    public string Uid { get; set; } = Guid.NewGuid().ToString("N");
+    // Shown in settings and the wheel's title; empty = "Shortcuts".
+    public string Name { get; set; } = string.Empty;
+    // Part of what the shared hotkey opens and RB moves through. Off = only its own hotkey
+    // opens it (e.g. an emotes wheel bound to L3 through Job Profiles).
+    public bool InCycle { get; set; } = true;
     // Clockwise from the top.
     public List<ShortcutGroup> Groups { get; set; } = new();
     // Index of the group centered at the top.
@@ -131,6 +139,9 @@ public sealed class Configuration : IPluginConfiguration
     // The Shortcuts wheel. Null until first used, then filled with starter groups (in
     // code rather than here, so loading saved groups doesn't add to the starter ones).
     public ShortcutWheel? Shortcuts { get; set; }
+
+    // More shortcut wheels, after the first one.
+    public List<ShortcutWheel> MoreShortcutWheels { get; set; } = new();
 
     /// <summary>Brings settings saved by older versions up to date. True when anything changed.</summary>
     public bool Migrate()

@@ -23,6 +23,8 @@ internal interface IWheel
     string Title { get; }
     WheelRing Layout();
     List<WheelEntry> Entries(WheelRing ring);
+    // Opened by the shared hotkey and moved through with RB. Off = only its own hotkey opens it.
+    bool InCycle => true;
 }
 
 // A settings tab a module adds. Draw returns true when it changed the config.
@@ -55,6 +57,9 @@ internal sealed class WheelSet(Configuration config)
         !config.WheelsOn.TryGetValue(wheel.Id, out var on) || on;
 
     public List<IWheel> Wheels => modules.Where(IsEnabled).SelectMany(m => m.Wheels).Where(IsEnabled).ToList();
+
+    // The wheels the shared hotkey opens and RB moves through.
+    public List<IWheel> CycleWheels => Wheels.Where(w => w.InCycle).ToList();
 
     public IWheel? Find(string id) => Wheels.FirstOrDefault(w => w.Id == id);
 }

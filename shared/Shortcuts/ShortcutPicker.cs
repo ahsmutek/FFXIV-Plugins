@@ -1,12 +1,13 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Utility;
 
 namespace Shortcuts;
 
-// The add-a-shortcut popup: tabs for game windows, actions, items, macros and commands. What
+// The add-a-shortcut popup: tabs for game windows, actions, items, macros, emotes and commands. What
 // was picked is handed back, for each plugin to store its own way.
 internal sealed class ShortcutPicker(ShortcutCatalog catalog, IconCache icons)
 {
@@ -24,6 +25,8 @@ internal sealed class ShortcutPicker(ShortcutCatalog catalog, IconCache icons)
     private List<ShortcutChoice>? actions;
     private List<ShortcutChoice> items = [];
     private List<ShortcutChoice> macros = [];
+    private List<ShortcutChoice> favoriteEmotes = [];
+    private List<ShortcutChoice> allEmotes = [];
 
     // Call at the same ImGui ID level as Draw, or the popup won't find its opener.
     public void Open(string name, Action<PickedShortcut> onPick)
@@ -33,6 +36,8 @@ internal sealed class ShortcutPicker(ShortcutCatalog catalog, IconCache icons)
         search = string.Empty;
         items = catalog.Items();
         macros = catalog.Macros();
+        favoriteEmotes = catalog.FavoriteEmotes();
+        allEmotes = catalog.UnlockedEmotes();
         ImGui.OpenPopup(Popup);
     }
 
@@ -79,6 +84,11 @@ internal sealed class ShortcutPicker(ShortcutCatalog catalog, IconCache icons)
                 changed |= DrawChoices(macros, "No macros match.");
                 ImGui.EndTabItem();
             }
+            if (ImGui.BeginTabItem("Emotes"))
+            {
+                changed |= DrawEmotes();
+                ImGui.EndTabItem();
+            }
             if (ImGui.BeginTabItem("Commands"))
             {
                 changed |= DrawCommandForm();
@@ -90,6 +100,21 @@ internal sealed class ShortcutPicker(ShortcutCatalog catalog, IconCache icons)
         ImGui.EndChild();
         ImGui.EndPopup();
         return changed;
+    }
+
+    // Your favourite emotes; searching also lists every other emote you've unlocked.
+    private bool DrawEmotes()
+    {
+        if (search.Length == 0)
+        {
+            ImGui.TextDisabled(favoriteEmotes.Count > 0
+                ? "Your favourites. Search to add any other emote."
+                : "No favourite emotes yet. Search to add any emote.");
+            return DrawChoices(favoriteEmotes, string.Empty);
+        }
+
+        var others = allEmotes.Where(e => favoriteEmotes.All(f => f.RowId != e.RowId));
+        return DrawChoices(favoriteEmotes.Concat(others).ToList(), "No unlocked emotes match.");
     }
 
     private bool DrawChoices(List<ShortcutChoice> choices, string empty)

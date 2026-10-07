@@ -96,7 +96,7 @@ It starts with three groups, all of which you can change:
 
 In the **Shortcuts** settings tab:
 
-- **+** adds a shortcut to a group. The picker has five tabs:
+- **+** adds a shortcut to a group. The picker has six tabs:
   - **Menus** – any main-menu window: Character, Armoury Chest, Inventory, Currency,
     Achievements, Blue Magic Spellbook, Master's Bestiary, Hunting Log, Duty Finder…
   - **Actions** – general actions (Teleport, Return, Sprint, Mount Roulette, Repair…), the Aether Compass,
@@ -104,6 +104,8 @@ In the **Shortcuts** settings tab:
     comes back while you're typing, and is shown again when the plugin unloads. `/flick chat` does
     the same from a macro or the chat line.
   - **Items** – usable items in your bags. The wheel shows how many you have left, and fades the icon at 0.
+  - **Emotes** – your favourite emotes (the Emotes window's Favorites). Type in the search box
+    to add any other emote you've unlocked.
   - **Macros** – your individual and shared macros, with their own name and icon. Handy for
     things only a macro can do, like `/hudlayout 2`. The shortcut remembers the macro's slot, so
     editing the macro changes what it does; if you clear the slot, the shortcut shows dimmed.
@@ -119,6 +121,17 @@ In the **Shortcuts** settings tab:
   all 18 colors in that style; click one to switch the whole wheel to it. **Auto colors**
   gives every group a different color.
 - Menus you haven't unlocked yet leave their spot empty.
+
+### More shortcut wheels
+
+The wheel picker at the top of the **Shortcuts** tab switches between your shortcut wheels.
+**Add wheel** makes another one (an Emotes wheel, a Raid wheel…) with its own name, groups
+and colors; **Delete wheel** removes it (hold Ctrl if it has shortcuts). Each wheel can have
+its own hotkey on the General tab. **Opens with the shared hotkey and RB** decides whether
+it's part of the rotation; added wheels start outside it, so only their own hotkey opens
+them. That pairs with Job Profiles' Buttons tab: give the wheel a hotkey like F13 (no
+modifier) and have a rule make L3, or Ctrl + ', act as F13. Different rules can open
+different wheels from the same button depending on your job and duty.
 
 ## Settings
 

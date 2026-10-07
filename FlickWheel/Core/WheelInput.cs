@@ -175,10 +175,6 @@ internal sealed class WheelInput : IDisposable
 
     private void Open((string? WheelId, HotkeyModifier Modifier, VirtualKey Key) pressed)
     {
-        var all = wheels.Wheels;
-        if (all.Count == 0)
-            return;
-
         if (pressed.WheelId is { } id)
         {
             // A wheel's own hotkey: that wheel or nothing.
@@ -187,6 +183,10 @@ internal sealed class WheelInput : IDisposable
         else
         {
             // Reopen the wheel used last time; fall back to the next one that has entries.
+            // Wheels kept out of the rotation only open with their own hotkey.
+            var all = wheels.CycleWheels;
+            if (all.Count == 0)
+                return;
             var start = Math.Max(0, all.FindIndex(w => w.Id == config.LastWheel));
             for (var i = 0; i < all.Count; i++)
             {
@@ -223,10 +223,12 @@ internal sealed class WheelInput : IDisposable
     // The next wheel after this one that has something on it; stays put if none does.
     private void ShowNext()
     {
-        var all = wheels.Wheels;
+        var all = wheels.CycleWheels;
         var index = all.FindIndex(w => w.Id == Wheel?.Id);
         var (wheel, ring, entries) = (Wheel, Ring, Entries);
-        for (var i = 1; i < all.Count; i++)
+        // A wheel outside the rotation (opened by its own hotkey) moves on to the rotation's first.
+        var steps = index < 0 ? all.Count : all.Count - 1;
+        for (var i = 1; i <= steps; i++)
         {
             Show(all[(index + i) % all.Count]);
             if (Entries.Count > 0)
