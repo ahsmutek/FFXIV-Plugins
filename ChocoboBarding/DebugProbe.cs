@@ -11,9 +11,6 @@ using Lumina.Excel.Sheets;
 
 namespace ChocoboBarding;
 
-/// <summary>
-/// Debug-build only: /cbdebug and a Buddy agent event logger, used to find the barding event.
-/// </summary>
 internal sealed class DebugProbe : IDisposable
 {
     private const string CommandName = "/cbdebug";
@@ -150,7 +147,6 @@ internal sealed class DebugProbe : IDisposable
             }
         }
 
-        // Event 20 = barding picked: [slot, BuddyEquip row]
         if (values is [20, int slot, int rowId])
         {
             var row = data.GetExcelSheet<BuddyEquip>().GetRowOrDefault((uint)rowId);

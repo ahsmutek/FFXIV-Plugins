@@ -28,15 +28,12 @@ internal sealed class ChecklistWindow : Window
     private readonly NativeTooltip tooltip;
     private readonly IGamepadState gamepad;
 
-    // Set when a log was opened in gamepad mode, to hand the controller back to the game on it.
     private bool leaveGamepadMode;
 
     private uint highlighted;
     private DateTime highlightUntil;
     private bool scrollToHighlight;
 
-    // What Item Vendor Location said about the item whose right-click menu is open, asked
-    // once when it opened rather than every frame.
     private bool? menuHasVendors;
 
     public ChecklistWindow(Configuration config, Action save, ItemActions actions, IDataManager data,
@@ -117,8 +114,6 @@ internal sealed class ChecklistWindow : Window
             ImGui.SameLine();
 
             var spacing = ImGui.GetStyle().ItemSpacing.X;
-            // Room for four digits plus the − and + buttons, which a controller can press (ImGui
-            // gamepad navigation) where typing a number needs a keyboard.
             var countWidth = ImGui.CalcTextSize("9999").X + ImGui.GetStyle().FramePadding.X * 2 +
                              (ImGui.GetFrameHeight() + ImGui.GetStyle().ItemInnerSpacing.X) * 2;
             var removeWidth = ImGui.GetFrameHeight();
@@ -134,8 +129,7 @@ internal sealed class ChecklistWindow : Window
             }
             if (ImGui.IsItemHovered())
                 tooltip.Hover(kept.ItemId);
-            // Right-click, or Y / Triangle on a controller (ImGui uses it only to type into text
-            // fields, so it's free on a row; X / Square is ImGui's own menu button).
+            // Y is free on a row; X is ImGui's own menu button.
             if (ImGui.IsItemClicked(ImGuiMouseButton.Right) ||
                 (ImGui.IsItemFocused() && ImGui.IsKeyPressed(ImGuiKey.GamepadFaceUp, false)))
             {
@@ -221,7 +215,6 @@ internal sealed class ChecklistWindow : Window
                 actions.ShowVendors(kept.ItemId);
             any = true;
         }
-
 
         if (!any)
             ImGui.TextDisabled("Not sold by vendors.");

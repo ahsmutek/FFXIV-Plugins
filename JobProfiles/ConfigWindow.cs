@@ -10,13 +10,10 @@ using Dalamud.Plugin.Services;
 
 namespace JobProfiles;
 
-// The Jobs tab (a list of Everyone, the roles and the jobs you've customised; the one picked
-// is edited on the right) and the Buttons tab.
 internal sealed class ConfigWindow : Window
 {
     private const string CustomisePopup = "##customise";
 
-    // "2 · Healer" when you've named layout 2, else "Layout 2".
     private string LayoutLabel(int layout) =>
         config.HudLayoutNames.ElementAtOrDefault(layout)?.Trim() is { Length: > 0 } name
             ? $"{layout + 1} · {name}"
@@ -34,7 +31,6 @@ internal sealed class ConfigWindow : Window
     private readonly Widgets widgets;
     private readonly ButtonsTab buttons;
 
-    // The page shown: "" everyone, "g:Tank" a role, "j:WHM" a job.
     private string page = $"g:{JobGroup.Tank}";
     private string customiseSearch = string.Empty;
 
@@ -77,7 +73,6 @@ internal sealed class ConfigWindow : Window
 
         ImGui.EndTabBar();
 
-        // The add-a-step picker, opened by any list's Add.
         if (widgets.DrawPicker())
             save();
     }
@@ -104,7 +99,6 @@ internal sealed class ConfigWindow : Window
         if (ImGui.SmallButton("Apply for my current job now"))
             applyNow();
 
-        // The game numbers its HUD layouts; names make the dropdowns easier to read.
         if (ImGui.CollapsingHeader("HUD layout names"))
         {
             if (config.HudLayoutNames.Length < Actions.HudLayouts)
@@ -280,7 +274,6 @@ internal sealed class ConfigWindow : Window
             changed = true;
         }
 
-        // Ticked: the role's list. Unticked: this job's own, starting as a copy of the role's.
         var useRole = profile.Steps == null;
         if (ImGui.Checkbox($"Same as {group.Label}", ref useRole))
         {
@@ -301,7 +294,6 @@ internal sealed class ConfigWindow : Window
         Section("Buttons");
         changed |= buttons.DrawBehaviour($"j:{abbreviation}");
 
-        // Back to following the role: its own settings and button behaviour go.
         ImGui.Spacing();
         ImGui.Separator();
         var hasRules = config.Bindings.Any(b => b.Rules.Any(r => r.Job == abbreviation));
@@ -324,7 +316,6 @@ internal sealed class ConfigWindow : Window
         return changed;
     }
 
-    // A role's saved settings, made if it has none yet.
     private Profile RoleProfile(JobGroup group)
     {
         if (!config.Groups.TryGetValue(group, out var profile))
@@ -332,7 +323,6 @@ internal sealed class ConfigWindow : Window
         return profile;
     }
 
-    // Has its own page: its own settings, or button behaviour set for it alone.
     private bool IsCustomised(string abbreviation) =>
         config.Jobs.ContainsKey(abbreviation) || config.Bindings.Any(b => b.Rules.Any(r => r.Job == abbreviation));
 
@@ -342,7 +332,6 @@ internal sealed class ConfigWindow : Window
     private string JobLabel(string abbreviation) =>
         groups.Job(abbreviation) is { } job ? $"{job.Abbreviation.ExtractText()} – {JobGroups.DisplayName(job)}" : abbreviation;
 
-    // A page title, with the job's icon (dimmed while locked) for job pages.
     private void Heading(string title, string? abbreviation = null)
     {
         if (abbreviation != null && groups.Job(abbreviation) is { } job)

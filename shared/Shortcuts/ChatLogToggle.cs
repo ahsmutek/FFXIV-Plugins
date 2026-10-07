@@ -6,16 +6,13 @@ using FFXIVClientStructs.FFXIV.Component.GUI;
 
 namespace Shortcuts;
 
-// Hides the game's chat log until toggled back. The game shows it again on its own (after
-// cutscenes, zoning, the HUD toggle), so it's re-hidden every frame while hidden. It comes
-// back while you're typing so you can see what you write. Only lasts until the plugin unloads.
+// The game re-shows the chat log on its own, so it's re-hidden every frame.
 internal sealed class ChatLogToggle : IDisposable
 {
-    // The log window with its tabs and input line, and the pop-out tab windows.
     private static readonly string[] Addons = ["ChatLog", "ChatLogPanel_0", "ChatLogPanel_1", "ChatLogPanel_2", "ChatLogPanel_3"];
 
     private readonly IFramework framework;
-    // Windows this hid, so showing the log again doesn't show one the game hid itself.
+    // So showing the log again doesn't show one the game hid itself.
     private readonly HashSet<string> hiddenByUs = [];
 
     public ChatLogToggle(IFramework framework)

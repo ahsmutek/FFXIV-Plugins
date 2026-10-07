@@ -4,11 +4,8 @@ using Dalamud.Bindings.ImGui;
 
 namespace RetainerCooldown;
 
-// The cooldown shade over the HUD icon, like the game's own hotbar cooldowns.
 internal static class CooldownSweep
 {
-    // Radial darkening sweep clipped to the rounded icon. The pie is larger than
-    // the face; clipping keeps the shadow off the corners and off the frame.
     public static void Draw(ImDrawListPtr dl, Vector2 origin, float size, float fraction)
     {
         if (fraction <= 0) return;
@@ -64,7 +61,7 @@ internal static class CooldownSweep
         return n;
     }
 
-    // Sutherland–Hodgman. `count` is the live vertex count in `subject`.
+    // Sutherland–Hodgman.
     private static int ClipPolygon(Span<Vector2> subject, int count, Span<Vector2> clip, Span<Vector2> scratch)
     {
         for (var e = 0; e < clip.Length; e++)

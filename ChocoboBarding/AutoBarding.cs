@@ -4,14 +4,8 @@ using Dalamud.Plugin.Services;
 
 namespace ChocoboBarding;
 
-/// <summary>
-/// "Match my job automatically": puts on the job's barding when the chocobo is summoned, and
-/// when the job changes while it's out. Nothing happens while it isn't summoned, and the
-/// queue only changes pieces that differ, so an unchanged look sends nothing to the server.
-/// </summary>
 internal sealed class AutoBarding : IDisposable
 {
-    // The summon and the job change take a moment to settle before the barding can be changed.
     private const long AfterSummonMs = 1500;
     private const long AfterJobChangeMs = 500;
 
@@ -25,7 +19,6 @@ internal sealed class AutoBarding : IDisposable
     private uint lastJob;
     private long? applyAt;
 
-    /// <param name="apply">Puts on the current job's barding without chat messages.</param>
     public AutoBarding(IFramework framework, IPlayerState player, ICondition condition, Configuration config, Action apply)
     {
         this.framework = framework;

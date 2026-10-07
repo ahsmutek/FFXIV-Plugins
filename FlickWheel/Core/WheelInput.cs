@@ -9,22 +9,14 @@ using Dalamud.Game.ClientState.Keys;
 using Dalamud.Plugin.Services;
 
 namespace FlickWheel;
-// Hold the hotkey to show the wheel and tilt the right stick toward an entry. By
-// default the target stays when the stick springs back and letting go of the
-// hotkey picks it; optionally the stick returning to center picks it.
-// Letting go of the hotkey with no target cancels, so the wheel can never get
-// stuck open. B cancels. The shared hotkey opens the wheel used last and the swap
-// button moves through every wheel; a wheel's own hotkey opens straight to it.
 internal sealed class WheelInput : IDisposable
 {
     // Game stick axes run -99..99.
     private const float StickRange = 99f;
-    // Another icon must be this much closer before the target moves off the current one.
     private static readonly float Hysteresis = 3f * MathF.PI / 180f;
     // Retarget only while the stick is near its furthest tilt this gesture, so the
     // spring back to center can't drift onto a neighbour.
     private const float PeakFraction = 0.85f;
-    // Close the wheel if the overlay hasn't drawn it for this long (ms).
     private const long NotDrawnTimeout = 1000;
 
     private static readonly ConditionFlag[] ForceClose =
@@ -46,15 +38,12 @@ internal sealed class WheelInput : IDisposable
     private readonly Configuration config;
     private readonly Action save;
 
-    // Hotkey stayed down after the wheel closed; wait for a real release before reopening.
     private bool waitForRelease;
     private bool savedGamepadNav;
     private float gesturePeak;
     private bool swapWasDown;
     private long lastDrawn;
 
-    // The hotkey that opened the wheel (letting go of it picks), and whether it was a
-    // wheel's own hotkey rather than the shared one.
     private HotkeyModifier heldModifier;
     private VirtualKey heldKey;
     private bool openedDirect;
@@ -64,7 +53,6 @@ internal sealed class WheelInput : IDisposable
     public WheelRing Ring { get; private set; } = null!;
     public IReadOnlyList<WheelEntry> Entries { get; private set; } = [];
     public WheelEntry? Target { get; private set; }
-    // Stick direction (screen space, unit length) and tilt 0-1.
     public Vector2 StickDirection { get; private set; }
     public float StickTilt { get; private set; }
 
@@ -103,26 +91,22 @@ internal sealed class WheelInput : IDisposable
             if (waitForRelease)
                 return;
 
-            // One attempt per press, whether or not it opens.
             waitForRelease = true;
             if (GameFocused() && CanOpen())
                 Open(pressed.Value);
             return;
         }
 
-        // Zoning, cutscenes, or the wheel not being drawn (game UI hidden, gpose):
-        // close rather than keep blocking the pad with nothing on screen.
+        // Never keep blocking the pad with nothing on screen.
         if (!CanOpen() || Environment.TickCount64 - lastDrawn > NotDrawnTimeout)
         {
             Close();
             return;
         }
 
-        // Keep the key away from the game while the wheel owns it.
         if (keys.IsVirtualKeyValid(heldKey))
             keys[heldKey] = false;
 
-        // B cancels. The wheel stays shut until the hotkey is pressed again.
         if (gamepad.Raw(GamepadButtons.East) > 0)
         {
             Close();
@@ -144,8 +128,6 @@ internal sealed class WheelInput : IDisposable
 
         if (StickTilt < config.Deadzone)
         {
-            // Back at center. Either pick now, or keep the target so letting go of
-            // the hotkey picks it.
             if (config.Confirm == ConfirmMode.StickRelease && Target != null)
             {
                 Commit();
@@ -160,8 +142,6 @@ internal sealed class WheelInput : IDisposable
             Target = Pick(Target);
     }
 
-    // The hotkey being held: a wheel's own one first (it's the more specific), then
-    // the shared one. Null when none is held.
     private (string? WheelId, HotkeyModifier Modifier, VirtualKey Key)? PressedShortcut()
     {
         foreach (var (id, hotkey) in config.DirectHotkeys)
@@ -177,13 +157,10 @@ internal sealed class WheelInput : IDisposable
     {
         if (pressed.WheelId is { } id)
         {
-            // A wheel's own hotkey: that wheel or nothing.
             Show(wheels.Find(id)!);
         }
         else
         {
-            // Reopen the wheel used last time; fall back to the next one that has entries.
-            // Wheels kept out of the rotation only open with their own hotkey.
             var all = wheels.CycleWheels;
             if (all.Count == 0)
                 return;
@@ -212,21 +189,17 @@ internal sealed class WheelInput : IDisposable
         IsOpen = true;
         lastDrawn = Environment.TickCount64;
 
-        // Stops the right stick from also turning the camera. Dalamud still
-        // reports the stick values to us before it blanks them for the game.
-        // If Dalamud's own gamepad mode is already on, input is already blocked; leave it be.
+        // Stops the right stick turning the camera; Dalamud still sees the values.
         savedGamepadNav = gamepad.EnableGamepadNav;
         if (!savedGamepadNav)
             SetPadBlockQuietly(true);
     }
 
-    // The next wheel after this one that has something on it; stays put if none does.
     private void ShowNext()
     {
         var all = wheels.CycleWheels;
         var index = all.FindIndex(w => w.Id == Wheel?.Id);
         var (wheel, ring, entries) = (Wheel, Ring, Entries);
-        // A wheel outside the rotation (opened by its own hotkey) moves on to the rotation's first.
         var steps = index < 0 ? all.Count : all.Count - 1;
         for (var i = 1; i <= steps; i++)
         {
@@ -249,9 +222,7 @@ internal sealed class WheelInput : IDisposable
         target?.Run();
     }
 
-    // Dalamud's setter also opens its "gamepad mode" notifier, which dims the screen,
-    // whenever ImGui has a gamepad. Hide that flag just for the set so only the input
-    // blocking happens.
+    // Dalamud's setter also shows its screen-dimming "gamepad mode" notifier when ImGui has a gamepad.
     private void SetPadBlockQuietly(bool on)
     {
         var io = ImGui.GetIO();
@@ -261,7 +232,6 @@ internal sealed class WheelInput : IDisposable
         io.BackendFlags = flags;
     }
 
-    // Called by the overlay each frame it draws the wheel.
     public void MarkDrawn() => lastDrawn = Environment.TickCount64;
 
     private void Close()
@@ -273,8 +243,6 @@ internal sealed class WheelInput : IDisposable
         if (!savedGamepadNav)
             SetPadBlockQuietly(false);
 
-        // Remember which wheel was up so the shared hotkey opens it next time.
-        // A wheel's own hotkey doesn't change where the shared one starts.
         if (!openedDirect && Wheel != null && config.LastWheel != Wheel.Id)
         {
             config.LastWheel = Wheel.Id;
@@ -292,8 +260,6 @@ internal sealed class WheelInput : IDisposable
         StickDirection = length > 0.0001f ? v / length : Vector2.Zero;
     }
 
-    // The entry whose slice the stick points into, sticky toward the current target.
-    // If that slice is empty (e.g. a locked job), the nearest shown icon takes it.
     private WheelEntry? Pick(WheelEntry? current)
     {
         var angle = MathF.Atan2(StickDirection.X, -StickDirection.Y);
@@ -351,7 +317,7 @@ internal sealed class WheelInput : IDisposable
 
     private static bool IsDown(VirtualKey key) => (GetAsyncKeyState((int)key) & 0x8000) != 0;
 
-    // The key checks read the physical keyboard, so make sure the game is the window being typed into.
+    // The key checks read the physical keyboard.
     private static bool GameFocused()
     {
         GetWindowThreadProcessId(GetForegroundWindow(), out var pid);

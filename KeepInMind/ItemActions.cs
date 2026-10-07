@@ -11,13 +11,7 @@ using Lumina.Excel.Sheets;
 
 namespace KeepInMind;
 
-// What Item Vendor Location can do for an item in the list, and which game log it's in.
-//
-// Item Vendor Location only adds its entry to the game's own context menus, and only for menus
-// owned by the game windows it knows (Crafting Log, recipe tree, chat…), reading the item from
-// that window's agent. An ImGui window can't open one of those, so the list uses its IPC:
-// "ItemVendorLocation.OpenVendorResults" opens its vendor results for an item ID, and
-// "ItemVendorLocation.GetItemVendors" tells whether it has any (its menu entry only shows then).
+// Item Vendor Location's menu entry only appears in the game's own menus, so its IPC is used instead.
 internal sealed class ItemActions
 {
     private const string VendorPlugin = "ItemVendorLocation";
@@ -27,8 +21,6 @@ internal sealed class ItemActions
     private readonly ICallGateSubscriber<uint, bool, HashSet<(uint npcId, uint territory, (float x, float y))>?> getItemVendors;
     private readonly ICallGateSubscriber<uint, object?> openVendorResults;
 
-    // Which log an item is in: the Gathering Log (miner, botanist), the fish guide, the
-    // Crafting Log.
     private readonly FrozenSet<uint> gatherables;
     private readonly FrozenSet<uint> fish;
     private readonly FrozenSet<uint> spearfish;
@@ -63,8 +55,6 @@ internal sealed class ItemActions
         : craftables.Contains(itemId) ? "Crafting Log"
         : null;
 
-    // Opens the item the way the game's own "Search for Item by Gathering/Crafting Method"
-    // does. Gathering first: the list is for things to fetch by hand. False when it's in no log.
     public unsafe bool OpenLog(uint itemId)
     {
         if (gatherables.Contains(itemId))
@@ -79,7 +69,6 @@ internal sealed class ItemActions
     }
 
     public bool VendorPluginLoaded => IsLoaded(VendorPlugin);
-
 
     public bool? HasVendors(uint itemId)
     {
@@ -107,7 +96,6 @@ internal sealed class ItemActions
             log.Warning(e, "Couldn't open Item Vendor Location's results.");
         }
     }
-
 
     private bool IsLoaded(string internalName) =>
         pluginInterface.InstalledPlugins.Any(p => p.IsLoaded &&

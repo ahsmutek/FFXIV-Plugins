@@ -18,7 +18,6 @@ public enum SlotAction
     Set,
 }
 
-/// <summary>What to do with one barding slot: leave it, take the piece off, or put a BuddyEquip row on.</summary>
 public readonly record struct SlotChoice(SlotAction Action, uint RowId = 0)
 {
     public static readonly SlotChoice Keep = new(SlotAction.Keep);
@@ -54,7 +53,6 @@ internal static class Barding
 
         var rows = data.GetExcelSheet<BuddyEquip>().Where(row => row.Name.ExtractText().Length > 0).ToList();
 
-        // An exact full name wins over a short name, in case both could match.
         foreach (var row in rows)
             if (row.Name.ExtractText().Equals(wanted, StringComparison.OrdinalIgnoreCase))
                 return row;
@@ -66,7 +64,6 @@ internal static class Barding
         return null;
     }
 
-    /// <summary>Owned barding names containing <paramref name="name"/>; unowned barding is never suggested.</summary>
     public static string[] Suggest(IDataManager data, IUnlockState unlocks, string name, int max = 5)
     {
         var wanted = name.Trim().Trim('"');
@@ -85,11 +82,7 @@ internal static class Barding
                    .Where(row => row.Name.ExtractText().Length > 0 && unlocks.IsBuddyEquipUnlocked(row));
     }
 
-    /// <summary>
-    /// Splits command arguments into slot tokens. Without quotes the whole input is one name,
-    /// so <c>/cbarding Sophic Barding</c> still works; with quotes, quoted strings and bare words
-    /// (<c>-</c>, <c>none</c>) are separate tokens.
-    /// </summary>
+    // Without quotes the whole input is one name, so /cbarding Sophic Barding works.
     public static List<string> Tokenize(string args)
     {
         var trimmed = args.Trim();
@@ -112,7 +105,7 @@ internal static class Barding
                 i++;
                 while (i < trimmed.Length && trimmed[i] != '"')
                     sb.Append(trimmed[i++]);
-                i++; // closing quote (or past the end if unclosed)
+                i++;
             }
             else
             {
@@ -133,10 +126,6 @@ internal static class Barding
         _ => $"\"{name}\"",
     };
 
-    /// <summary>
-    /// Jobs a barding can be picked for: every job, crafter and gatherer, in the game's own order.
-    /// Base classes (Arcanist, Gladiator…) are left out; they use their job's barding.
-    /// </summary>
     public static List<ClassJob> Jobs(IDataManager data)
     {
         var sheet = data.GetExcelSheet<ClassJob>();
@@ -149,7 +138,6 @@ internal static class Barding
                     .ToList();
     }
 
-    /// <summary>The barding saved for a job; a base class falls back to a job built on it (Arcanist → Summoner or Scholar).</summary>
     public static SlotChoice[]? ForJob(Configuration config, IDataManager data, uint classJobId)
     {
         if (Saved(config, classJobId) is { } choices)
@@ -171,7 +159,6 @@ internal static class Barding
     public static string JobName(ClassJob job) =>
         CultureInfo.CurrentCulture.TextInfo.ToTitleCase(job.Name.ExtractText());
 
-    /// <summary>Whether the chocobo companion is summoned (its timer is running).</summary>
     public static unsafe bool IsChocoboOut() => UIState.Instance()->Buddy.CompanionInfo.TimeLeft > 0;
 
     public static unsafe uint WornRowId(int slot)
@@ -179,10 +166,7 @@ internal static class Barding
         return UIState.Instance()->Buddy.CompanionInfo.BuddyEquipRowIds[slot];
     }
 
-    /// <summary>
-    /// Sends the same Buddy agent event the Appearance tab sends for one click.
-    /// Selecting the piece a slot already wears takes it off.
-    /// </summary>
+    // Selecting the piece a slot already wears takes it off.
     public static unsafe bool SendOne(int slot, uint rowId)
     {
         var agent = AgentModule.Instance()->GetAgentByInternalId(AgentId.Buddy);

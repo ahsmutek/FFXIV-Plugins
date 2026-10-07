@@ -7,8 +7,7 @@ namespace FlickWheel;
 
 internal sealed class JobSwitcher(ICondition condition, IToastGui toasts)
 {
-    // States where the game won't let you change gear sets. Duties aren't listed: some allow it
-    // (the Diadem, between gatherers), and where they don't, the game refuses the gear set itself.
+    // Duties aren't listed: some allow it, and the game refuses where they don't.
     private static readonly ConditionFlag[] Blocking =
     [
         ConditionFlag.InCombat,
@@ -37,7 +36,6 @@ internal sealed class JobSwitcher(ICondition condition, IToastGui toasts)
 
     public unsafe void Switch(WheelJob job)
     {
-        // Log entries open their window the same way the game's own menu does.
         if (job.CommandId != 0)
         {
             var ui = UIModule.Instance();
@@ -46,7 +44,6 @@ internal sealed class JobSwitcher(ICondition condition, IToastGui toasts)
             return;
         }
 
-        // Already on it: nothing to do, and nothing worth telling the player.
         if (job.IsCurrent)
             return;
 

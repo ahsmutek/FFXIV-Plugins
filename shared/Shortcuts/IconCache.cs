@@ -8,9 +8,6 @@ using Lumina.Data.Files;
 
 namespace Shortcuts;
 
-// Textures for wheel icons. Job glyphs come straight from the game. Main-menu icons (logs,
-// Duty Finder…) only exist as a gold glyph on a red tile, so the tile and its frame are keyed out
-// once, leaving a transparent gold glyph that matches the job icons.
 internal sealed class IconCache(IDataManager data, ITextureProvider textures) : IDisposable
 {
     private readonly Dictionary<uint, IDalamudTextureWrap?> keyed = new();
@@ -49,9 +46,7 @@ internal sealed class IconCache(IDataManager data, ITextureProvider textures) : 
         return wrap;
     }
 
-    // BGRA pixels. Gold and cream keep green close to red; the tile's reds and
-    // browns don't, so that ratio becomes the alpha. The frame around the edge is
-    // gold too, so a margin is faded out as well.
+    // Gold and cream keep green close to red; the tile's reds don't, so that ratio becomes alpha.
     private static void KeyOutTile(byte[] pixels, int width, int height)
     {
         for (var y = 0; y < height; y++)
@@ -74,8 +69,6 @@ internal sealed class IconCache(IDataManager data, ITextureProvider textures) : 
         AddShadow(pixels, width, height);
     }
 
-    // Darken the glyph slightly and put a soft dark outline under it, offset down
-    // and right, so it reads like the job glyphs' drop shadow.
     private static void AddShadow(byte[] pixels, int width, int height)
     {
         const float darken = 0.82f;
@@ -91,7 +84,6 @@ internal sealed class IconCache(IDataManager data, ITextureProvider textures) : 
         {
             for (var x = 0; x < width; x++)
             {
-                // Shadow: the glyph's alpha spread by the radius and shifted by the offset.
                 var shadow = 0f;
                 for (var dy = -radius; dy <= radius; dy++)
                 {
@@ -105,7 +97,7 @@ internal sealed class IconCache(IDataManager data, ITextureProvider textures) : 
                 }
                 shadow *= shadowStrength;
 
-                // Glyph over a black shadow, in straight (non-premultiplied) alpha.
+                // Straight (non-premultiplied) alpha.
                 var i = (y * width + x) * 4;
                 var a = alpha[y * width + x];
                 var outA = a + shadow * (1 - a);

@@ -10,16 +10,12 @@ using Recipe = Lumina.Excel.Sheets.Recipe;
 
 namespace KeepInMind;
 
-// Adds "Keep in mind" to the Crafting Log's right-click menu on ingredients. The game keeps
-// the right-clicked item in AgentRecipeNote, the same field other plugins (Item Vendor
-// Location…) read for their entries in this menu.
+// The game keeps the right-clicked item in AgentRecipeNote.
 internal sealed class RecipeNoteMenu : IDisposable
 {
     private readonly IContextMenu contextMenu;
     private readonly Action<uint, int> add;
 
-    // Items some recipe uses, so the crafted item itself (or a recipe in the list) doesn't get
-    // the entry. Intermediate materials are both, and keep it.
     private readonly FrozenSet<uint> ingredients;
 
     public RecipeNoteMenu(IContextMenu contextMenu, IDataManager data, Action<uint, int> add)
@@ -69,7 +65,6 @@ internal sealed class RecipeNoteMenu : IDisposable
         return 1;
     }
 
-    // HQ and collectable versions are offset from the item's own ID.
     private static uint BaseItemId(uint id) => id switch
     {
         >= 1000000 => id - 1000000,

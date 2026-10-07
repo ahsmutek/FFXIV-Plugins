@@ -10,17 +10,12 @@ using Shortcuts;
 
 namespace JobProfiles;
 
-// Shared by the settings tabs: step lists (anything Flick Wheel's picker offers, plus typed
-// commands) and a generic combo with search.
 internal sealed class Widgets(ShortcutCatalog catalog, ShortcutPicker picker, IconCache icons)
 {
-    // The open searchable combo's search text; only one is open at a time.
     private string search = string.Empty;
-    // A list whose Add was clicked; the picker opens for it at the window's top level.
     private (string Name, Action<Step> Add)? pendingAdd;
 
-    // The steps, in order, with Add opening the picker. add puts the picked step in the saved
-    // list (the one drawn may be a copy).
+    // add stores the picked step in the saved list (the one drawn may be a copy).
     public bool StepList(List<Step> list, string name, Action<Step> add)
     {
         var changed = false;
@@ -38,7 +33,6 @@ internal sealed class Widgets(ShortcutCatalog catalog, ShortcutPicker picker, Ic
             ImGui.SameLine();
 
             var removeWidth = ImGui.GetFrameHeight() + ImGui.GetStyle().ItemSpacing.X;
-            // Where the remove button goes, measured in the cell so it works inside tables too.
             var removeX = ImGui.GetCursorPosX() + ImGui.GetContentRegionAvail().X - ImGui.GetFrameHeight();
             var editable = step.Kind is ShortcutKind.Text or ShortcutKind.Command && step.Label == null;
             if (editable)
@@ -92,7 +86,6 @@ internal sealed class Widgets(ShortcutCatalog catalog, ShortcutPicker picker, Ic
         return changed;
     }
 
-    /// <summary>Opens the picker for a list whose Add was clicked, and draws it. True when a step was added.</summary>
     public bool DrawPicker()
     {
         if (pendingAdd is var (name, add))
@@ -104,12 +97,10 @@ internal sealed class Widgets(ShortcutCatalog catalog, ShortcutPicker picker, Ic
         return picker.Draw();
     }
 
-    // A step list in one line, e.g. "Healer HUD, /gs change 3".
     public string StepNames(List<Step>? list) =>
         list is { Count: > 0 } ? string.Join(", ", list.Select(s => catalog.Describe(s)?.Name ?? "?")) : "—";
 
-    // A width above 0 is at 100% UI scale: it grows with Dalamud's scale, and never gets
-    // narrower than the longest choice so none is cut off. -1 fills the rest of the row.
+    // width is at 100% UI scale; -1 fills the row.
     public bool Combo<T>(string id, ref T value, List<(T Value, string Label)> options, bool searchable = false,
                           float width = -1)
     {
@@ -125,7 +116,6 @@ internal sealed class Widgets(ShortcutCatalog catalog, ShortcutPicker picker, Ic
         ImGui.SetNextItemWidth(width);
         if (ImGui.BeginCombo(id, options[selected].Label, searchable ? ImGuiComboFlags.HeightLarge : ImGuiComboFlags.None))
         {
-            // A search box at the top, empty and focused each time the list opens.
             if (searchable)
             {
                 if (ImGui.IsWindowAppearing())

@@ -7,7 +7,6 @@ using Shortcuts;
 
 namespace FlickWheel;
 
-// The Job layout and Gear sets settings tabs.
 internal sealed class JobsSettings(Configuration config, JobCatalog catalog, IconCache icons, WheelOverlay overlay)
 {
     private static readonly (JobGroup Group, string Label)[] GroupLabels =
@@ -23,7 +22,6 @@ internal sealed class JobsSettings(Configuration config, JobCatalog catalog, Ico
         (JobGroup.Logs, "Logs"),
     ];
 
-    // Refreshed when settings open so new gear sets and unlocks show up.
     private List<GearsetInfo> gearsets = [];
     private List<WheelJob> jobs = [];
 
@@ -64,7 +62,7 @@ internal sealed class JobsSettings(Configuration config, JobCatalog catalog, Ico
                 if (DrawGroupLayout(kind, groups, g))
                 {
                     changed = true;
-                    overlay.PreviewWheel = JobsModule.WheelId(kind); // show the wheel being edited
+                    overlay.PreviewWheel = JobsModule.WheelId(kind);
                 }
             }
         }
@@ -113,13 +111,10 @@ internal sealed class JobsSettings(Configuration config, JobCatalog catalog, Ico
         ImGui.PushID(group.ToString());
         ImGui.Spacing();
 
-        // Move the group one step counter-clockwise (up) or clockwise (down).
         if (GroupEditor.MoveArrows(index, groups.Count) is var step and not 0)
             changed |= MoveGroup(kind, groups, index, step);
         ImGui.SameLine();
 
-        // Palette swatch: a palette hue, or a custom color (which starts from the current one).
-        // With job colors on, the role decides, so the swatch only shows it.
         var hue = JobLayout.HueOf(group, config);
         var custom = Palette.Abgr(JobLayout.ColorOf(group, config));
         ImGui.BeginDisabled(config.UseJobColors);
@@ -227,7 +222,6 @@ internal sealed class JobsSettings(Configuration config, JobCatalog catalog, Ico
 
     private static string Label(JobGroup group) => GroupLabels.First(g => g.Group == group).Label;
 
-    // Short name of whatever is shown (a class before its job is unlocked, e.g. GLA).
     private string ShortName(WheelJob job) =>
         catalog.Abbreviation(job.RowId) is { Length: > 0 } name ? name : job.Abbreviation;
 
@@ -248,10 +242,7 @@ internal sealed class JobsSettings(Configuration config, JobCatalog catalog, Ico
         for (var i = 0; i < gearsets.Count; i++)
             options[i + 1] = $"#{gearsets[i].Index + 1} {gearsets[i].Name}";
 
-        // Where the gear set dropdowns line up: after the icon and the widest short name,
-        // measured with the current font so it fits at any UI scale.
         var spacing = ImGui.GetStyle().ItemSpacing.X;
-        // Log entries have no gear set row, so they don't count toward the widest name.
         var widestName = jobs.Where(j => j.CommandId == 0)
                              .Select(j => ImGui.CalcTextSize(ShortName(j)).X)
                              .DefaultIfEmpty(0f)

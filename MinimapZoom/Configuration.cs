@@ -8,10 +8,8 @@ public sealed class Configuration : IPluginConfiguration
 
     public bool Enabled { get; set; } = true;
 
-    // How far the − button can zoom out, past the game's own 1.25.
     public float Minimum { get; set; } = 0.25f;
 
-    // The zoom you picked below the game's limit, put back when the game resets the minimap
-    // (changing job, zoning, logging in). Null = at or above the game's limit; nothing to keep.
+    // Restored when the game resets the minimap; null = within the game's range.
     public float? Zoom { get; set; }
 }

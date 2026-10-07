@@ -7,13 +7,7 @@ using ValueType = FFXIVClientStructs.FFXIV.Component.GUI.AtkValueType;
 
 namespace KeepInMind;
 
-// Shows the game's own item tooltip (how many you have, and what other plugins such as Allagan
-// Tools add to it) while an item in the list is hovered. The game only anchors tooltips to its
-// own windows' nodes, so this fills in the item detail agent and shows its ItemDetail window
-// directly, the way Chat 2's "native item tooltips" do for item links in its ImGui chat.
-//
-// Rows call Hover each frame they're hovered; EndFrame, after the windows are drawn, opens the
-// tooltip for a newly hovered item and closes it once nothing is hovered.
+// The game only anchors tooltips to its own nodes, so this drives ItemDetail directly, as Chat 2 does.
 internal sealed unsafe class NativeTooltip : IDisposable
 {
     private uint hoveredThisFrame;

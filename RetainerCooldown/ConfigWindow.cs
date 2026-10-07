@@ -8,7 +8,6 @@ namespace RetainerCooldown;
 
 internal sealed class ConfigWindow : Window
 {
-    // Number of consecutive icon IDs scanned per browser page.
     private const int PageSpan = 200;
 
     private static readonly string[] DisplayModeLabels = ["Fastest to complete", "Latest to complete"];
@@ -17,14 +16,10 @@ internal sealed class ConfigWindow : Window
 
     private readonly Plugin plugin;
     private int browseStart = -1;
-    // Icon IDs on the current browser page that exist, found once per page.
     private readonly List<uint> pageIcons = [];
     private int pageIconsStart = -1;
-    // Sliders and the ID field change the config every frame; save once they're let go.
     private bool dirty;
-    // Which slot the ID field and grid write to.
     private bool editingComplete;
-    // Icon IDs when the window was opened, so a pick can be undone.
     private uint savedIconId;
     private uint savedCompleteIconId;
 
@@ -56,7 +51,6 @@ internal sealed class ConfigWindow : Window
         var currentPreset = 0;
         for (var i = 0; i < presets.Length; i++)
             if (Math.Abs(presets[i] - plugin.Config.IconSize) < 0.5f) { currentPreset = i; break; }
-        // Slider that snaps to the fixed preset sizes; the label shows the px value.
         if (ImGui.SliderInt("Icon size", ref currentPreset, 0, presets.Length - 1, $"{presets[currentPreset]:0}px"))
         {
             plugin.Config.IconSize = presets[currentPreset];
@@ -184,7 +178,6 @@ internal sealed class ConfigWindow : Window
         return pageIcons;
     }
 
-    // Selectable preview for one HUD icon slot. Clicking it points the picker at that slot.
     private void DrawIconSlot(bool complete, string label)
     {
         var iconId = complete ? plugin.Config.CompleteIconId : plugin.Config.IconId;

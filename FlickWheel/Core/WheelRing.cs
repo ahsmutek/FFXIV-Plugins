@@ -5,16 +5,9 @@ using System.Numerics;
 
 namespace FlickWheel;
 
-// One slot on a ring: what goes there, which group it belongs to (for the colored
-// band and the separators) and that group's color.
 internal readonly record struct RingSlot(string Key, int Group, Vector4 Color);
 
-// One ring of fixed positions. A slot never depends on what's available right now,
-// so positions stay put for muscle memory; empty slots are just left blank.
-//
-// Anchored groups sit centered on a fixed compass angle at the ring's base slot
-// width. The groups between two anchors share the arc left over, spread evenly,
-// so their slots can end up a little wider or narrower than the anchored ones.
+// Slots never depend on what's available, so positions stay put for muscle memory.
 internal sealed class WheelRing
 {
     private readonly float[] centers;
@@ -35,7 +28,6 @@ internal sealed class WheelRing
 
         var step = MathF.Tau / n;
 
-        // Contiguous runs of one group, in clockwise order.
         var runs = new List<(int Group, int First, int Count)>();
         for (var i = 0; i < n; i++)
         {
@@ -45,9 +37,7 @@ internal sealed class WheelRing
                 runs.Add((slots[i].Group, i, 1));
         }
 
-        // Anchors are applied in priority order. Two anchored groups side by side would
-        // leave an empty arc between them, so a later anchor next to a kept one is dropped
-        // and that group just fills in like the others.
+        // A later anchor next to a kept one would leave an empty arc, so it's dropped.
         var anchored = new List<int>();
         foreach (var (group, angle) in anchors)
         {
@@ -58,7 +48,6 @@ internal sealed class WheelRing
             anchored.Add(r);
         }
 
-        // Nothing could be anchored (e.g. the pinned group is empty): the first group goes on top.
         if (anchored.Count == 0)
         {
             Place(runs[0].First, runs[0].Count, -runs[0].Count * step / 2, step);
@@ -66,7 +55,6 @@ internal sealed class WheelRing
         }
         anchored.Sort();
 
-        // Fill the slots between each anchored run and the next one (wrapping around).
         for (var k = 0; k < anchored.Count; k++)
         {
             var from = runs[anchored[k]];
@@ -89,15 +77,13 @@ internal sealed class WheelRing
         }
     }
 
-    // Radians clockwise from straight up.
+    // Radians clockwise from up.
     public float AngleOf(int slot) => centers[slot];
     public float StartOf(int slot) => starts[slot];
     public float EndOf(int slot) => ends[slot];
 
-    // Screen-space unit vector (Y grows down) for a clockwise-from-up angle.
     public static Vector2 Direction(float angle) => new(MathF.Sin(angle), -MathF.Cos(angle));
 
-    // Smallest absolute difference between two angles, in radians.
     public static float AngleDistance(float a, float b)
     {
         var d = MathF.IEEERemainder(a - b, MathF.Tau);

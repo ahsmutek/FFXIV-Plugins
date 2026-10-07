@@ -8,14 +8,12 @@ using Shortcuts;
 
 namespace FlickWheel;
 
-// The Shortcuts settings tab: color style, then each group with its shortcuts.
 internal sealed class ShortcutsSettings(Configuration config, ShortcutsModule module, ShortcutCatalog catalog, IconCache icons,
                                         WheelOverlay overlay, ShortcutPicker picker)
 {
-    // Hues handed out to new groups and by Auto colors: far apart first, near neighbours later.
+    // Far-apart hues first.
     private static readonly int[] HueOrder = [11, 6, 0, 2, 14, 8, 3, 16, 12, 5, 9, 15, 1, 4, 7, 10, 13, 17];
 
-    // The wheel being edited: the first one until another is picked.
     private string? selectedUid;
 
     private ShortcutWheel Wheel =>
@@ -60,11 +58,10 @@ internal sealed class ShortcutsSettings(Configuration config, ShortcutsModule mo
         changed |= picker.Draw();
 
         if (changed)
-            overlay.PreviewWheel = module.IdOf(Wheel); // show the wheel being edited
+            overlay.PreviewWheel = module.IdOf(Wheel);
         return changed;
     }
 
-    // Which wheel to edit, and adding, naming, rotating and deleting wheels.
     private bool DrawWheelChoice()
     {
         var changed = false;
@@ -99,7 +96,6 @@ internal sealed class ShortcutsSettings(Configuration config, ShortcutsModule mo
             return true;
         }
 
-        // The first wheel stays; added ones can be renamed and deleted.
         if (wheel != config.Shortcuts)
         {
             ImGui.SameLine();
@@ -166,8 +162,6 @@ internal sealed class ShortcutsSettings(Configuration config, ShortcutsModule mo
         return changed;
     }
 
-    // One group: arrows, color, name, pin, delete, its shortcuts and a + button. Returns the
-    // group to add a shortcut to when + was pressed, and whether the group was deleted.
     private (bool Changed, ShortcutGroup? AddTo, bool Removed) DrawGroup(List<ShortcutGroup> groups, int index)
     {
         var changed = false;
@@ -210,7 +204,6 @@ internal sealed class ShortcutsSettings(Configuration config, ShortcutsModule mo
             changed = true;
         }
 
-        // A group with shortcuts in it needs Ctrl held, so it can't go by accident.
         ImGui.SameLine();
         var canDelete = group.Entries.Count == 0 || ImGui.GetIO().KeyCtrl;
         ImGui.BeginDisabled(!canDelete);
@@ -228,7 +221,7 @@ internal sealed class ShortcutsSettings(Configuration config, ShortcutsModule mo
             return (true, null, true);
         }
 
-        // Remove and Move to happen after the row is drawn, not while it's being walked.
+        // Applied after the row is drawn, not while it's being iterated.
         Action? pending = null;
         var entries = group.Entries;
         var move = GroupEditor.IconRow(entries.Count, color, i => RowIconOf(entries[i]), i =>
@@ -275,7 +268,6 @@ internal sealed class ShortcutsSettings(Configuration config, ShortcutsModule mo
         return new RowIcon(entry.Uid, texture, Short(info.Name), tooltip, !available);
     }
 
-    // First letters for icon-less entries, e.g. "/cbarding job" → "/cb".
     private static string Short(string name) => name.Length <= 3 ? name : name[..3];
 
     private static bool DrawEntryMenu(List<ShortcutGroup> groups, int groupIndex, ShortcutEntry entry, ref Action? pending)

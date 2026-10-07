@@ -9,7 +9,6 @@ using Dalamud.Plugin.Services;
 
 namespace FlickWheel;
 
-// General settings shared by every wheel, then one or more tabs per module.
 internal sealed class ConfigWindow : Window
 {
     private static readonly GamepadButtons[] SwapButtons =
@@ -25,7 +24,6 @@ internal sealed class ConfigWindow : Window
     private readonly WheelOverlay overlay;
     private readonly VirtualKey[] keys;
     private readonly string[] keyNames;
-    // Same keys with "None" first, for the optional per-wheel hotkeys.
     private readonly string[] optionalKeyNames;
     private bool dirty;
 
@@ -91,8 +89,7 @@ internal sealed class ConfigWindow : Window
         if (changed)
             overlay.InvalidatePreview();
 
-        // Sliders, color pickers and icon drags change the config every frame;
-        // write it to disk once they're let go instead.
+        // Sliders change the config every frame; save once they're released.
         dirty |= changed;
         if (dirty && !ImGui.IsAnyItemActive())
         {
@@ -115,7 +112,6 @@ internal sealed class ConfigWindow : Window
                 changed = true;
             }
 
-            // A module with several wheels (Jobs: combat, crafting & gathering) lets each be turned off.
             if (module.Wheels.Count < 2)
                 continue;
             ImGui.Indent();
@@ -219,7 +215,6 @@ internal sealed class ConfigWindow : Window
         return changed;
     }
 
-    // Modifier + key dropdowns. With allowNone the key list starts with "None" (key 0).
     private bool DrawHotkey(string id, ref HotkeyModifier modifier, ref VirtualKey key, bool allowNone)
     {
         var changed = false;

@@ -8,9 +8,7 @@ using Lumina.Excel.Sheets;
 
 namespace FlickWheel;
 
-// One icon on the wheel. RowId is what gets shown and switched to: the job, or
-// its base class when the job itself isn't unlocked yet (e.g. Gladiator).
-// Entries with a CommandId open a game window (e.g. the Crafting Log) instead.
+// RowId is the base class while the job isn't unlocked yet.
 internal sealed record WheelJob(
     int Slot,
     string Abbreviation,
@@ -26,12 +24,10 @@ internal readonly record struct GearsetInfo(int Index, string Name, uint ClassJo
 
 internal sealed class JobCatalog(IDataManager data, IUnlockState unlocks, IPlayerState player, Configuration config)
 {
-    // Gold job glyphs on a transparent background are 62000 + ClassJob row id.
     private const uint JobIconBase = 62000;
 
     private Dictionary<string, ClassJob>? byAbbreviation;
 
-    // Rebuilt every time the wheel opens so new unlocks and gear sets show up.
     public List<WheelJob> Build(WheelRing ring)
     {
         var jobs = new List<WheelJob>();
@@ -59,7 +55,6 @@ internal sealed class JobCatalog(IDataManager data, IUnlockState unlocks, IPlaye
             if (player.GetClassJobLevel(job) <= 0)
                 continue;
 
-            // Level but no job yet (e.g. Gladiator before the Paladin quest): show the class.
             var shown = job;
             if (HasParent(job) && !unlocks.IsClassJobUnlocked(job))
                 shown = job.ClassJobParent.Value;
@@ -97,7 +92,6 @@ internal sealed class JobCatalog(IDataManager data, IUnlockState unlocks, IPlaye
         return list;
     }
 
-    // Icon and name for any entry in the layout, unlocked or not.
     public (uint IconId, string Name)? Info(string abbreviation)
     {
         if (JobLayout.Commands.TryGetValue(abbreviation, out var commandId))
@@ -108,7 +102,6 @@ internal sealed class JobCatalog(IDataManager data, IUnlockState unlocks, IPlaye
         return Lookup().TryGetValue(abbreviation, out var job) ? (JobIconBase + job.RowId, DisplayName(job)) : null;
     }
 
-    // A main command entry, shown once the game has unlocked that command.
     private unsafe WheelJob? CommandEntry(int slot, string abbreviation, JobGroup group, uint commandId)
     {
         var ui = UIModule.Instance();
@@ -121,15 +114,12 @@ internal sealed class JobCatalog(IDataManager data, IUnlockState unlocks, IPlaye
     public static string DisplayName(ClassJob job) =>
         CultureInfo.CurrentCulture.TextInfo.ToTitleCase(job.Name.ExtractText());
 
-    // The short name (SMN, GLA…) of a class or job row, in the client's language.
     public string Abbreviation(uint classJobId) =>
         data.GetExcelSheet<ClassJob>().TryGetRow(classJobId, out var row) ? row.Abbreviation.ExtractText() : string.Empty;
 
     private static bool HasParent(ClassJob job) =>
         job.ClassJobParent.IsValid && job.ClassJobParent.RowId != 0 && job.ClassJobParent.RowId != job.RowId;
 
-    // The configured gear set if it still exists, else the first set for the
-    // shown job, else the first set for the base class. -1 = none.
     private int ResolveGearset(string abbreviation, ClassJob shown, ClassJob job, List<GearsetInfo> gearsets)
     {
         if (config.GearsetOverrides.TryGetValue(abbreviation, out var number) && number > 0)
@@ -154,7 +144,7 @@ internal sealed class JobCatalog(IDataManager data, IUnlockState unlocks, IPlaye
         return -1;
     }
 
-    // Abbreviations are matched against the English sheet so they're the same in every client language.
+    // English names, so they match in every client language.
     private Dictionary<string, ClassJob> Lookup()
     {
         if (byAbbreviation != null)

@@ -4,10 +4,6 @@ using Dalamud.Plugin.Services;
 
 namespace ChocoboBarding;
 
-/// <summary>
-/// Applies slot changes one at a time, like a player clicking through the Appearance tab:
-/// send one change, wait until the game shows it, pause briefly, then send the next.
-/// </summary>
 internal sealed class BardingQueue : IDisposable
 {
     private const long ConfirmTimeoutMs = 3000;
@@ -19,7 +15,6 @@ internal sealed class BardingQueue : IDisposable
     private readonly IPluginLog log;
     private readonly Queue<(int Slot, SlotChoice Choice)> pending = new();
 
-    // The change sent last, until the game shows it or it times out.
     private (int Slot, uint RowId, uint Expected, long SentAt)? awaiting;
     private long nextSendAt;
 
@@ -37,7 +32,6 @@ internal sealed class BardingQueue : IDisposable
         pending.Clear();
     }
 
-    /// <summary>Replaces any steps not yet sent, so the latest command wins.</summary>
     public void Replace(IReadOnlyList<SlotChoice> choices)
     {
         pending.Clear();
@@ -76,7 +70,6 @@ internal sealed class BardingQueue : IDisposable
         if (now < nextSendAt)
             return;
 
-        // Re-check each step against what's worn now; skip steps that are already done.
         while (pending.TryDequeue(out var step))
         {
             var worn = Barding.WornRowId(step.Slot);

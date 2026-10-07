@@ -3,13 +3,11 @@ using Dalamud.Bindings.ImGui;
 
 namespace ChocoboBarding;
 
-// The Jobs tab: barding picked per job, put on with /cbarding job.
 internal sealed partial class BardingWindow
 {
-    // Only ever read from; rows copy it into jobEdit before changing anything.
+    // Shared: rows copy it into jobEdit before changing anything.
     private static readonly SlotChoice[] NotSet = [SlotChoice.Keep, SlotChoice.Keep, SlotChoice.Keep];
 
-    // One job row's picks while it is drawn, reused for every row so drawing doesn't allocate.
     private readonly SlotChoice[] jobEdit = new SlotChoice[Barding.SlotCount];
 
     private SlotChoice[] JobChoices(uint jobId) =>
@@ -17,7 +15,6 @@ internal sealed partial class BardingWindow
             ? saved
             : NotSet;
 
-    // A job with every slot on "Keep current" has nothing picked, so it isn't stored.
     private void SetJobChoices(uint jobId, SlotChoice[] choices)
     {
         if (choices.All(choice => choice.Action == SlotAction.Keep))

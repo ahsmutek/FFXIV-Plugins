@@ -6,14 +6,6 @@ using FFXIVClientStructs.FFXIV.Client.System.Input;
 
 namespace JobProfiles;
 
-/// <summary>
-/// Hides controller buttons you've set up from the game, for when you can't unbind them in
-/// its settings. Hooks the game's per-frame controller update the way Dalamud's own
-/// "block all pad input" does: the update runs (Dalamud, and so this plugin, read the real
-/// buttons), then the bound buttons are cleared from what the game goes on to use. Only
-/// while the button does something where you are; a combo's shoulder buttons (LB, LT, RB,
-/// RT) are left alone, since the cross hotbar needs them.
-/// </summary>
 internal sealed unsafe class PadBlocker : IDisposable
 {
     private const GamepadButtons Shoulders =
@@ -36,16 +28,14 @@ internal sealed unsafe class PadBlocker : IDisposable
 
     public void Dispose() => hook.Dispose();
 
-    // What the controller really did last frame, kept when buttons were hidden from it.
     private GamepadInputData real;
     private bool hidLast;
 
     private void OnUpdate(PadDevice* pad)
     {
-        // The game works out what was just pressed against last frame's data. Hidden there, a
-        // held button would count as pressed anew every frame, to the game and to Dalamud,
-        // which reads it in this update too: held with L1, L3 would flip Dalamud's gamepad
-        // mode on and off each frame. So the update starts from what really happened.
+        // Presses are found by diffing against last frame. Hidden there, a held button would
+        // look newly pressed every frame, to Dalamud too (L1 + L3 would flip its gamepad mode
+        // each frame), so the update starts from the real data.
         if (hidLast)
             pad->GamepadInputData = real;
 
@@ -85,18 +75,16 @@ internal sealed unsafe class PadBlocker : IDisposable
             if (!binding.HideFromGame || binding.Buttons == GamepadButtons.None)
                 continue;
 
-            // One controller button alone; mixed with keys or other buttons it's a combo.
             var single = binding.Size == 1;
             if (single)
             {
-                // One button: hidden whenever it does something here, pressed or not, so the
-                // game never sees it go down.
+                // Hidden even when not pressed, so the game never sees it go down.
                 if (watcher.Match(binding) is { } rule && (rule.ActsAsKey || rule.Steps.Count > 0))
                     hidden |= binding.Buttons;
             }
             else if ((held & binding.Buttons) == binding.Buttons && watcher.Match(binding) is not null)
             {
-                // A combo, once all held: its face, stick and d-pad buttons.
+                // Shoulder buttons stay visible; the cross hotbar needs them.
                 hidden |= binding.Buttons & ~Shoulders;
             }
         }
@@ -104,7 +92,6 @@ internal sealed unsafe class PadBlocker : IDisposable
         return hidden;
     }
 
-    // The game also reads how far each button is pressed; those go to 0 too.
     private static void ClearAnalog(ref GamepadInputData input, GamepadButtons hidden)
     {
         if (hidden.HasFlag(GamepadButtons.West)) input.Square = 0;

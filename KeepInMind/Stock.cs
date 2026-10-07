@@ -5,10 +5,7 @@ using FFXIVClientStructs.FFXIV.Client.Game;
 
 namespace KeepInMind;
 
-// Ticks an item once your inventory holds as many as it needs. Only when the count reaches
-// it, not every time it's checked, so un-ticking an item by hand sticks until the count
-// drops below and climbs back (or how many you need changes). Running out again, e.g. by
-// crafting with them, leaves it ticked.
+// Ticks only when the count reaches the need, so un-ticking by hand sticks.
 internal sealed class Stock : IDisposable
 {
     private static readonly TimeSpan CheckEvery = TimeSpan.FromSeconds(0.5);
@@ -18,8 +15,6 @@ internal sealed class Stock : IDisposable
     private readonly Configuration config;
     private readonly Action save;
 
-    // Per item, whether it had enough at the last check, and for how many needed. Only items
-    // still on the list, so one removed and added again counts afresh.
     private Dictionary<uint, (int Needed, bool Enough)> last = [];
     private DateTime nextCheck;
 
@@ -34,8 +29,6 @@ internal sealed class Stock : IDisposable
 
     public void Dispose() => framework.Update -= OnUpdate;
 
-    // NQ and HQ together, in your bags and crystals; not the armoury chest, retainers or
-    // saddlebags.
     public static unsafe int Have(uint itemId)
     {
         var inventory = InventoryManager.Instance();

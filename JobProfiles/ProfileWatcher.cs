@@ -4,14 +4,8 @@ using Dalamud.Plugin.Services;
 
 namespace JobProfiles;
 
-/// <summary>
-/// Applies the job's profile whenever the job changes, however it was changed (a gear set,
-/// /gs, another plugin), and once after logging in. Waits out zoning, cutscenes and a macro
-/// that's still running, so nothing gets lost.
-/// </summary>
 internal sealed class ProfileWatcher : IDisposable
 {
-    // The gear set change and the login take a moment to settle before the HUD can change.
     private const long AfterJobChangeMs = 500;
     private const long AfterLoginMs = 3000;
 
@@ -38,10 +32,8 @@ internal sealed class ProfileWatcher : IDisposable
 
     public void Dispose() => framework.Update -= OnUpdate;
 
-    /// <summary>Applies the current job's profile as soon as nothing is in the way.</summary>
     public void ApplyNow() => applyAt = Environment.TickCount64;
 
-    /// <summary>The job's group profile with its override on top. Null HUD layout = don't change.</summary>
     public (int? HudLayout, List<Step> Steps) Resolve(uint classJobId)
     {
         if (groups.Of(classJobId) is not var (abbreviation, group))
@@ -67,7 +59,6 @@ internal sealed class ProfileWatcher : IDisposable
         var job = player.ClassJob.RowId;
         if (job != lastJob)
         {
-            // The old job's macros that haven't run yet are dropped.
             runner.Clear();
             if (lastJob != 0)
                 applyAt = now + AfterJobChangeMs;

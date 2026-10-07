@@ -7,11 +7,6 @@ using Shortcuts;
 
 namespace JobProfiles;
 
-/// <summary>
-/// Runs queued steps (macros, commands, menus, items…) one after another: each once a macro
-/// started before it has finished, and not while zoning, in a cutscene or logging out.
-/// "/wait N" pauses as in a macro. Job changes and buttons both feed it.
-/// </summary>
 internal sealed class MacroRunner : IDisposable
 {
     private static readonly ConditionFlag[] Waiting =
@@ -43,7 +38,6 @@ internal sealed class MacroRunner : IDisposable
 
     public void Dispose() => framework.Update -= OnUpdate;
 
-    /// <summary>Zoning, a cutscene or a running macro: nothing new should start now.</summary>
     public bool Busy => condition.Any(Waiting) || Actions.MacroRunning();
 
     public void Enqueue(IEnumerable<Step> steps)
@@ -71,7 +65,6 @@ internal sealed class MacroRunner : IDisposable
             catalog.Run(step);
     }
 
-    // "/wait 2" or "/wait 0.5" → seconds; anything else → null.
     private static double? WaitSeconds(string? command)
     {
         var parts = command?.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);

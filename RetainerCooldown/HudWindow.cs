@@ -10,9 +10,7 @@ namespace RetainerCooldown;
 internal sealed class HudWindow : Window
 {
     private readonly Plugin plugin;
-    // Read in DrawConditions and reused by Draw the same frame.
     private RetainerSnapshot[] retainers = [];
-    // Moved since the last save; written once the drag ends.
     private bool positionDirty;
 
     public HudWindow(Plugin plugin) : base("Retainer Cooldown HUD###RetainerCooldownHud",
@@ -32,20 +30,15 @@ internal sealed class HudWindow : Window
 
     public override void PreDraw()
     {
-        // Keep the icon clickable even when locked (only movement is disabled),
-        // so clicking it always opens settings.
         Flags = ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse |
                 ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoBackground | ImGuiWindowFlags.NoNav;
         if (plugin.Config.Locked)
             Flags |= ImGuiWindowFlags.NoMove;
     }
 
-    // The HUD is always on (hiding is DrawConditions' job), but Dalamud closes any focused
-    // window when a controller's B is pressed, whatever RespectCloseHotkey says. NoNav keeps it
-    // from taking controller focus; this brings it back if a mouse click focused it first.
+    // Dalamud closes focused windows on a controller's B regardless of RespectCloseHotkey; reopen.
     public override void OnClose() => IsOpen = true;
 
-    // When hidden, skip the window entirely so no empty window sits over the game.
     public override bool DrawConditions()
     {
         retainers = plugin.ReadRetainers();
@@ -77,8 +70,6 @@ internal sealed class HudWindow : Window
             {
                 var duration = Math.Max(1, plugin.Config.VentureDurationMinutes * 60.0);
                 var fractionRemaining = (float)Math.Clamp(rem.TotalSeconds / duration, 0, 1);
-                // Mask the pie to the rounded icon so it neither spills past the
-                // face nor gets cut into a square.
                 CooldownSweep.Draw(dl, p, size, fractionRemaining);
 
                 if (plugin.Config.ShowTimerText)
@@ -87,13 +78,11 @@ internal sealed class HudWindow : Window
             }
         }
 
-        // Dummy (not InvisibleButton) reserves layout space without capturing
-        // clicks, so the window stays draggable when unlocked.
+        // Dummy, not InvisibleButton, so clicks don't block dragging.
         ImGui.Dummy(new Vector2(size));
         if (ImGui.IsItemHovered())
         {
             DrawTooltip(retainers);
-            // A release with negligible drag = a click, not a move: open settings.
             if (ImGui.IsMouseReleased(ImGuiMouseButton.Left) &&
                 ImGui.GetMouseDragDelta(ImGuiMouseButton.Left).LengthSquared() < 25f)
                 plugin.OpenConfig();
@@ -114,7 +103,6 @@ internal sealed class HudWindow : Window
             positionDirty = true;
         }
 
-        // Only write to disk once the drag ends to avoid saving every frame.
         if (positionDirty && !ImGui.IsMouseDown(ImGuiMouseButton.Left))
         {
             plugin.Save();
@@ -122,8 +110,6 @@ internal sealed class HudWindow : Window
         }
     }
 
-    // Slot face: the real game icon texture, framed like a hotbar slot.
-    // Falls back to a drawn silver plate until the texture finishes loading.
     private void DrawFace(ImDrawListPtr dl, Vector2 p, float size, uint iconId)
     {
         var max = p + new Vector2(size);
@@ -148,7 +134,6 @@ internal sealed class HudWindow : Window
             ImGui.GetColorU32(new Vector4(.50f, .51f, .56f, .40f)), rounding, ImDrawFlags.RoundCornersBottom);
     }
 
-    // Centered text with a dark outline, like the game's cooldown numbers.
     private static void DrawCenteredText(ImDrawListPtr dl, string text, Vector2 center, float fontSize, uint color, uint outline)
     {
         var font = ImGui.GetFont();

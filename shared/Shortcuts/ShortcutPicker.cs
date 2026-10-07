@@ -7,8 +7,6 @@ using Dalamud.Interface.Utility;
 
 namespace Shortcuts;
 
-// The add-a-shortcut popup: tabs for game windows, actions, items, macros, emotes and commands. What
-// was picked is handed back, for each plugin to store its own way.
 internal sealed class ShortcutPicker(ShortcutCatalog catalog, IconCache icons)
 {
     private const string Popup = "##addShortcut";
@@ -16,11 +14,9 @@ internal sealed class ShortcutPicker(ShortcutCatalog catalog, IconCache icons)
     private string? targetName;
     private Action<PickedShortcut>? add;
     private string search = string.Empty;
-    // Commands tab fields.
     private string newLabel = string.Empty;
     private string newCommand = string.Empty;
     private int newIcon;
-    // Game data lists are built once; the bag contents each time the picker opens.
     private List<ShortcutChoice>? menus;
     private List<ShortcutChoice>? actions;
     private List<ShortcutChoice> items = [];
@@ -41,7 +37,6 @@ internal sealed class ShortcutPicker(ShortcutCatalog catalog, IconCache icons)
         ImGui.OpenPopup(Popup);
     }
 
-    /// <summary>Draws the popup while it's open. True when a shortcut was added.</summary>
     public bool Draw()
     {
         if (!ImGui.BeginPopup(Popup))
@@ -54,8 +49,7 @@ internal sealed class ShortcutPicker(ShortcutCatalog catalog, IconCache icons)
             return false;
         }
 
-        // Popups always size to their contents, so everything sits in a fixed-size child;
-        // otherwise wrapped text would stretch the popup across the screen.
+        // Popups size to their contents; a fixed-size child stops wrapped text stretching it.
         var changed = false;
         ImGui.BeginChild("##pickerBody", new Vector2(600f, 500f) * ImGuiHelpers.GlobalScale);
         ImGui.TextDisabled($"Add to {(string.IsNullOrEmpty(targetName) ? "this list" : targetName)}");
@@ -102,7 +96,6 @@ internal sealed class ShortcutPicker(ShortcutCatalog catalog, IconCache icons)
         return changed;
     }
 
-    // Your favourite emotes; searching also lists every other emote you've unlocked.
     private bool DrawEmotes()
     {
         if (search.Length == 0)
@@ -155,8 +148,6 @@ internal sealed class ShortcutPicker(ShortcutCatalog catalog, IconCache icons)
         return changed;
     }
 
-    // A plugin command with your own label and icon. The registered commands are listed
-    // below so one can be picked instead of typed.
     private bool DrawCommandForm()
     {
         var changed = false;
@@ -177,8 +168,6 @@ internal sealed class ShortcutPicker(ShortcutCatalog catalog, IconCache icons)
         ImGui.BeginDisabled(newCommand.Trim().Length == 0 || !newCommand.TrimStart().StartsWith('/'));
         if (ImGui.Button("Add"))
         {
-            // A loaded plugin's command only shows while that plugin is loaded; anything else
-            // is sent as typed, so game commands (/gs, /hudlayout, /wait…) work too.
             var command = newCommand.Trim();
             add!(new PickedShortcut(catalog.IsPluginCommand(command) ? ShortcutKind.Command : ShortcutKind.Text, 0, command,
                                     newLabel.Trim().Length > 0 ? newLabel.Trim() : null, (uint)newIcon));

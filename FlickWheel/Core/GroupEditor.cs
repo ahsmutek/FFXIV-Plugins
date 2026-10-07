@@ -4,9 +4,6 @@ using Dalamud.Bindings.ImGui;
 
 namespace FlickWheel;
 
-// One icon in a group's settings row: a stable ID (so a drag keeps hold of the same
-// icon as it moves), a texture (or a text button when there is none), its hover text,
-// and whether it's shown dimmed (e.g. a locked job).
 internal readonly record struct RowIcon(string Id, ImTextureID? Texture, string Label, string Tooltip, bool Dim);
 
 internal static class GroupEditor
@@ -16,7 +13,6 @@ internal static class GroupEditor
     private const float Gap = 4f;
     private const float Pitch = Icon + 4f + Gap;
 
-    /// <summary>Up/down arrows that move a group one step. Returns -1, 0 or 1.</summary>
     public static int MoveArrows(int index, int count)
     {
         var step = 0;
@@ -32,10 +28,6 @@ internal static class GroupEditor
         return step;
     }
 
-    /// <summary>
-    /// One button per palette style (Muted, Vivid…) with a strip of every palette color in
-    /// that style, so whole styles can be compared. True when a different style was picked.
-    /// </summary>
     public static bool StyleButtons(ref int style)
     {
         const float buttonWidth = 90f;
@@ -68,10 +60,6 @@ internal static class GroupEditor
         return changed;
     }
 
-    /// <summary>
-    /// The group's color as a swatch; clicking it opens a grid of palette hues in the
-    /// given style, plus a full picker for a custom color. True when the color changed.
-    /// </summary>
     public static bool ColorSwatch(ref int hue, ref uint custom, int style)
     {
         const int perRow = 6;
@@ -120,11 +108,6 @@ internal static class GroupEditor
         return changed;
     }
 
-    /// <summary>
-    /// A row of the group's icons on its band color. Drag one sideways to move it; the
-    /// result is the move to make (from index, to index), or null. <paramref name="context"/>
-    /// is drawn as a right-click menu for an icon, if given.
-    /// </summary>
     public static (int From, int To)? IconRow(int count, Vector4 color, Func<int, RowIcon> icon,
                                               Action<int>? context = null)
     {
@@ -166,7 +149,6 @@ internal static class GroupEditor
         if (dragged < 0)
             return null;
 
-        // Move the dragged icon to whichever slot the mouse is over (clamped to the row).
         var slot = (int)MathF.Floor((ImGui.GetMousePos().X - rowStart + Gap / 2) / Pitch);
         slot = Math.Clamp(slot, 0, count - 1);
         return slot != dragged ? (dragged, slot) : null;

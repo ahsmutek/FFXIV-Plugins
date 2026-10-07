@@ -4,8 +4,7 @@ using Dalamud.Game.ClientState.Keys;
 
 namespace JobProfiles;
 
-// Presses and lets go of keys as if typed on the keyboard (SendInput), so other plugins
-// that watch the keyboard, like Flick Wheel's hotkeys, see them.
+// SendInput, so plugins watching the keyboard (e.g. Flick Wheel) see the keys.
 internal static class KeyPresser
 {
     private const uint InputKeyboard = 1;
@@ -13,7 +12,6 @@ internal static class KeyPresser
 
     public static void Down(Rule rule) => Send(Keys(rule), up: false);
 
-    // In reverse: the key first, then its modifiers.
     public static void Up(Rule rule)
     {
         var keys = Keys(rule);

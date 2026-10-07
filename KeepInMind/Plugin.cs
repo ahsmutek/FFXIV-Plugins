@@ -48,7 +48,6 @@ public sealed class Plugin : IDalamudPlugin
     public Plugin()
     {
         config = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
-        // Older or hand-edited files: one entry per item.
         config.Items = [.. config.Items.DistinctBy(i => i.ItemId)];
 
         var actions = new ItemActions(PluginInterface, DataManager, Log);
@@ -56,7 +55,6 @@ public sealed class Plugin : IDalamudPlugin
         windows.AddWindow(window);
         PluginInterface.UiBuilder.Draw += Draw;
         PluginInterface.UiBuilder.OpenMainUi += window.Toggle;
-        // No settings: the list is all there is, so the settings button opens it too.
         PluginInterface.UiBuilder.OpenConfigUi += window.Toggle;
 
         menu = new RecipeNoteMenu(ContextMenu, DataManager, Add);
@@ -68,8 +66,6 @@ public sealed class Plugin : IDalamudPlugin
         });
     }
 
-    // Adds an item, or adds to how many you need if it's already on the list (another recipe
-    // needs it too), and shows the list with it lit up. Needing more un-ticks it.
     private void Add(uint itemId, int amount)
     {
         if (config.Items.Find(i => i.ItemId == itemId) is { } kept)

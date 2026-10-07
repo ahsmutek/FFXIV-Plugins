@@ -7,11 +7,6 @@ namespace ControllerKeeper;
 
 internal readonly record struct Controller(int Index, Guid Instance, Guid Product, string Name, string InstanceName, bool Active);
 
-/// <summary>
-/// Switches the game back to the controller you chose whenever it's using another one
-/// (after a rescan, a loading screen, or the device being plugged back in). Checks twice a
-/// second; does nothing while your controller isn't connected.
-/// </summary>
 internal sealed class PadKeeper : IDisposable
 {
     private const long CheckMs = 500;
@@ -31,10 +26,8 @@ internal sealed class PadKeeper : IDisposable
 
     public void Dispose() => framework.Update -= OnUpdate;
 
-    /// <summary>Times the game was switched back this session.</summary>
     public int Switches { get; private set; }
 
-    /// <summary>The controllers the game knows about right now.</summary>
     public static unsafe List<Controller> Controllers()
     {
         var list = new List<Controller>();
@@ -54,14 +47,11 @@ internal sealed class PadKeeper : IDisposable
         return list;
     }
 
-    /// <summary>The chosen controller's index among the connected ones, or null.</summary>
     public int? ChosenIndex(List<Controller> controllers)
     {
         if (config.Instance is not { } instance)
             return null;
 
-        // The same device first; failing that, the same model and name (a new instance
-        // after being plugged into another port).
         foreach (var c in controllers)
         {
             if (c.Instance == instance)

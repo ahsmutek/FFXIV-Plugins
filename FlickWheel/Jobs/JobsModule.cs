@@ -5,8 +5,6 @@ using Shortcuts;
 
 namespace FlickWheel;
 
-// The combat and crafting & gathering wheels: every job in a fixed, role-grouped spot,
-// plus the logs you pick (Crafting, Gathering, Fishing Log, Fish Guide).
 internal sealed class JobsModule : IWheelModule
 {
     public static readonly WheelKind[] Kinds = [WheelKind.Combat, WheelKind.Crafting];
@@ -38,7 +36,6 @@ internal sealed class JobsModule : IWheelModule
 
     public void OnSettingsOpen() => settings.Refresh();
 
-    // Jobs without a gear set are faded. Log entries never are.
     private WheelEntry ToEntry(WheelJob job) =>
         new(job.Slot, job.Name, job.IconId, () => switcher.Switch(job),
             KeyOutIcon: job.CommandId != 0,

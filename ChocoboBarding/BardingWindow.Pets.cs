@@ -4,15 +4,12 @@ using Dalamud.Bindings.ImGui;
 
 namespace ChocoboBarding;
 
-// The Pets tab: /petglamour and /petsize macro lines to copy.
 internal sealed partial class BardingWindow
 {
     private const float PetIconSize = 40;
 
-    // Add the resummon line, since a new look only shows once the pet is resummoned.
     private bool resummon = true;
 
-    // One table per pet: each look it can have, its macro line(s) and a Copy button.
     private void DrawPets()
     {
         ImGui.TextWrapped("Change how your pet looks with the game's /petglamour command. Copy a line into a macro.");
@@ -42,7 +39,6 @@ internal sealed partial class BardingWindow
                     ImGui.TableNextColumn();
                     DrawIcon(look.Icon, PetIconSize);
 
-                    // Text and button centered against the icon.
                     var offset = (PetIconSize - ImGui.GetFrameHeight()) / 2;
                     ImGui.TableNextColumn();
                     ImGui.SetCursorPosY(ImGui.GetCursorPosY() + offset);
@@ -66,7 +62,6 @@ internal sealed partial class BardingWindow
             DrawSizes();
     }
 
-    // /petsize: one row per big summon (and one for all of them), a Copy button per size.
     private void DrawSizes()
     {
         ImGui.Spacing();

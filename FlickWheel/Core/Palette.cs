@@ -3,9 +3,6 @@ using System.Numerics;
 
 namespace FlickWheel;
 
-// Band colors to pick from: a set of hues, each in a few shade styles. A group stores
-// its hue, and the wheel's style decides the actual shade, so changing the style
-// recolors every group while keeping them apart.
 internal static class Palette
 {
     // Name and hue in degrees; a negative hue is grey.
@@ -31,7 +28,7 @@ internal static class Palette
         ("Grey", -1f),
     ];
 
-    // Saturation, value and alpha per style. All stay dark enough for the gold glyphs to read on.
+    // All dark enough for the gold glyphs to stay readable.
     public static readonly (string Name, float Saturation, float Value, float Alpha)[] Styles =
     [
         ("Muted", .68f, .50f, .88f),
@@ -44,7 +41,6 @@ internal static class Palette
     {
         var (_, degrees) = Hues[Math.Clamp(hue, 0, Hues.Length - 1)];
         var (_, saturation, value, alpha) = Styles[Math.Clamp(style, 0, Styles.Length - 1)];
-        // Grey keeps the style's brightness but drops the color.
         return degrees < 0
             ? new Vector4(value * .78f, value * .8f, value * .88f, alpha)
             : Hsv(degrees / 360f, saturation, value, alpha);

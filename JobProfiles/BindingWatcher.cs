@@ -10,10 +10,6 @@ using FFXIVClientStructs.FFXIV.Client.UI;
 
 namespace JobProfiles;
 
-/// <summary>
-/// Runs a button's (or combo's) behaviour when it's pressed: the most specific of its rules
-/// for your job and where you are. Nothing fires while you're typing.
-/// </summary>
 internal sealed class BindingWatcher : IDisposable
 {
     public static readonly GamepadButtons[] PadButtons =
@@ -28,13 +24,10 @@ internal sealed class BindingWatcher : IDisposable
     private readonly Duties duties;
     private readonly MacroRunner runner;
 
-    // A rule acting as a key: the binding whose button holds it down, and the rule.
     private (Binding Binding, Rule Rule)? holding;
 
-    // Pad buttons that were down last frame, to fire once per press.
     private GamepadButtons lastHeld;
 
-    // Bound keys that were down last frame, to fire once per press.
     private HashSet<VirtualKey> lastKeys = [];
 
     private static readonly VirtualKey[] Modifiers = [VirtualKey.CONTROL, VirtualKey.SHIFT, VirtualKey.MENU];
@@ -59,7 +52,6 @@ internal sealed class BindingWatcher : IDisposable
         Release();
     }
 
-    /// <summary>Set while settings are recording a new combo, so pressing it doesn't run it.</summary>
     public bool Paused { get; set; }
 
     public GamepadButtons HeldButtons()
@@ -74,11 +66,6 @@ internal sealed class BindingWatcher : IDisposable
         return held;
     }
 
-    /// <summary>
-    /// The rule of the binding that fits your job and where you are, the most specific one
-    /// winning: a job's beats its role's, which beats everyone's; within that, one kind of
-    /// duty beats any duty or outside duties, which beats anywhere.
-    /// </summary>
     public Rule? Match(Binding binding)
     {
         var job = groups.Of(player.ClassJob.RowId);
@@ -116,7 +103,6 @@ internal sealed class BindingWatcher : IDisposable
             return;
         }
 
-        // A held key goes up when its button does.
         if (holding is var (held, _) && !StillHeld(held))
             Release();
 
@@ -126,11 +112,7 @@ internal sealed class BindingWatcher : IDisposable
             Fire(pressed);
     }
 
-    // The binding completed this frame: all its keys and buttons held, one of them just
-    // pressed, and no modifier held that isn't part of it. The biggest combo wins, so
-    // Ctrl + ' + A doesn't also run Ctrl + '. Presses are worked out here frame to frame,
-    // not from the game's "just pressed": hiding a button from the game (PadBlocker) makes
-    // the game see it pressed again every frame it's held.
+    // Not the game's "just pressed": PadBlocker makes held buttons look newly pressed every frame.
     private Binding? Press()
     {
         var held = HeldButtons();
@@ -150,14 +132,11 @@ internal sealed class BindingWatcher : IDisposable
                      .MaxBy(b => b.Size);
     }
 
-    // All of the binding's keys and buttons are down, and no modifier it doesn't use.
     private static bool Held(Binding binding, GamepadButtons held, HashSet<VirtualKey> keysDown) =>
         (binding.Buttons & ~held) == 0 && binding.Keys.All(keysDown.Contains) &&
         (binding.Buttons == GamepadButtons.None || (held & ~binding.Buttons) == 0) &&
         Modifiers.All(m => binding.Keys.Contains(m) || !keysDown.Contains(m));
 
-    // The bound keys (and modifiers) down right now; none while the game isn't the window
-    // being typed into, since the keyboard is read directly.
     private HashSet<VirtualKey> KeysDown()
     {
         var down = new HashSet<VirtualKey>();
@@ -171,8 +150,6 @@ internal sealed class BindingWatcher : IDisposable
         return down;
     }
 
-    // A held combo's keys (not its modifiers) are hidden from the game, so they don't also do
-    // whatever the game has on them.
     private void HideHeldKeys()
     {
         var held = HeldButtons();
@@ -220,7 +197,7 @@ internal sealed class BindingWatcher : IDisposable
 
     public static bool IsDown(VirtualKey key) => (GetAsyncKeyState((int)key) & 0x8000) != 0;
 
-    // The key checks read the physical keyboard, so make sure the game is the window being typed into.
+    // The key checks read the physical keyboard.
     private static bool GameFocused()
     {
         GetWindowThreadProcessId(GetForegroundWindow(), out var pid);

@@ -8,7 +8,6 @@ namespace MinimapZoom;
 
 internal sealed class ConfigWindow : Window
 {
-    // The minimums on offer: 0.25 up to one step below the game's own limit.
     private static readonly float[] Minimums = [0.25f, 0.5f, 0.75f, 1f];
 
     private readonly Configuration config;
@@ -40,7 +39,6 @@ internal sealed class ConfigWindow : Window
                             Minimums[index].ToString("0.##", CultureInfo.InvariantCulture)))
         {
             config.Minimum = Minimums[index];
-            // Already zoomed out further than the new limit: come back to it.
             if (config.Zoom is { } kept && kept < config.Minimum)
             {
                 config.Zoom = config.Minimum;

@@ -8,42 +8,29 @@ using Shortcuts;
 
 namespace FlickWheel;
 
-// Draws the wheel straight onto a draw list: no window, no focus, nothing to click.
-// Icons only; the colored band behind them groups the entries, and the targeted
-// entry's name shows in the middle. While the settings window asks for a preview,
-// the wheel is also drawn (behind other windows) with an invisible handle over it so
-// it can be dragged into place.
 internal sealed class WheelOverlay(WheelInput input, WheelSet wheels, IconCache icons, Configuration config, Action save)
 {
-    // Smallest ring radius at scale 1.
     private const float MinRadius = 140f;
-    // Icons the ring is sized for at the chosen icon size (the combat wheel has 23). Every
-    // wheel is drawn at this one size; a wheel with more icons shrinks them to fit instead.
+    // Wheels with more icons shrink them rather than grow.
     private const int RingSlots = 24;
-    // Room each icon takes along the ring, as a multiple of its size.
     private const float IconPitch = 1.35f;
     private const float TargetGrow = 1.2f;
-    // Band thickness as a multiple of the icon size.
     private const float BandWidth = 1.35f;
 
     // ABGR
     private const uint White = 0xF2FFFFFF;
     private const uint Outline = 0xF2000000;
 
-    // Rebuild the preview wheel this often (ms) so new unlocks and gear sets show up.
     private const long PreviewRefresh = 1000;
 
-    // Set by the settings window while its preview checkbox is ticked, and which wheel to show.
     public bool Preview { get; set; }
     public string PreviewWheel { get; set; } = string.Empty;
 
-    // The preview wheel, kept between frames instead of rebuilt on every draw.
     private WheelRing? previewRing;
     private List<WheelEntry> previewEntries = [];
     private string previewBuiltFor = string.Empty;
     private long previewBuiltAt;
 
-    // Called by the settings window when anything that changes the wheel is edited.
     public void InvalidatePreview() => previewRing = null;
 
     public void Draw()
@@ -69,8 +56,6 @@ internal sealed class WheelOverlay(WheelInput input, WheelSet wheels, IconCache 
         }
     }
 
-    // Preview checkbox plus which wheel it shows, on the General settings tab. Editing a
-    // wheel on its own tab switches the preview to that wheel.
     public void DrawPreviewControls()
     {
         var preview = Preview;
@@ -95,8 +80,7 @@ internal sealed class WheelOverlay(WheelInput input, WheelSet wheels, IconCache 
         var scale = Math.Clamp(config.Scale, 0.3f, 3f);
         var icon = config.IconSize * scale;
         var center = ImGui.GetIO().DisplaySize / 2 + new Vector2(config.OffsetX, config.OffsetY);
-        // Depends only on scale and icon size, never on how many icons a wheel has,
-        // so every wheel is the same size.
+        // Independent of icon count so every wheel is the same size.
         var radius = Math.Max(MinRadius * scale, RingSlots * icon * IconPitch / MathF.Tau);
         return (center, radius, icon);
     }
@@ -106,7 +90,6 @@ internal sealed class WheelOverlay(WheelInput input, WheelSet wheels, IconCache 
         var (center, radius, icon) = Geometry();
         DrawRing(dl, ring, center, radius, icon, target);
 
-        // More icons than the ring has room for: draw them smaller rather than overlapping.
         var glyph = Math.Min(icon, radius * MathF.Tau / (Math.Max(1, ring.Slots.Length) * IconPitch));
 
         foreach (var entry in entries)
@@ -123,7 +106,6 @@ internal sealed class WheelOverlay(WheelInput input, WheelSet wheels, IconCache 
         }
     }
 
-    // An invisible window over the preview; dragging it moves the wheel.
     private void DrawDragHandle()
     {
         var (center, radius, icon) = Geometry();
@@ -153,8 +135,6 @@ internal sealed class WheelOverlay(WheelInput input, WheelSet wheels, IconCache 
         ImGui.PopStyleVar();
     }
 
-    // A thick band split into group-colored arcs, with the icons sitting on it.
-    // The targeted entry's whole slice, center to rim, fills with its group color.
     private static void DrawRing(ImDrawListPtr dl, WheelRing ring, Vector2 center, float radius, float icon, WheelEntry? target)
     {
         var band = icon * BandWidth;
@@ -188,7 +168,6 @@ internal sealed class WheelOverlay(WheelInput input, WheelSet wheels, IconCache 
             StrokeArc(dl, center, radius, ring.StartOf(lit.Slot), ring.EndOf(lit.Slot), band, ImGui.GetColorU32(color));
         }
 
-        // Dark rims and separators so the groups read as distinct blocks.
         var rim = ImGui.GetColorU32(new Vector4(0f, 0f, 0f, .55f));
         dl.AddCircle(center, radius - band / 2, rim, 96, 1.5f);
         dl.AddCircle(center, outer, rim, 96, 1.5f);
@@ -201,8 +180,7 @@ internal sealed class WheelOverlay(WheelInput input, WheelSet wheels, IconCache 
         }
     }
 
-    // icon sizes the band (and where the current-job dot sits); glyph is how big the icon
-    // itself is drawn, smaller than icon when the wheel is crowded.
+    // icon sizes the band; glyph is the drawn size, smaller when crowded.
     private void DrawIcon(ImDrawListPtr dl, WheelRing ring, Vector2 center, float radius, float icon, float glyph,
                           WheelEntry entry, bool targeted)
     {
@@ -216,11 +194,9 @@ internal sealed class WheelOverlay(WheelInput input, WheelSet wheels, IconCache 
         dl.AddImage(icons.Handle(entry.IconId, entry.KeyOutIcon), min, max, Vector2.Zero, Vector2.One,
                     ImGui.GetColorU32(new Vector4(1f, 1f, 1f, alpha)));
 
-        // How many are left, in the bottom-right corner like the game's hotbar.
         if (entry.Count is { } count)
             DrawOutlinedText(dl, count.ToString(), max, size * 0.34f, Align.BottomRight);
 
-        // Current job: a small white dot just outside the band.
         if (entry.IsCurrent)
         {
             var dot = center + dir * (radius + icon * BandWidth / 2 + Math.Max(4f, icon * 0.12f));
@@ -230,8 +206,8 @@ internal sealed class WheelOverlay(WheelInput input, WheelSet wheels, IconCache 
 
     private enum Align
     {
-        Center,      // centered on the point
-        BottomRight, // ending at the point
+        Center,
+        BottomRight,
     }
 
     private static void DrawOutlinedText(ImDrawListPtr dl, string text, Vector2 at, float fontSize, Align align)

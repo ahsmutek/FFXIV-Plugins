@@ -10,11 +10,8 @@ using Dalamud.Plugin.Services;
 
 namespace JobProfiles;
 
-// The Buttons tab (your buttons and keys: record, name, delete) and the button behaviour
-// section of each page on the Jobs tab (what a button does for that role or job, and where).
 internal sealed class ButtonsTab
 {
-    // Xbox names, as printed on most pads people map with reWASD or Steam Input.
     private static readonly Dictionary<GamepadButtons, string> PadNames = new()
     {
         [GamepadButtons.L2] = "LT",
@@ -41,13 +38,11 @@ internal sealed class ButtonsTab
     private readonly Widgets widgets;
     private readonly VirtualKey[] keys;
 
-    // The binding being recorded, and every pad button held since recording started.
     private Binding? recording;
     private GamepadButtons recordedButtons;
     private readonly HashSet<VirtualKey> recordedKeys = [];
 
     private static readonly VirtualKey[] Modifiers = [VirtualKey.CONTROL, VirtualKey.SHIFT, VirtualKey.MENU];
-    // A rule whose key (for "Hold a key") is being recorded.
     private Rule? recordingKey;
 
     public ButtonsTab(Configuration config, Duties duties, BindingWatcher watcher, Widgets widgets,
@@ -128,7 +123,6 @@ internal sealed class ButtonsTab
     {
         var changed = false;
 
-        // The combo, as a button that records a new one.
         var label = recording == binding ? "Hold the buttons and keys, then let go… (Esc cancels)" :
                     binding.IsSet ? Describe(binding) : "Not set: click, then press it";
         if (ImGui.Button($"{label}###record"))
@@ -150,7 +144,6 @@ internal sealed class ButtonsTab
             changed = true;
         }
 
-        // Controller buttons can be hidden from the game, for ones you can't unbind there.
         if (binding.Buttons != GamepadButtons.None)
         {
             ImGui.SameLine();
@@ -164,7 +157,6 @@ internal sealed class ButtonsTab
                 ImGui.SetTooltip("The game doesn't see this button while it does something here, so you don't have to\nunbind it in the game's settings. Where nothing is set up for it, the game gets it as usual.\nIn a combo, LB, LT, RB and RT still reach the game (the cross hotbar needs them).");
         }
 
-        // One with behaviour set up needs Ctrl held, so it can't go by accident.
         ImGui.SameLine();
         var canDelete = binding.Rules.Count == 0 || ImGui.GetIO().KeyCtrl;
         ImGui.BeginDisabled(!canDelete);
@@ -186,7 +178,6 @@ internal sealed class ButtonsTab
             _ => "Here and now: nothing",
         });
 
-        // Folded: who, where, what, Everyone first, then roles, then jobs.
         if (binding.Rules.Count == 0)
         {
             ImGui.TextDisabled("Not set up anywhere yet: pick a role or job on the Jobs tab and add button behaviour.");
@@ -210,10 +201,6 @@ internal sealed class ButtonsTab
         return changed;
     }
 
-    /// <summary>
-    /// What your buttons do for one page: "" everyone, "g:Tank" a role, "j:WHM" a job. Each
-    /// line is a button, where it applies, and what it does there.
-    /// </summary>
     public bool DrawBehaviour(string who)
     {
         var changed = Record();
@@ -353,7 +340,6 @@ internal sealed class ButtonsTab
             return false;
         }
 
-        // Everything held, keys and controller buttons alike, is collected until all are let go.
         var held = watcher.HeldButtons();
         var keysHeld = keys.Concat(Modifiers).Where(BindingWatcher.IsDown).ToList();
         if (held != GamepadButtons.None || keysHeld.Count > 0)
@@ -367,7 +353,6 @@ internal sealed class ButtonsTab
             return false;
 
         binding.Buttons = recordedButtons;
-        // Modifiers first, as they're written: Ctrl + ' + A.
         binding.Keys = recordedKeys.OrderBy(k => Array.IndexOf(Modifiers, k) is var i and >= 0 ? i : Modifiers.Length)
                                    .ThenBy(k => k)
                                    .ToList();
@@ -375,8 +360,6 @@ internal sealed class ButtonsTab
         return true;
     }
 
-    // The key a rule holds: taken as soon as a key (not a modifier) is pressed, with the
-    // modifiers held with it.
     private bool RecordKey(Rule rule)
     {
         if (BindingWatcher.IsDown(VirtualKey.ESCAPE))
@@ -403,7 +386,6 @@ internal sealed class ButtonsTab
     public static string ButtonLabel(Binding binding) =>
         binding.Name.Trim().Length > 0 ? binding.Name.Trim() : binding.IsSet ? Describe(binding) : "(not set)";
 
-    // Its keys (modifiers first) then its controller buttons, e.g. "Ctrl + ' + A".
     private static string Describe(Binding binding)
     {
         var parts = binding.Keys.Select(k => k switch

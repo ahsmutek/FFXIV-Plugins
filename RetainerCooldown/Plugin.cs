@@ -25,8 +25,7 @@ public sealed class Plugin : IDalamudPlugin
 
     internal Configuration Config { get; }
 
-    // Last list that still had a running venture. The bell clears RetainerManager
-    // for a moment while it reloads, which would otherwise drop the shade.
+    // The bell briefly clears RetainerManager while reloading, which would drop the shade.
     private RetainerSnapshot[] retainerCache = [];
     private long retainerGapSince;
 
@@ -43,14 +42,12 @@ public sealed class Plugin : IDalamudPlugin
         windows.AddWindow(configWindow);
         pi.UiBuilder.Draw += windows.Draw;
         pi.UiBuilder.OpenConfigUi += ToggleConfig;
-        // Dalamud expects a main UI callback for the installer's "open" button.
         pi.UiBuilder.OpenMainUi += ToggleConfig;
         commands.AddHandler(CommandName, new CommandInfo(OnCommand) { HelpMessage = "Open Retainer Cooldown settings." });
     }
 
     internal void Save() => pi.SavePluginConfig(Config);
 
-    // Saved configs from before the icon and duration presets keep their old values.
     private bool MigrateConfig()
     {
         var changed = false;
@@ -67,8 +64,7 @@ public sealed class Plugin : IDalamudPlugin
 
     internal bool IconExists(uint iconId) => textures.TryGetIconPath(new GameIconLookup(iconId), out _);
 
-    // Resolve a game icon texture; false until loaded or if the ID is invalid.
-    // TryGetIconPath avoids the IconNotFoundException that GetFromGameIcon throws.
+    // TryGetIconPath avoids the IconNotFoundException GetFromGameIcon throws.
     internal bool TryGetIcon(uint iconId, out IDalamudTextureWrap? wrap)
     {
         wrap = null;
@@ -122,7 +118,6 @@ public sealed class Plugin : IDalamudPlugin
         if (!HasRunning(fresh) && HasRunning(retainerCache))
         {
             if (retainerGapSince == 0) retainerGapSince = now;
-            // A real "all done" or empty list sticks; a bell reload does not.
             if (now - retainerGapSince < 1) return RefreshRemaining(retainerCache, now);
         }
         else

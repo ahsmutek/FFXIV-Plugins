@@ -14,25 +14,18 @@ using LuminaAction = Lumina.Excel.Sheets.Action;
 
 namespace Shortcuts;
 
-// Something the picker offers: what it would add, and how it's listed.
 internal readonly record struct ShortcutChoice(ShortcutKind Kind, uint RowId, string Name, uint IconId, string Category);
 
-// Looks up, checks and runs shortcut entries, and lists what can be added.
 internal sealed class ShortcutCatalog
 {
-    // Actions offered in the picker. The Action sheet is mostly combat skills, so only
-    // the useful out-of-combat ones are listed.
     private static readonly uint[] PickerActions =
     [
         26988, // the Aether Compass
     ];
 
-    // Toggle rows. The chat log uses the Log Window Settings menu icon.
     private const uint ChatLogToggleRow = 0;
     private const uint ChatLogIcon = 45;
 
-    // Game windows the main menu doesn't list, by RowId. Names come from the Addon sheet.
-    // The Mogpendium's icon is the one it has in the Collection (McGuffinUIData row 6).
     private static readonly (AgentId Agent, uint NameRow, uint Icon)[] Windows =
     [
         (AgentId.WeeklyBingo, 5600, 25987),       // Wondrous Tails
@@ -44,9 +37,7 @@ internal sealed class ShortcutCatalog
     private readonly IDataManager data;
     private readonly ICommandManager commands;
     private readonly IBuddyList buddies;
-    // Flick Wheel's chat log toggle; null in plugins that don't offer it.
     private readonly ChatLogToggle? chatLog;
-    // Main menu icons are a gold glyph on a red tile; those get keyed out to match the job glyphs.
     private readonly HashSet<uint> menuIcons;
 
     public ShortcutCatalog(IDataManager data, ICommandManager commands, IBuddyList buddies, ChatLogToggle? chatLog = null)
@@ -58,7 +49,6 @@ internal sealed class ShortcutCatalog
         menuIcons = data.GetExcelSheet<MainCommand>().Where(row => row.Icon > 0).Select(row => (uint)row.Icon).ToHashSet();
     }
 
-    /// <summary>The name and icon an entry shows with, or null if its row doesn't exist.</summary>
     public unsafe (string Name, uint IconId, bool KeyOutIcon)? Describe(IShortcut entry)
     {
         (string Name, uint Icon)? found = entry.Kind switch
@@ -92,7 +82,6 @@ internal sealed class ShortcutCatalog
         return (name, icon, menuIcons.Contains(icon));
     }
 
-    /// <summary>Whether the entry can be used now: the menu is unlocked, the plugin command exists.</summary>
     public unsafe bool Available(IShortcut entry)
     {
         switch (entry.Kind)
@@ -120,7 +109,6 @@ internal sealed class ShortcutCatalog
         }
     }
 
-    /// <summary>How many of an item you have (normal and high quality), or null for other kinds.</summary>
     public unsafe int? Count(IShortcut entry)
     {
         if (entry.Kind != ShortcutKind.Item)
@@ -177,15 +165,13 @@ internal sealed class ShortcutCatalog
                 chatLog.Toggle();
                 break;
             case ShortcutKind.Window when entry.RowId < Windows.Length:
-                // Opens the window, or closes it if it's already up, as the main menu does.
                 var window = AgentModule.Instance()->GetAgentByInternalId(Windows[entry.RowId].Agent);
                 if (window == null)
                     break;
                 if (window->IsAgentActive())
                     window->Hide();
                 else if (entry.RowId == WondrousTailsRow)
-                    // Showing its window directly leaves it closed: the journal has to be
-                    // used, like from Key Items, so the game fetches this week's card.
+                    // Showing its window directly leaves it empty; using the journal makes the game fetch this week's card.
                     ActionManager.Instance()->UseAction(ActionType.EventItem, WondrousTailsJournal);
                 else
                     window->Show();
@@ -193,9 +179,6 @@ internal sealed class ShortcutCatalog
         }
     }
 
-    // Game windows, grouped by the main menu's own categories. Settings sub-pages and
-    // menu headings (no category or no icon) are left out. Windows the menu doesn't
-    // list come last, under Other.
     public List<ShortcutChoice> Menus()
     {
         var categories = data.GetExcelSheet<MainCommandCategory>();
@@ -258,7 +241,6 @@ internal sealed class ShortcutCatalog
         return choices.OrderBy(choice => choice.Name).ToList();
     }
 
-    // Your favourite emotes (the Emotes window's Favorites), in their order.
     public unsafe List<ShortcutChoice> FavoriteEmotes()
     {
         var choices = new List<ShortcutChoice>();
@@ -276,7 +258,6 @@ internal sealed class ShortcutCatalog
         return choices;
     }
 
-    // Every emote you've unlocked, by name.
     public unsafe List<ShortcutChoice> UnlockedEmotes()
     {
         var state = UIState.Instance();
@@ -294,7 +275,6 @@ internal sealed class ShortcutCatalog
         return choices.OrderBy(choice => choice.Name).ToList();
     }
 
-    // Your macros, individual then shared, in slot order. Empty slots are left out.
     public unsafe List<ShortcutChoice> Macros()
     {
         var choices = new List<ShortcutChoice>();
@@ -311,11 +291,9 @@ internal sealed class ShortcutCatalog
 
     public List<string> PluginCommands() => commands.Commands.Keys.Order().ToList();
 
-    /// <summary>Whether the line starts with a command a loaded plugin registered.</summary>
     public bool IsPluginCommand(string? line) => CommandName(line) is { } name && commands.Commands.ContainsKey(name);
 
-    // A line as if typed in chat: a plugin's command through Dalamud, anything else through
-    // the game. Only lines starting with / run, so nothing is ever said in chat by accident.
+    // Only lines starting with / run, so nothing is ever said in chat by accident.
     private unsafe void RunLine(string line)
     {
         line = line.Trim();
@@ -330,7 +308,6 @@ internal sealed class ShortcutCatalog
         text->Dtor(true);
     }
 
-    // "the Aether Compass" → "Aether Compass".
     private static string ActionName(LuminaAction row)
     {
         var name = row.Name.ExtractText();
@@ -346,14 +323,12 @@ internal sealed class ShortcutCatalog
         return module == null || id >= MacroSlots * 2 ? null : module->GetMacro(id / MacroSlots, id % MacroSlots);
     }
 
-    // An emptied slot keeps its entry, named after the slot and without an icon.
     private static unsafe (string, uint) DescribeMacro(uint id)
     {
         var macro = MacroOf(id);
         return macro != null && macro->IsNotEmpty() ? (MacroName(macro, id), macro->IconId) : (MacroName(null, id), 0u);
     }
 
-    // The macro's own name, or e.g. "Shared macro 12" when it has none.
     private static unsafe string MacroName(RaptureMacroModule.Macro* macro, uint id)
     {
         var name = macro != null ? macro->Name.ToString().Trim() : string.Empty;

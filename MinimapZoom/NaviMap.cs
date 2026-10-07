@@ -4,31 +4,24 @@ using FFXIVClientStructs.FFXIV.Component.GUI;
 
 namespace MinimapZoom;
 
-// The game's minimap (the _NaviMap addon): its zoom value and its − button. ClientStructs
-// doesn't map the zoom, so it's read at a fixed offset and checked against the map image's
-// scale (which the game keeps equal to it) before anything is written. If a patch moves
-// it, the check fails and nothing is touched.
+// ClientStructs doesn't map the zoom: it's read at a fixed offset and verified against the map image's scale, so a moved offset touches nothing.
 internal static unsafe class NaviMap
 {
     public const string AddonName = "_NaviMap";
 
-    // The game's own zoom-out limit and how far one click of + or − moves.
     public const float GameMinimum = 1.25f;
     public const float Step = 0.25f;
 
-    // ButtonClick event params of the + and − buttons.
     public const int ZoomInParam = 4;
     public const int ZoomOutParam = 3;
 
     private const int ZoomOffset = 0x264;
-    // The same zoom as a percentage (125 = 1.25) in the low 16 bits. The game rebuilds parts of
-    // the minimap from it after zoning, so it's kept in step with the float.
+    // Percentage copy (125 = 1.25) the game rebuilds the minimap from after zoning; kept in step.
     private const int ZoomPercentOffset = 0x1A8;
     private const uint MarkersNodeId = 18; // the component holding the map image and markers
     private const uint MapImageNodeId = 6; // the map image inside it
     private const uint ZoomOutNodeId = 3;  // the − button
 
-    // Close enough to count as the same zoom.
     public const float Epsilon = 0.001f;
 
     private static AtkUnitBase* Addon()
@@ -38,7 +31,6 @@ internal static unsafe class NaviMap
         return addon != null && addon->IsReady ? addon : null;
     }
 
-    /// <summary>The zoom, or null when the minimap isn't up or the value doesn't look right.</summary>
     public static float? Zoom()
     {
         var addon = Addon();
@@ -52,10 +44,7 @@ internal static unsafe class NaviMap
         return zoom;
     }
 
-    /// <summary>
-    /// Sets the zoom, only when the current one checks out (see <see cref="Zoom"/>). Pass
-    /// checkedBefore when it was checked just before the game changed it itself (a click).
-    /// </summary>
+    // checkedBefore: the zoom was verified just before the game changed it itself.
     public static bool SetZoom(float zoom, bool checkedBefore = false)
     {
         var addon = Addon();
@@ -64,14 +53,12 @@ internal static unsafe class NaviMap
 
         *(float*)((byte*)addon + ZoomOffset) = zoom;
 
-        // Only when it still looks like a percentage, in case a patch moves it.
         var percent = (ushort*)((byte*)addon + ZoomPercentOffset);
         if (*percent is >= 5 and <= 2000)
             *percent = (ushort)MathF.Round(zoom * 100f);
         return true;
     }
 
-    /// <summary>Whether the percentage copy of the zoom agrees with it (or can't be read).</summary>
     public static bool PercentInStep(float zoom)
     {
         var addon = Addon();
@@ -81,7 +68,6 @@ internal static unsafe class NaviMap
         return percent is < 5 or > 2000 || percent == (ushort)MathF.Round(zoom * 100f);
     }
 
-    /// <summary>Greys the − button out or makes it clickable again.</summary>
     public static void SetZoomOutEnabled(bool enabled)
     {
         var addon = Addon();

@@ -18,11 +18,8 @@ public enum JobGroup
     Land,
 }
 
-// The role groups and their jobs (the same groups as Flick Wheel's job wheels), and
-// lookups between the game's ClassJob rows and the English abbreviations settings use.
 internal sealed class JobGroups(IDataManager data)
 {
-    // Gold job glyphs on a transparent background are 62000 + ClassJob row id.
     public const uint JobIconBase = 62000;
 
     public static readonly (JobGroup Group, string Label, string[] Jobs)[] All =
@@ -43,8 +40,6 @@ internal sealed class JobGroups(IDataManager data)
     public ClassJob? Job(string abbreviation) =>
         Lookup().TryGetValue(abbreviation, out var job) ? job : null;
 
-    // The job a ClassJob row counts as, with its group. A base class counts as its job
-    // (Gladiator → PLD); rows on no wheel (Adventurer) are null.
     public (string Abbreviation, JobGroup Group)? Of(uint classJobId)
     {
         if (byRow == null)
@@ -72,7 +67,7 @@ internal sealed class JobGroups(IDataManager data)
     private static bool HasParent(ClassJob job) =>
         job.ClassJobParent.IsValid && job.ClassJobParent.RowId != 0 && job.ClassJobParent.RowId != job.RowId;
 
-    // Abbreviations are matched against the English sheet so they're the same in every client language.
+    // English names, so they match in every client language.
     private Dictionary<string, ClassJob> Lookup()
     {
         if (byAbbreviation != null)

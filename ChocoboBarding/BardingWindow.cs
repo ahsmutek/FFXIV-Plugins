@@ -16,7 +16,6 @@ internal sealed partial class BardingWindow : Window
     private const float SmallIconSize = 24;
     private const float MixIconSize = 80;
 
-    // Gold job glyphs on a transparent background are 62000 + ClassJob row id.
     private const uint JobIconBase = 62000;
     private const string JobMacro = "/cbarding job";
 
@@ -48,7 +47,6 @@ internal sealed partial class BardingWindow : Window
         SizeCondition = ImGuiCond.FirstUseEver;
     }
 
-    // Refresh on open so newly unlocked barding shows up.
     public override void OnOpen()
     {
         owned = Barding.Owned(data, unlocks)
@@ -152,7 +150,6 @@ internal sealed partial class BardingWindow : Window
         return true;
     }
 
-    /// <summary>The /cbarding line for the current picks, or null when every slot is "Keep current".</summary>
     private string? MixMacro()
     {
         if (mix.All(choice => choice.Action == SlotAction.Keep))
@@ -272,7 +269,6 @@ internal sealed partial class BardingWindow : Window
             ImGui.EndTabItem();
         }
 
-        // Only for players who can summon Carbuncle or Eos.
         if ((pets.Count > 0 || resizes.Count > 0) && ImGui.BeginTabItem("Pets"))
         {
             DrawPets();

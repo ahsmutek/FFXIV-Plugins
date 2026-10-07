@@ -5,15 +5,12 @@ using Lumina.Excel.Sheets;
 
 namespace JobProfiles;
 
-// Whether you're in a duty and what kind, from the zone's Duty Finder entry. The kinds are
-// the game's own ContentType rows (Dungeons, Trials, Raids, Ultimate Raids, Deep Dungeons…).
 internal sealed class Duties(IClientState clientState, IDataManager data)
 {
     private uint cachedTerritory = uint.MaxValue;
     private (bool InDuty, uint ContentType) cached;
     private List<(uint Id, string Name)>? kinds;
 
-    /// <summary>In a duty, and its ContentType row (0 outside duties).</summary>
     public (bool InDuty, uint ContentType) Current()
     {
         var territory = clientState.TerritoryType;
@@ -28,7 +25,6 @@ internal sealed class Duties(IClientState clientState, IDataManager data)
         return cached;
     }
 
-    /// <summary>Every kind of duty the Duty Finder has, by name.</summary>
     public List<(uint Id, string Name)> Kinds()
     {
         if (kinds != null)

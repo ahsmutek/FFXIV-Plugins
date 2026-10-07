@@ -7,14 +7,7 @@ using Dalamud.Plugin.Services;
 
 namespace ControllerKeeper;
 
-/// <summary>
-/// The game rescans its controllers, freezing pad input for a moment, every time Windows
-/// sends its window WM_DEVICECHANGE, which happens for any hardware: a USB stick, a virtual
-/// drive, a headset. This sits in front of the game's window and only passes the message on
-/// when the set of connected controllers (which ones, not how many) changed. A skipped
-/// message is checked again shortly after, so a controller Windows lists late still gets
-/// picked up.
-/// </summary>
+// The game rescans controllers (freezing pad input) on every WM_DEVICECHANGE, for any hardware; only pass it on when the set of controllers changed.
 internal sealed class RescanFilter : IDisposable
 {
     private const uint WmDeviceChange = 0x0219;
@@ -31,7 +24,6 @@ internal sealed class RescanFilter : IDisposable
 
     private HashSet<string> known;
     private long? recheckAt;
-    // Set by Reconnect: the next device-change message goes through whatever it says.
     private bool forceNext;
 
     public RescanFilter(IFramework framework, IPluginLog log, Configuration config)
@@ -41,7 +33,7 @@ internal sealed class RescanFilter : IDisposable
         this.config = config;
         known = Controllers();
         proc = WndProc; // kept in a field so the delegate outlives the native subclass
-        // Attached from the game's main thread, which owns its window (Windows requires that).
+        // Must attach from the thread that owns the window.
         framework.Update += OnUpdate;
     }
 
@@ -65,14 +57,9 @@ internal sealed class RescanFilter : IDisposable
             log.Warning("Couldn't attach to the game window; controller rescans won't be filtered.");
     }
 
-    /// <summary>Rescans skipped and let through this session.</summary>
     public int Skipped { get; private set; }
     public int Passed { get; private set; }
 
-    /// <summary>
-    /// Makes the game rescan its controllers, as plugging the pad out and back in does: for
-    /// a pad the game has stopped reading although Windows still has it.
-    /// </summary>
     public void Reconnect()
     {
         var hwnd = window != 0 ? window : GameWindow();
@@ -98,7 +85,7 @@ internal sealed class RescanFilter : IDisposable
             {
                 Skipped++;
                 recheckAt = Environment.TickCount64 + RecheckMs;
-                return 1; // TRUE: handled; the game never sees it
+                return 1; // Handled; the game never sees it.
             }
 
             log.Information($"Controllers changed ({known.Count} → {now.Count}); letting the game rescan.");
@@ -109,7 +96,7 @@ internal sealed class RescanFilter : IDisposable
         return DefSubclassProc(hwnd, message, wParam, lParam);
     }
 
-    // A controller that showed up after a skipped message: hand the game a fresh one.
+    // Windows can list a controller only after its message was skipped.
     private void OnUpdate(IFramework _)
     {
         if (!attachTried)
@@ -122,8 +109,6 @@ internal sealed class RescanFilter : IDisposable
             PostMessage(window, WmDeviceChange, DbtDevNodesChanged, 0);
     }
 
-    // Every game controller Windows lists (HID joysticks, gamepads and multi-axis devices,
-    // which includes XInput pads), by device path.
     private static HashSet<string> Controllers()
     {
         var found = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -160,7 +145,6 @@ internal sealed class RescanFilter : IDisposable
         if (handle != 0)
             return handle;
 
-        // No title yet (very early load): the first visible window of this process.
         nint result = 0;
         var pid = (uint)Environment.ProcessId;
         EnumWindows((hwnd, _) =>

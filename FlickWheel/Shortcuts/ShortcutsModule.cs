@@ -7,8 +7,6 @@ using Shortcuts;
 
 namespace FlickWheel;
 
-// A wheel of your own shortcuts: game windows, Teleport and other general actions,
-// items (with how many are left) and plugin commands, in groups you name and color.
 internal sealed class ShortcutsModule : IWheelModule
 {
     public const string WheelId = "shortcuts";
@@ -32,16 +30,13 @@ internal sealed class ShortcutsModule : IWheelModule
 
     public string Id => "shortcuts";
     public string Name => "Shortcuts";
-    // The first Shortcuts wheel, then any you added, in order.
     public IReadOnlyList<IWheel> Wheels => AllWheels().Select(Wrap).ToList();
     public IReadOnlyList<SettingsTab> SettingsTabs { get; }
 
-    // Wheel objects are kept per saved wheel, so the same one comes back each time.
     private readonly Dictionary<string, ShortcutsWheel> wrappers = new();
 
     public IEnumerable<ShortcutWheel> AllWheels() => config.MoreShortcutWheels.Prepend(config.Shortcuts!);
 
-    // "shortcuts" for the first wheel (as before), "shortcuts-<uid>" for added ones.
     public string IdOf(ShortcutWheel wheel) => wheel == config.Shortcuts ? WheelId : $"{WheelId}-{wheel.Uid}";
 
     public static string TitleOf(ShortcutWheel wheel) =>
@@ -57,11 +52,9 @@ internal sealed class ShortcutsModule : IWheelModule
 
     public void OnSettingsOpen() { }
 
-    // A palette hue in the wheel's style, or the group's custom color.
     public static Vector4 ColorOf(ShortcutGroup group, int style) =>
         group.Hue >= 0 ? Palette.Color(group.Hue, style) : Palette.FromAbgr(group.Color);
 
-    // What a new install starts with; everything can be changed or removed.
     private static ShortcutWheel Starter() => new()
     {
         Groups =
@@ -69,7 +62,7 @@ internal sealed class ShortcutsModule : IWheelModule
             new ShortcutGroup
             {
                 Name = "Travel",
-                Hue = 8, // Teal
+                Hue = 8,
                 Entries =
                 [
                     new ShortcutEntry { Kind = ShortcutKind.GeneralAction, RowId = 7 }, // Teleport
@@ -80,7 +73,7 @@ internal sealed class ShortcutsModule : IWheelModule
             new ShortcutGroup
             {
                 Name = "Windows",
-                Hue = 11, // Blue
+                Hue = 11,
                 Entries =
                 [
                     new ShortcutEntry { Kind = ShortcutKind.MainCommand, RowId = 33 }, // Duty Finder
@@ -91,11 +84,10 @@ internal sealed class ShortcutsModule : IWheelModule
             new ShortcutGroup
             {
                 Name = "Chocobo",
-                Hue = 3, // Amber
+                Hue = 3,
                 Entries =
                 [
                     new ShortcutEntry { Kind = ShortcutKind.Item, RowId = 4868 }, // Gysahl Greens
-                    // Only shows while the Chocobo Barding plugin is loaded. Icon: the Companion menu.
                     new ShortcutEntry { Kind = ShortcutKind.Command, Command = "/cbarding job", Label = "Barding for my job", IconId = 49 },
                 ],
             },
@@ -120,8 +112,6 @@ internal sealed class ShortcutsModule : IWheelModule
             return new WheelRing(slots, (pinned, 0f));
         }
 
-        // Entries that can't be used right now (a locked menu, a plugin that isn't loaded)
-        // leave their slot empty. Items you're out of stay, faded.
         public List<WheelEntry> Entries(WheelRing ring)
         {
             var byUid = data.Groups.SelectMany(g => g.Entries).ToDictionary(e => e.Uid);

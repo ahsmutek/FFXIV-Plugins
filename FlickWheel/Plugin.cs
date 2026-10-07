@@ -13,7 +13,6 @@ namespace FlickWheel;
 public sealed class Plugin : IDalamudPlugin
 {
     private const string CommandName = "/flick";
-    // The plugin used to be called Job Wheel; its command still works.
     private const string OldCommandName = "/jobwheel";
     private const string OldConfigFile = "JobWheel.json";
 
@@ -67,7 +66,7 @@ public sealed class Plugin : IDalamudPlugin
         if (config.Migrate())
             Save();
 
-        // The core first; modules are added once the overlay exists, since their settings use its preview.
+        // Modules need the overlay for their settings preview.
         var wheels = new WheelSet(config);
         input = new WheelInput(Framework, KeyState, Gamepad, Condition, PlayerState, wheels, config, Save);
         icons = new IconCache(Data, Textures);
@@ -105,9 +104,8 @@ public sealed class Plugin : IDalamudPlugin
             configWindow.Toggle();
     }
 
-    // First load after the rename from Job Wheel: carry the old settings over. The old
-    // file names the old assembly in its "$type" entries, so those are rewritten and the
-    // result saved as this plugin's config, then loaded as usual. The old file is kept.
+    // Carries settings over from Job Wheel, rewriting the old assembly name in "$type"
+    // entries. The old file is kept.
     private static Configuration LoadConfig()
     {
         if (PluginInterface.GetPluginConfig() is Configuration saved)

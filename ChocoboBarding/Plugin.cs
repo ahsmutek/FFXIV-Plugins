@@ -54,7 +54,6 @@ public sealed class Plugin : IDalamudPlugin
     private const string JobKeyword = "job";
     private const string GreensKeyword = "greens";
 
-    // Item row for Gysahl Greens, which summon the chocobo companion.
     private const uint GysahlGreensItemId = 4868;
 
     private readonly Configuration config;
@@ -135,7 +134,6 @@ public sealed class Plugin : IDalamudPlugin
             return;
         }
 
-        // Check every slot before changing anything.
         var choices = new List<SlotChoice>();
         var described = new List<string>();
         foreach (var token in tokens)
@@ -175,7 +173,6 @@ public sealed class Plugin : IDalamudPlugin
         agent->UseItem(GysahlGreensItemId);
     }
 
-    // quiet: for the automatic switch, which runs on every summon and job change.
     private void ApplyJobBarding(bool quiet)
     {
         if (!PlayerState.IsLoaded)
@@ -189,7 +186,6 @@ public sealed class Plugin : IDalamudPlugin
             return;
         }
 
-        // Check every slot before changing anything.
         var sheet = Data.GetExcelSheet<BuddyEquip>();
         for (var slot = 0; slot < choices.Length; slot++)
         {
