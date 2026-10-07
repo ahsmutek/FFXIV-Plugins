@@ -1,34 +1,23 @@
 # Minimap Zoom
 
-Lets the minimap zoom out further than the game allows, so you can see more of the
-area around you, e.g. when gathering.
+Lets the minimap zoom out past the game's limit, e.g. to see more around you when gathering.
 
 ## Usage
 
-- The game stops zooming out at 1.25. With this plugin, the minimap's **−** button
-  keeps working past that, 0.25 a click, down to **Furthest zoom** (0.25 by default).
-- **+** zooms back in as usual. Once you're back at 1.25 or closer, the game is in
-  charge again and the plugin does nothing.
-- The game resets the minimap when you change job, zone or log in. The plugin puts
-  your zoom back each time. Zooming yourself, with the buttons or the mouse wheel, is
-  kept as your new zoom.
-- `/minimapzoom` opens settings, which show the current zoom. `/minimapzoom reset`
-  (or **Back to 1.25**) returns to the game's furthest zoom.
-- Turning the plugin off or unloading it also returns the minimap to 1.25.
+- The game stops zooming out at 1.25. The minimap's **−** button now keeps going, 0.25 a
+  click, down to **Furthest zoom** (0.25 by default). **+** zooms back in as usual.
+- Your zoom is restored after job changes, zoning and logins.
+- `/minimapzoom` opens settings; `/minimapzoom reset` returns to 1.25, as does disabling
+  the plugin.
 
-The map image still covers the whole circle when zoomed out. The game places the
-markers using the same zoom value, so they move with the map. How many gathering
-nodes show depends on what the game has loaded around you, so zooming out doesn't
-always reveal more of them.
+Markers move with the map. Zooming out doesn't always show more gathering nodes, since that
+depends on what the game has loaded.
 
 ## How it works
 
-ClientStructs doesn't map the minimap's zoom, so the plugin reads it at a fixed offset
-in the `_NaviMap` addon. Before writing, it checks that the value matches the map
-image's scale, which the game keeps equal to the zoom. If a game update moves the value,
-the check fails and the plugin leaves the minimap alone; settings then show the zoom
-as unknown. The game also keeps the zoom as a percentage, which it uses to rebuild the
-minimap after zoning, so the plugin keeps that copy in step too.
+ClientStructs doesn't map the minimap's zoom, so the plugin reads it at a fixed offset in
+`_NaviMap` and only writes after checking it against the map image's scale. If a patch
+moves it, the plugin leaves the minimap alone.
 
 ## Build
 

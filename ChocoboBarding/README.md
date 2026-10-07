@@ -1,67 +1,23 @@
 # Chocobo Barding
 
-A tiny Dalamud plugin that puts barding on your chocobo companion with one command,
-so a job macro can switch barding along with your gearset.
-
-## Features
-
-- **Full set or mix & match** – `/cbarding "Sophic"` equips head, body and legs;
-  `/cbarding "Suzaku" "Windswept" "Ice"` picks a different piece per slot.
-  Names are shown without the `Barding` suffix; typing it is optional, and names are
-  case-insensitive (`/cbarding sophic`).
-- **Keep or remove a slot** – `-` leaves a slot as it is, `none` takes that piece off.
-- **Barding per job** – pick a barding for each job (and crafter/gatherer) in the **Jobs**
-  tab, then `/cbarding job` puts on the one for the job you're on. Base classes use their
-  job's pick (Arcanist → Summoner/Scholar).
-- **Match my job automatically** (Jobs tab, off by default) – puts on your job's barding when
-  you summon your chocobo, and when you change job while it's out, however you change it.
-  Only pieces that differ are changed, so nothing is sent when it already matches. Nothing
-  happens while your chocobo isn't summoned, and it waits until you're out of combat.
-- **Summon from a macro** – `/cbarding greens` uses one Gysahl Greens (the game has no
-  macro command for items).
-- **Works with the Companion window closed** – ready for macros.
-- **Barding window** – `/cbarding` with no name (or the plugin's Settings / Open button)
-  opens it. The **Barding** tab has:
-  - **Mix & match** – a column per slot with a large preview icon and a dropdown of
-    your barding (plus Keep current / None); it builds the macro line with a Copy button.
-  - **Full sets** – every barding you own with its head/body/legs icons, macro line and
-    a Copy button, with a filter box.
-
-  The **Pets** tab (if you have Arcanist, Summoner or Scholar) lists every look Carbuncle
-  and Eos can have (Emerald, Topaz or Ruby Carbuncle, Ifrit-, Titan- or Garuda-Egi; Selene) with its `/petglamour` macro
-  line, a preview icon and a Copy button, plus the line that resummons the pet so the new
-  look shows. With Summoner it also has `/petsize` buttons to make Demi-Bahamut,
-  Demi-Phoenix, Solar Bahamut and the three primals (or all of them) small, medium or large.
-
-  The **Jobs** tab has a row per job, shown by its short name (SMN, WHM…; hover for the
-  full name), with a Full set dropdown and Head/Body/Legs dropdowns. Your current job is
-  highlighted.
-- **Owned barding only** – barding you don't own is refused, and suggestions for a
-  mistyped name only list barding you own. Nothing changes unless every slot is valid.
-- **Human pace** – pieces change one at a time: each change waits until the game shows
-  the previous one, then pauses briefly. A new command replaces changes not yet made.
-- **Safe to repeat** – slots already wearing the piece are skipped (re-selecting a worn
-  piece would take it off).
-- Uses the game's normal path: calls the Buddy agent's `ReceiveEvent` with the same
-  arguments the Companion → Appearance tab sends, and uses greens the way the inventory's
-  Use menu does. No hooks, signatures, memory writes or custom packets.
+Puts barding on your chocobo companion with one command, so a job macro can switch it along
+with your gear set.
 
 ## Usage
 
 ```text
 /cbarding "Sophic"                          full set
 /cbarding "Suzaku" "Windswept" "Ice"        head, body, legs
-/cbarding - - "Ice"                         legs only
+/cbarding - - "Ice"                         legs only (- keeps a slot)
 /cbarding "Suzaku" none none                Suzaku head, body and legs removed
 /cbarding none                              remove all barding
 /cbarding job                               barding picked for your current job
 /cbarding greens                            use Gysahl Greens (summon your chocobo)
+/cbarding                                   open the barding window
 ```
 
-Give either one name (full set) or three (head, body, legs). Use quotes around names
-when giving three.
-
-Run `/cbarding` on its own to open the barding window and copy a macro line.
+Give one name (full set) or three, quoted. Names are case-insensitive and the `Barding`
+suffix is optional.
 
 In a job macro:
 
@@ -70,7 +26,7 @@ In a job macro:
 /cbarding "Sophic"
 ```
 
-Summon your chocobo and dress it for your current job:
+Summon your chocobo dressed for your job:
 
 ```text
 /micon "Gysahl Greens" item
@@ -79,10 +35,33 @@ Summon your chocobo and dress it for your current job:
 /cbarding job
 ```
 
-## Build
+## Barding window
 
-Requires a current Dalamud/XIVLauncher development environment and the .NET SDK
-(tested with .NET 10).
+- **Barding** tab: build a mix-and-match line slot by slot, or browse your full sets, each
+  with a Copy button for the macro line.
+- **Jobs** tab: pick barding per job for `/cbarding job` (base classes use their job's).
+  **Match my job automatically** applies it when you summon your chocobo or change job
+  while it's out, after combat ends.
+- **Pets** tab (Arcanist, Summoner or Scholar): `/petglamour` lines for every Carbuncle and
+  Eos look, and `/petsize` lines for Summoner's big summons.
+
+## Behaviour
+
+- Only barding you own; nothing changes unless every slot is valid.
+- Works with the Companion window closed.
+- Pieces change one at a time, each after the game shows the last. A new command replaces
+  changes not yet made, and slots already wearing the piece are skipped.
+
+## How it works
+
+Clicking a piece in Companion → Appearance sends the Buddy agent event
+`20, slot, BuddyEquip row` (slot `0` head, `1` body, `2` legs); selecting the piece a slot
+already wears takes it off. The plugin sends that same event, and uses greens like the
+inventory's Use menu. No hooks, signatures, memory writes or custom packets.
+
+Debug builds add `/cbdebug on|off|status|unlocks`, which logs Buddy agent events to `/xllog`.
+
+## Build
 
 ```sh
 dotnet build -c Debug
@@ -90,20 +69,3 @@ dotnet build -c Debug
 
 Then load `bin\Debug\ChocoboBarding.dll` as a Dalamud dev plugin
 (`/xlsettings` → Experimental → Dev Plugin Locations).
-
-## How it works
-
-Clicking a piece in Companion → Appearance sends the Buddy agent event
-`20, slot, BuddyEquip row`, where slot is `0` Head, `1` Body, `2` Legs. Selecting the
-piece a slot already wears takes it off. `/cbarding` looks names up in the `BuddyEquip`
-sheet, checks ownership with Dalamud's `IUnlockState`, reads the worn pieces from
-`CompanionInfo.BuddyEquipRowIds`, and sends that event once per slot that needs
-changing, waiting for each change to show before the next.
-
-## Debug logging (Debug builds only)
-
-`/cbdebug` logs Buddy agent events to `/xllog`, which is how the event above was found.
-It isn't compiled into Release builds.
-
-- `/cbdebug on` / `/cbdebug off` / `/cbdebug status`
-- `/cbdebug unlocks` – log every barding you own
