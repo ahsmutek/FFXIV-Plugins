@@ -44,6 +44,8 @@ internal sealed class ButtonsTab
     // The binding being recorded, and every pad button held since recording started.
     private Binding? recording;
     private GamepadButtons recordedButtons;
+    // A rule whose key (for "act as a key") is being recorded.
+    private Rule? recordingKey;
 
     public ButtonsTab(Configuration config, JobGroups groups, Duties duties, BindingWatcher watcher, Widgets widgets,
                       IKeyState keyState)
@@ -65,6 +67,7 @@ internal sealed class ButtonsTab
     public void StopRecording()
     {
         recording = null;
+        recordingKey = null;
         recordedButtons = GamepadButtons.None;
         watcher.Paused = false;
     }
@@ -134,7 +137,7 @@ internal sealed class ButtonsTab
 
         // A binding with rules in it needs Ctrl held, so it can't go by accident.
         ImGui.SameLine();
-        var canDelete = binding.Rules.All(r => r.Steps.Count == 0) || ImGui.GetIO().KeyCtrl;
+        var canDelete = binding.Rules.All(r => r.Steps.Count == 0 && !r.ActsAsKey) || ImGui.GetIO().KeyCtrl;
         ImGui.BeginDisabled(!canDelete);
         if (ImGui.SmallButton("Delete"))
         {
@@ -148,9 +151,12 @@ internal sealed class ButtonsTab
 
         // What it would do right now, so the rules can be checked without pressing anything.
         var match = watcher.Match(binding);
-        ImGui.TextDisabled(match is { Steps.Count: > 0 }
-            ? $"Right now: {widgets.StepNames(match.Steps)} ({Who(match)}, {Where(match)})"
-            : "Right now: nothing (no rule fits your job and where you are)");
+        ImGui.TextDisabled(match switch
+        {
+            { ActsAsKey: true } => $"Right now: acts as {KeyPresser.Describe(match)} ({Who(match)}, {Where(match)})",
+            { Steps.Count: > 0 } => $"Right now: {widgets.StepNames(match.Steps)} ({Who(match)}, {Where(match)})",
+            _ => "Right now: nothing (no rule fits your job and where you are)",
+        });
 
         int? remove = null;
         (int From, int To)? move = null;
@@ -221,11 +227,52 @@ internal sealed class ButtonsTab
         if (ImGui.IsItemHovered())
             ImGui.SetTooltip("Remove this rule");
 
+        // What the rule does: run its list, or act as a key held while the button is.
         ImGui.Indent();
-        changed |= widgets.StepList(rule.Steps, "this rule", rule.Steps.Add);
+        var actsAsKey = rule.ActsAsKey || recordingKey == rule;
+        if (widgets.Combo("##mode", ref actsAsKey, [(false, "Run a list"), (true, "Act as a key")], width: 200f))
+        {
+            if (actsAsKey)
+                StartKeyRecording(rule);
+            else
+            {
+                rule.HoldKey = 0;
+                rule.HoldCtrl = rule.HoldShift = rule.HoldAlt = false;
+                if (recordingKey == rule)
+                    StopRecording();
+            }
+            changed = true;
+        }
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip("Act as a key: the key is held down while the button is, e.g. a Flick Wheel wheel's own\nhotkey, so the button opens that wheel: hold, flick, let go.");
+
+        if (actsAsKey)
+        {
+            ImGui.SameLine();
+            var label = recordingKey == rule ? "Press a key… (Esc to cancel)"
+                        : rule.ActsAsKey ? KeyPresser.Describe(rule) : "Not set: click to record";
+            if (ImGui.Button($"{label}###key"))
+            {
+                if (recordingKey == rule)
+                    StopRecording();
+                else
+                    StartKeyRecording(rule);
+            }
+        }
+        else
+        {
+            changed |= widgets.StepList(rule.Steps, "this rule", rule.Steps.Add);
+        }
         ImGui.Unindent();
         ImGui.Unindent();
         return changed;
+    }
+
+    private void StartKeyRecording(Rule rule)
+    {
+        StopRecording();
+        recordingKey = rule;
+        watcher.Paused = true;
     }
 
     private void StartRecording(Binding binding)
@@ -239,6 +286,9 @@ internal sealed class ButtonsTab
     // modifier) is taken as soon as it's pressed, with the modifiers held with it.
     private bool Record()
     {
+        if (recordingKey is { } keyRule)
+            return RecordKey(keyRule);
+
         if (recording is not { } binding)
             return false;
 
@@ -273,6 +323,31 @@ internal sealed class ButtonsTab
             binding.Ctrl = BindingWatcher.IsDown(VirtualKey.CONTROL);
             binding.Shift = BindingWatcher.IsDown(VirtualKey.SHIFT);
             binding.Alt = BindingWatcher.IsDown(VirtualKey.MENU);
+            StopRecording();
+            return true;
+        }
+
+        return false;
+    }
+
+    // The key a rule acts as: taken as soon as a key (not a modifier) is pressed, with the
+    // modifiers held with it.
+    private bool RecordKey(Rule rule)
+    {
+        if (BindingWatcher.IsDown(VirtualKey.ESCAPE))
+        {
+            StopRecording();
+            return false;
+        }
+
+        foreach (var key in keys)
+        {
+            if (!BindingWatcher.IsDown(key))
+                continue;
+            rule.HoldKey = key;
+            rule.HoldCtrl = BindingWatcher.IsDown(VirtualKey.CONTROL);
+            rule.HoldShift = BindingWatcher.IsDown(VirtualKey.SHIFT);
+            rule.HoldAlt = BindingWatcher.IsDown(VirtualKey.MENU);
             StopRecording();
             return true;
         }

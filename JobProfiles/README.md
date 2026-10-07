@@ -57,6 +57,10 @@ depending on your job and where you are.
   - **where**: anywhere, outside duties, in any duty, or in one kind of duty (Dungeons,
     Trials, Raids, Ultimate Raids, Deep Dungeons, PvP…, the game's own list).
   Put specific rules first and a catch-all (Anyone, Anywhere) last.
+- Instead of running a list, a rule can **Act as a key**: the key (recorded by pressing it)
+  is held down while the button is. Use it to open a Flick Wheel wheel through its own
+  hotkey: hold L3, flick, let go. Give those wheels hotkeys without a modifier (F13–F24),
+  so letting go never confuses Ctrl or Shift you're holding yourself.
 - **Right now** under each binding shows what it would run where you're standing.
 - If both R3 and LT + R3 are bound, pressing LT + R3 runs only that one. A button
   you hold for a combo still runs its own binding when pressed on its own first.

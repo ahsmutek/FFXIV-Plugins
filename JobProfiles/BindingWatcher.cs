@@ -29,6 +29,9 @@ internal sealed class BindingWatcher : IDisposable
     private readonly Duties duties;
     private readonly MacroRunner runner;
 
+    // A rule acting as a key: the binding whose button holds it down, and the rule.
+    private (Binding Binding, Rule Rule)? holding;
+
     // Keys that were down last frame, to fire once per press.
     private readonly HashSet<VirtualKey> keysDown = [];
 
@@ -46,7 +49,11 @@ internal sealed class BindingWatcher : IDisposable
         framework.Update += OnUpdate;
     }
 
-    public void Dispose() => framework.Update -= OnUpdate;
+    public void Dispose()
+    {
+        framework.Update -= OnUpdate;
+        Release();
+    }
 
     /// <summary>Set while settings are recording a new combo, so pressing it doesn't run it.</summary>
     public bool Paused { get; set; }
@@ -85,8 +92,13 @@ internal sealed class BindingWatcher : IDisposable
         if (Paused || !config.BindingsEnabled || config.Bindings.Count == 0 || !player.IsLoaded || Typing())
         {
             keysDown.Clear();
+            Release();
             return;
         }
+
+        // A held key goes up when its button does.
+        if (holding is var (held, _) && !StillHeld(held))
+            Release();
 
         if (PadPress() is { } pad)
             Fire(pad);
@@ -139,8 +151,28 @@ internal sealed class BindingWatcher : IDisposable
 
     private void Fire(Binding binding)
     {
-        if (Match(binding) is { Steps.Count: > 0 } rule)
-            runner.Enqueue(rule.Steps);
+        switch (Match(binding))
+        {
+            case { ActsAsKey: true } rule:
+                Release();
+                KeyPresser.Down(rule);
+                holding = (binding, rule);
+                break;
+            case { Steps.Count: > 0 } rule:
+                runner.Enqueue(rule.Steps);
+                break;
+        }
+    }
+
+    private bool StillHeld(Binding binding) =>
+        binding.IsKeyboard ? IsDown(binding.Key) : (HeldButtons() & binding.Buttons) == binding.Buttons;
+
+    private void Release()
+    {
+        if (holding is not var (_, rule))
+            return;
+        holding = null;
+        KeyPresser.Up(rule);
     }
 
     private static unsafe bool Typing()

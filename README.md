@@ -37,7 +37,8 @@ Tap RB (or another shoulder button) to move between the combat, crafting/gatheri
 and shortcuts wheels; it reopens on the one you used last. Every unlocked job has a
 fixed, role-grouped spot so you can learn the directions by feel. The shortcuts wheel
 holds your own groups of game windows, Teleport and other actions, items (with how many
-are left) and plugin commands such as `/cbarding job`. Command: `/flick` (settings).
+are left), emotes, macros and any chat command such as `/cbarding job`; add more
+shortcut wheels (an Emotes wheel…), each with its own hotkey. Command: `/flick` (settings).
 
 ### [Job Profiles](JobProfiles/)
 Switches your HUD layout and runs macros or commands whenever your job changes, however
@@ -46,8 +47,9 @@ melee, crafters…) and override it for single jobs; a class uses its job's prof
 Waits out zoning, cutscenes and running macros, and can also apply on login. Also
 runs them from pad buttons, combos and keys (paddles via reWASD), picking them by
 job or role and by duty type with ordered rules. Lists can hold anything Flick Wheel's
-shortcuts can (macros, menus, actions, items) plus any chat command. Command:
-`/jobprofiles` (settings), `/jobprofiles apply`.
+shortcuts can (macros, menus, actions, items, emotes) plus any chat command, or a rule
+can make the button act as a key, e.g. a Flick Wheel wheel's hotkey, so L3 opens a
+different wheel per job or duty. Command: `/jobprofiles` (settings), `/jobprofiles apply`.
 
 ### [Minimap Zoom](MinimapZoom/)
 Lets the minimap's − button zoom out past the game's limit (1.25), down to 0.25, so

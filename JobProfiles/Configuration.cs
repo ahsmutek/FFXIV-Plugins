@@ -68,6 +68,15 @@ public sealed class Rule
     public DutyScope Where { get; set; }
     // ContentType row when Where is ContentType.
     public uint ContentType { get; set; }
+
+    // Act as this key instead of running Steps: held down while the binding's button is,
+    // e.g. Flick Wheel's hotkey for a wheel. 0 = run Steps.
+    public VirtualKey HoldKey { get; set; }
+    public bool HoldCtrl { get; set; }
+    public bool HoldShift { get; set; }
+    public bool HoldAlt { get; set; }
+
+    public bool ActsAsKey => HoldKey != 0;
     public List<Step> Steps { get; set; } = new();
 }
 
