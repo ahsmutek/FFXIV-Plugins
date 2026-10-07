@@ -1,0 +1,13 @@
+{
+  "Author": "Kotanna",
+  "Name": "Keep in Mind",
+  "Punchline": "A simple checklist of ingredients to gather or buy.",
+  "Description": "Right-click an ingredient in the Crafting Log and choose \"Keep in mind\" to add it to one shared checklist. Tick items off as you gather or buy them. Right-click an item in the list to see where Item Vendor Location says it's sold.",
+  "ApplicableVersion": "any",
+  "Tags": [
+    "crafting",
+    "gathering",
+    "checklist",
+    "shopping list"
+  ]
+}

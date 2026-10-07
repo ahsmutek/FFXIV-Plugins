@@ -58,6 +58,13 @@ change job, zone or log in. Checks the zoom value against the map image before
 writing, so a game update can't make it write to the wrong place. Command:
 `/minimapzoom` (settings), `/minimapzoom reset`.
 
+### [Keep in Mind](KeepInMind/)
+A simple checklist of ingredients to gather or buy by hand. Right-click an ingredient in
+the Crafting Log and choose **Keep in mind** to add it to one list shared by every recipe
+and job, with icons, tick boxes, and clear completed / clear all. Right-click an item in
+the list to find its vendor with Item Vendor Location.
+No crafting or gathering is done for you. Command: `/keepinmind`.
+
 ### [ControllerKeeper](ControllerKeeper/)
 Keeps your controller working: the game only rescans controllers when one was actually
 added, removed or swapped (no pad freeze when a USB stick or virtual drive comes and goes),
