@@ -153,6 +153,7 @@ internal sealed class BindingWatcher : IDisposable
     // All of the binding's keys and buttons are down, and no modifier it doesn't use.
     private static bool Held(Binding binding, GamepadButtons held, HashSet<VirtualKey> keysDown) =>
         (binding.Buttons & ~held) == 0 && binding.Keys.All(keysDown.Contains) &&
+        (binding.Buttons == GamepadButtons.None || (held & ~binding.Buttons) == 0) &&
         Modifiers.All(m => binding.Keys.Contains(m) || !keysDown.Contains(m));
 
     // The bound keys (and modifiers) down right now; none while the game isn't the window
