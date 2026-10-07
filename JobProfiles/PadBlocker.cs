@@ -36,16 +36,30 @@ internal sealed unsafe class PadBlocker : IDisposable
 
     public void Dispose() => hook.Dispose();
 
+    // What the controller really did last frame, kept when buttons were hidden from it.
+    private GamepadInputData real;
+    private bool hidLast;
+
     private void OnUpdate(PadDevice* pad)
     {
+        // The game works out what was just pressed against last frame's data. Hidden there, a
+        // held button would count as pressed anew every frame, to the game and to Dalamud,
+        // which reads it in this update too: held with L1, L3 would flip Dalamud's gamepad
+        // mode on and off each frame. So the update starts from what really happened.
+        if (hidLast)
+            pad->GamepadInputData = real;
+
         hook.Original(pad);
 
         try
         {
+            hidLast = false;
             if (Hidden() is not (var hidden and not GamepadButtons.None))
                 return;
 
             ref var input = ref pad->GamepadInputData;
+            real = input;
+            hidLast = true;
             var mask = (GamepadButtonsFlags)(ushort)~(ushort)hidden;
             input.Buttons &= mask;
             input.ButtonsPressed &= mask;
