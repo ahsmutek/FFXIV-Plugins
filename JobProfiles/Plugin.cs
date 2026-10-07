@@ -78,7 +78,7 @@ public sealed class Plugin : IDalamudPlugin
         CommandManager.AddHandler(CommandName, new CommandInfo(OnCommand)
         {
             HelpMessage = "Open Job Profiles settings.\n" +
-                          "/jobprofiles apply → Apply your current job's HUD layout and macro again.",
+                          "/jobprofiles apply → Switch to your current job's HUD layout and run its actions again.",
         });
     }
 

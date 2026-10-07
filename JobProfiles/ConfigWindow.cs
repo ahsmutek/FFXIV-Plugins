@@ -83,33 +83,33 @@ internal sealed class ConfigWindow : Window
         var changed = false;
 
         var enabled = config.Enabled;
-        if (ImGui.Checkbox("Apply profiles when my job changes", ref enabled))
+        if (ImGui.Checkbox("Switch HUD layout and run actions when my job changes", ref enabled))
         {
             config.Enabled = enabled;
             changed = true;
         }
 
         var onLogin = config.ApplyOnLogin;
-        if (ImGui.Checkbox("Also apply after logging in", ref onLogin))
+        if (ImGui.Checkbox("Also when I log in", ref onLogin))
         {
             config.ApplyOnLogin = onLogin;
             changed = true;
         }
 
         ImGui.SameLine();
-        if (ImGui.SmallButton("Apply now"))
+        if (ImGui.SmallButton("Apply for my current job now"))
             applyNow();
 
-        ImGui.TextWrapped("Pick a HUD layout and what to run for each group: macros, menus, actions, items or any chat command. Tick Override on a job to give it its own. A class uses its job's profile (Gladiator uses Paladin's).");
+        ImGui.TextWrapped("For each role, pick a HUD layout and what to do when you switch to one of its jobs. To set up one job differently from its role, tick Override next to it. Classes follow their job (Gladiator uses Paladin's settings).");
         ImGui.Spacing();
 
         const ImGuiTableFlags flags = ImGuiTableFlags.RowBg | ImGuiTableFlags.BordersInnerH | ImGuiTableFlags.SizingStretchProp;
         if (ImGui.BeginTable("profiles", 4, flags))
         {
-            ImGui.TableSetupColumn("Group / job", ImGuiTableColumnFlags.WidthStretch, 2f);
+            ImGui.TableSetupColumn("Role / job", ImGuiTableColumnFlags.WidthStretch, 2f);
             ImGui.TableSetupColumn("Override", ImGuiTableColumnFlags.WidthFixed);
             ImGui.TableSetupColumn("HUD layout", ImGuiTableColumnFlags.WidthStretch, 1.5f);
-            ImGui.TableSetupColumn("Run", ImGuiTableColumnFlags.WidthStretch, 2f);
+            ImGui.TableSetupColumn("Then do", ImGuiTableColumnFlags.WidthStretch, 2f);
             ImGui.TableHeadersRow();
 
             foreach (var (group, label, jobs) in JobGroups.All)
@@ -212,7 +212,7 @@ internal sealed class ConfigWindow : Window
             // of the group's; an empty list runs none.
             ImGui.TableNextColumn();
             var useGroup = profile.Steps == null;
-            if (ImGui.Checkbox("Use group's list", ref useGroup))
+            if (ImGui.Checkbox("Same as group", ref useGroup))
             {
                 profile.Steps = useGroup ? null : (fromGroup?.Steps ?? []).Select(s => s.Copy()).ToList();
                 changed = true;
@@ -250,7 +250,7 @@ internal sealed class ConfigWindow : Window
     {
         var options = new List<(int? Value, string Label)>();
         if (forJob)
-            options.Add((null, "Use group"));
+            options.Add((null, "Same as group"));
         options.Add((forJob ? Profile.NoHudLayout : null, "Don't change"));
         for (var i = 0; i < Layouts.Length; i++)
             options.Add((i, Layouts[i]));

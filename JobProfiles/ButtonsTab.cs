@@ -77,15 +77,19 @@ internal sealed class ButtonsTab
         var changed = false;
 
         var enabled = config.BindingsEnabled;
-        if (ImGui.Checkbox("Run from pad buttons and keys", ref enabled))
+        if (ImGui.Checkbox("Use controller buttons and keys", ref enabled))
         {
             config.BindingsEnabled = enabled;
             changed = true;
         }
 
-        ImGui.TextWrapped("Each binding runs the list of its first rule that fits your job and where you are. " +
-                          "Unbind the buttons you use here in the game's gamepad settings, or the game acts on them too. " +
-                          "For paddles, map each one to a key the game doesn't use (F13–F24) in reWASD or Steam Input and record that key.");
+        ImGui.TextWrapped("Make a controller button, a button combo or a keyboard key do different things depending on " +
+                          "your job and where you are. Each one has rules, checked from the top; the first that fits is used.");
+        ImGui.PushStyleColor(ImGuiCol.Text, ImGui.GetColorU32(ImGuiCol.TextDisabled));
+        ImGui.TextWrapped("Tip: unbind these buttons in the game's controller settings, or the game reacts to them too. " +
+                          "For paddles, map each one to a key the game doesn't use (F13–F24) in reWASD or Steam Input, " +
+                          "then record that key here.");
+        ImGui.PopStyleColor();
 
         changed |= Record();
 
@@ -101,7 +105,7 @@ internal sealed class ButtonsTab
 
         ImGui.Spacing();
         ImGui.Separator();
-        if (ImGui.Button("Add binding"))
+        if (ImGui.Button("Add button or key"))
         {
             var binding = new Binding { Rules = [new Rule()] };
             config.Bindings.Add(binding);
@@ -123,8 +127,8 @@ internal sealed class ButtonsTab
         var changed = false;
 
         // The combo, as a button that records a new one.
-        var label = recording == binding ? "Press a button combo or key… (Esc to cancel)" :
-                    binding.IsSet ? Describe(binding) : "Not set: click to record";
+        var label = recording == binding ? "Press the button, combo or key… (Esc cancels)" :
+                    binding.IsSet ? Describe(binding) : "Not set: click, then press it";
         if (ImGui.Button($"{label}###record"))
         {
             if (recording == binding)
@@ -133,7 +137,7 @@ internal sealed class ButtonsTab
                 StartRecording(binding);
         }
         if (ImGui.IsItemHovered() && recording != binding)
-            ImGui.SetTooltip("Click, then press the combo: hold pad buttons together and let go, or press a key (with Ctrl/Shift/Alt).");
+            ImGui.SetTooltip("Click, then press it. For a combo, hold the buttons together and let go. A key can include Ctrl, Shift or Alt.");
 
         // A binding with rules in it needs Ctrl held, so it can't go by accident.
         ImGui.SameLine();
@@ -147,15 +151,15 @@ internal sealed class ButtonsTab
         }
         ImGui.EndDisabled();
         if (!canDelete && ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
-            ImGui.SetTooltip("Hold Ctrl to delete a binding that has anything in its rules.");
+            ImGui.SetTooltip("Hold Ctrl to delete: this button has rules set up.");
 
         // What it would do right now, so the rules can be checked without pressing anything.
         var match = watcher.Match(binding);
         ImGui.TextDisabled(match switch
         {
-            { ActsAsKey: true } => $"Right now: acts as {KeyPresser.Describe(match)} ({Who(match)}, {Where(match)})",
-            { Steps.Count: > 0 } => $"Right now: {widgets.StepNames(match.Steps)} ({Who(match)}, {Where(match)})",
-            _ => "Right now: nothing (no rule fits your job and where you are)",
+            { ActsAsKey: true } => $"Here and now: holds {KeyPresser.Describe(match)} (rule: {Who(match)}, {Where(match)})",
+            { Steps.Count: > 0 } => $"Here and now: does {widgets.StepNames(match.Steps)} (rule: {Who(match)}, {Where(match)})",
+            _ => "Here and now: nothing (no rule fits your job and where you are)",
         });
 
         int? remove = null;
@@ -203,7 +207,7 @@ internal sealed class ButtonsTab
             move = (index, index + 1);
         ImGui.EndDisabled();
         if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
-            ImGui.SetTooltip("Rules are tried top to bottom; the first that fits runs.");
+            ImGui.SetTooltip("Rules are checked top to bottom; the first that fits is used.\nPut specific rules first and a catch-all (Anyone, Anywhere) last.");
 
         ImGui.SameLine();
         var who = WhoKey(rule);
@@ -230,7 +234,7 @@ internal sealed class ButtonsTab
         // What the rule does: run its list, or act as a key held while the button is.
         ImGui.Indent();
         var actsAsKey = rule.ActsAsKey || recordingKey == rule;
-        if (widgets.Combo("##mode", ref actsAsKey, [(false, "Run a list"), (true, "Act as a key")], width: 200f))
+        if (widgets.Combo("##mode", ref actsAsKey, [(false, "Do something"), (true, "Hold a key")], width: 120f))
         {
             if (actsAsKey)
                 StartKeyRecording(rule);
@@ -244,13 +248,13 @@ internal sealed class ButtonsTab
             changed = true;
         }
         if (ImGui.IsItemHovered())
-            ImGui.SetTooltip("Act as a key: the key is held down while the button is, e.g. a Flick Wheel wheel's own\nhotkey, so the button opens that wheel: hold, flick, let go.");
+            ImGui.SetTooltip("Do something: run macros, commands, menus, items, emotes… one after another.\nHold a key: hold a key down while the button is, e.g. a Flick Wheel wheel's own hotkey,\nso the button opens that wheel: hold, flick, let go.");
 
         if (actsAsKey)
         {
             ImGui.SameLine();
-            var label = recordingKey == rule ? "Press a key… (Esc to cancel)"
-                        : rule.ActsAsKey ? KeyPresser.Describe(rule) : "Not set: click to record";
+            var label = recordingKey == rule ? "Press the key… (Esc cancels)"
+                        : rule.ActsAsKey ? KeyPresser.Describe(rule) : "Not set: click, then press a key";
             if (ImGui.Button($"{label}###key"))
             {
                 if (recordingKey == rule)

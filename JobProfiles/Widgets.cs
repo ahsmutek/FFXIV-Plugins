@@ -5,6 +5,7 @@ using System.Numerics;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface;
 using Dalamud.Interface.Components;
+using Dalamud.Interface.Utility;
 using Shortcuts;
 
 namespace JobProfiles;
@@ -79,10 +80,16 @@ internal sealed class Widgets(ShortcutCatalog catalog, ShortcutPicker picker, Ic
             changed = true;
         }
 
+        if (list.Count == 0)
+        {
+            ImGui.AlignTextToFramePadding();
+            ImGui.TextDisabled("Nothing yet: click Add to pick a macro, command, menu, item, emote…");
+            ImGui.SameLine();
+        }
         if (ImGui.SmallButton("Add"))
             pendingAdd = (name, add);
         if (ImGui.IsItemHovered())
-            ImGui.SetTooltip("A macro, menu, action, item, chocobo command or any chat command (/wait N pauses).");
+            ImGui.SetTooltip("Pick a macro, game menu, action, item, emote or chat command.\nA /wait 2 command pauses before the next one.");
 
         return changed;
     }
@@ -103,12 +110,20 @@ internal sealed class Widgets(ShortcutCatalog catalog, ShortcutPicker picker, Ic
     public string StepNames(List<Step>? list) =>
         list is { Count: > 0 } ? string.Join(", ", list.Select(s => catalog.Describe(s)?.Name ?? "?")) : "—";
 
+    // A width above 0 is at 100% UI scale: it grows with Dalamud's scale, and never gets
+    // narrower than the longest choice so none is cut off. -1 fills the rest of the row.
     public bool Combo<T>(string id, ref T value, List<(T Value, string Label)> options, bool searchable = false,
                           float width = -1)
     {
         var current = value;
         var selected = Math.Max(0, options.FindIndex(o => EqualityComparer<T>.Default.Equals(o.Value, current)));
         var changed = false;
+        if (width > 0)
+        {
+            var longest = options.Count > 0 ? options.Max(o => ImGui.CalcTextSize(o.Label).X) : 0f;
+            var fit = longest + ImGui.GetStyle().FramePadding.X * 2 + ImGui.GetFrameHeight();
+            width = MathF.Max(width * ImGuiHelpers.GlobalScale, fit);
+        }
         ImGui.SetNextItemWidth(width);
         if (ImGui.BeginCombo(id, options[selected].Label, searchable ? ImGuiComboFlags.HeightLarge : ImGuiComboFlags.None))
         {
