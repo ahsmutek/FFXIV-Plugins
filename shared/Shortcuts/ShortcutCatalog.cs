@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.Game.UI;
@@ -121,6 +122,7 @@ internal sealed class ShortcutCatalog
 
     public unsafe void Run(IShortcut entry)
     {
+        var actions = ActionManager.Instance();
         switch (entry.Kind)
         {
             case ShortcutKind.MainCommand:
@@ -128,14 +130,14 @@ internal sealed class ShortcutCatalog
                 if (ui != null)
                     ui->ExecuteMainCommand(entry.RowId);
                 break;
-            case ShortcutKind.GeneralAction:
-                ActionManager.Instance()->UseAction(ActionType.GeneralAction, entry.RowId);
+            case ShortcutKind.GeneralAction when actions != null:
+                actions->UseAction(ActionType.GeneralAction, entry.RowId);
                 break;
-            case ShortcutKind.Action:
-                ActionManager.Instance()->UseAction(ActionType.Action, entry.RowId);
+            case ShortcutKind.Action when actions != null:
+                actions->UseAction(ActionType.Action, entry.RowId);
                 break;
-            case ShortcutKind.BuddyAction:
-                ActionManager.Instance()->UseAction(ActionType.BuddyAction, entry.RowId);
+            case ShortcutKind.BuddyAction when actions != null:
+                actions->UseAction(ActionType.BuddyAction, entry.RowId);
                 break;
             case ShortcutKind.Item:
                 var agent = AgentInventoryContext.Instance();
@@ -165,14 +167,18 @@ internal sealed class ShortcutCatalog
                 chatLog.Toggle();
                 break;
             case ShortcutKind.Window when entry.RowId < Windows.Length:
-                var window = AgentModule.Instance()->GetAgentByInternalId(Windows[entry.RowId].Agent);
+                var agents = AgentModule.Instance();
+                var window = agents == null ? null : agents->GetAgentByInternalId(Windows[entry.RowId].Agent);
                 if (window == null)
                     break;
                 if (window->IsAgentActive())
                     window->Hide();
                 else if (entry.RowId == WondrousTailsRow)
+                {
                     // Showing its window directly leaves it empty; using the journal makes the game fetch this week's card.
-                    ActionManager.Instance()->UseAction(ActionType.EventItem, WondrousTailsJournal);
+                    if (actions != null)
+                        actions->UseAction(ActionType.EventItem, WondrousTailsJournal);
+                }
                 else
                     window->Show();
                 break;
@@ -297,16 +303,26 @@ internal sealed class ShortcutCatalog
     private unsafe void RunLine(string line)
     {
         line = line.Trim();
-        if (!line.StartsWith('/') || commands.ProcessCommand(line))
+        if (!line.StartsWith('/') || line.Contains('\n') || line.Contains('\r') ||
+            Encoding.UTF8.GetByteCount(line) > MaxChatBytes || commands.ProcessCommand(line))
             return;
 
         var ui = UIModule.Instance();
         if (ui == null)
             return;
         var text = Utf8String.FromString(line);
-        ui->ProcessChatBoxEntry(text);
+        // The server can flag text the chat box itself would never send, so a line it would alter isn't sent.
+        text->SanitizeString(ChatEntities);
+        if (text->ToString() == line)
+            ui->ProcessChatBoxEntry(text);
         text->Dtor(true);
     }
+
+    private const int MaxChatBytes = 500;
+
+    private const AllowedEntities ChatEntities =
+        AllowedEntities.UppercaseLetters | AllowedEntities.LowercaseLetters | AllowedEntities.Numbers |
+        AllowedEntities.SpecialCharacters | AllowedEntities.OtherCharacters | AllowedEntities.CJK;
 
     private static string ActionName(LuminaAction row)
     {

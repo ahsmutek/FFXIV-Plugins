@@ -115,8 +115,9 @@ internal sealed unsafe class NativeTooltip : IDisposable
     private void Open(uint itemId)
     {
         var agent = AgentItemDetail.Instance();
-        var addon = RaptureAtkUnitManager.Instance()->GetAddonByName(Addon);
-        if (agent == null || addon == null)
+        var addon = ItemDetail();
+        var stage = AtkStage.Instance();
+        if (agent == null || addon == null || stage == null)
             return;
 
         agent->DetailKind = DetailKind.Item;
@@ -128,7 +129,7 @@ internal sealed unsafe class NativeTooltip : IDisposable
         agent->Flag3 = 0; // skips an early return in Show
         agent->AddonId = addon->Id;
 
-        AtkStage.Instance()->TooltipManager.TooltipType |= 2; // skips an early return too
+        stage->TooltipManager.TooltipType |= 2; // skips an early return too
         addon->Show(false, 15);
         Place(addon);
         if (addon->RootNode != null)
@@ -136,10 +137,16 @@ internal sealed unsafe class NativeTooltip : IDisposable
         hiddenFor = HiddenFrames;
     }
 
+    private static AtkUnitBase* ItemDetail()
+    {
+        var manager = RaptureAtkUnitManager.Instance();
+        return manager == null ? null : manager->GetAddonByName(Addon);
+    }
+
     private void Close()
     {
         // Hide first, so closing doesn't play the window close sound.
-        var addon = RaptureAtkUnitManager.Instance()->GetAddonByName(Addon);
+        var addon = ItemDetail();
         if (addon != null)
         {
             addon->Hide(true, false, 0);

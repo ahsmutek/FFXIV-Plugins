@@ -21,6 +21,8 @@ internal sealed class MacroRunner : IDisposable
 
     // The game's own macros stop at /wait 60.
     private const double MaxWaitSeconds = 60;
+    // Spaced out so a long profile doesn't reach the server as a burst.
+    private const long StepGapMs = 150;
 
     private readonly IFramework framework;
     private readonly ICondition condition;
@@ -52,17 +54,22 @@ internal sealed class MacroRunner : IDisposable
         resumeAt = 0;
     }
 
-    // One step per frame, so the next only starts once the game has picked this one up.
     private void OnUpdate(IFramework _)
     {
-        if (queue.Count == 0 || Busy || Environment.TickCount64 < resumeAt)
+        var now = Environment.TickCount64;
+        if (queue.Count == 0 || Busy || now < resumeAt)
             return;
 
         var step = queue.Dequeue();
         if (step.Kind == ShortcutKind.Text && WaitSeconds(step.Command) is { } seconds)
-            resumeAt = Environment.TickCount64 + (long)(Math.Min(seconds, MaxWaitSeconds) * 1000);
+        {
+            resumeAt = now + (long)(Math.Min(seconds, MaxWaitSeconds) * 1000);
+        }
         else if (catalog.Available(step))
+        {
             catalog.Run(step);
+            resumeAt = now + StepGapMs;
+        }
     }
 
     private static double? WaitSeconds(string? command)

@@ -116,7 +116,7 @@ internal sealed class Stock : IDisposable
         catch (IpcNotReadyError)
         {
         }
-        catch (IpcError e)
+        catch (Exception e)
         {
             log.Debug(e, "Allagan Tools didn't answer ItemCountOwned.");
         }

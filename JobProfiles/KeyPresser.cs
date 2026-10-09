@@ -47,6 +47,10 @@ internal static class KeyPresser
 
     private static void Send(List<VirtualKey> keys, bool up)
     {
+        // No key, or a mouse button, which sent as keyboard input does nothing predictable.
+        if (keys[^1] <= VirtualKey.XBUTTON2)
+            return;
+
         var inputs = new Input[keys.Count];
         for (var i = 0; i < keys.Count; i++)
         {

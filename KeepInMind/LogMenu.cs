@@ -45,16 +45,20 @@ internal sealed class LogMenu : IDisposable
         int amount;
         if (args.AddonName == "RecipeNote")
         {
-            itemId = BaseItemId(AgentRecipeNote.Instance()->ContextMenuResultItemId);
+            var recipes = AgentRecipeNote.Instance();
+            if (recipes == null)
+                return;
+            itemId = BaseItemId(recipes->ContextMenuResultItemId);
             if (!ingredients.Contains(itemId))
                 return;
             amount = AmountInShownRecipe(itemId);
         }
         else if (args.AddonName == "GatheringNote")
         {
-            if (*(byte*)(args.AgentPtr + GatheringNoteContextKind) != 4)
+            var gathering = AgentGatheringNote.Instance();
+            if (args.AgentPtr == 0 || gathering == null || *(byte*)(args.AgentPtr + GatheringNoteContextKind) != 4)
                 return;
-            itemId = BaseItemId(AgentGatheringNote.Instance()->ContextMenuItemId);
+            itemId = BaseItemId(gathering->ContextMenuItemId);
             if (!sources.Gatherables.Contains(itemId))
                 return;
             amount = 1;

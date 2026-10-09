@@ -14,6 +14,8 @@ internal sealed class RescanFilter : IDisposable
     private const nint DbtDevNodesChanged = 0x0007;
     private const long RecheckMs = 1500;
     private static readonly nuint SubclassId = 0xC0417;
+    // A subclass that couldn't be removed would call into freed code, so its delegate is kept alive instead.
+    private static readonly List<GCHandle> Stranded = [];
 
     private readonly IFramework framework;
     private readonly IPluginLog log;
@@ -44,7 +46,11 @@ internal sealed class RescanFilter : IDisposable
             return;
         var hwnd = window;
         window = 0;
-        framework.RunOnFrameworkThread(() => RemoveWindowSubclass(hwnd, proc, SubclassId)).Wait();
+        if (!framework.RunOnFrameworkThread(() => RemoveWindowSubclass(hwnd, proc, SubclassId)).Result)
+        {
+            Stranded.Add(GCHandle.Alloc(proc));
+            log.Warning("Couldn't detach from the game window; the filter stays loaded until the game closes.");
+        }
     }
 
     private void Attach()
@@ -72,28 +78,45 @@ internal sealed class RescanFilter : IDisposable
 
     private nint WndProc(nint hwnd, uint message, nint wParam, nint lParam, nuint id, nuint data)
     {
-        if (message == WmDeviceChange && forceNext)
+        // An exception here would cross into native code and take the game down.
+        try
+        {
+            if (message == WmDeviceChange && wParam == DbtDevNodesChanged && Skip())
+                return 1; // Handled; the game never sees it.
+        }
+        catch (Exception e)
+        {
+            log.Error(e, "Controller rescan filter failed; passing the message on.");
+        }
+
+        return DefSubclassProc(hwnd, message, wParam, lParam);
+    }
+
+    private bool Skip()
+    {
+        if (forceNext)
         {
             forceNext = false;
             known = Controllers();
             Passed++;
+            return false;
         }
-        else if (message == WmDeviceChange && config.SkipRescans)
+
+        if (!config.SkipRescans)
+            return false;
+
+        var now = Controllers();
+        if (now.SetEquals(known))
         {
-            var now = Controllers();
-            if (now.SetEquals(known))
-            {
-                Skipped++;
-                recheckAt = Environment.TickCount64 + RecheckMs;
-                return 1; // Handled; the game never sees it.
-            }
-
-            log.Information($"Controllers changed ({known.Count} → {now.Count}); letting the game rescan.");
-            known = now;
-            Passed++;
+            Skipped++;
+            recheckAt = Environment.TickCount64 + RecheckMs;
+            return true;
         }
 
-        return DefSubclassProc(hwnd, message, wParam, lParam);
+        log.Information($"Controllers changed ({known.Count} → {now.Count}); letting the game rescan.");
+        known = now;
+        Passed++;
+        return false;
     }
 
     // Windows can list a controller only after its message was skipped.

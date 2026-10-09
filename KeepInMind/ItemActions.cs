@@ -40,13 +40,30 @@ internal sealed class ItemActions
     public unsafe bool OpenLog(uint itemId)
     {
         if (sources.Gatherables.Contains(itemId))
-            AgentGatheringNote.Instance()->OpenGatherableByItemId((ushort)itemId);
+        {
+            var gathering = AgentGatheringNote.Instance();
+            if (gathering == null)
+                return false;
+            gathering->OpenGatherableByItemId((ushort)itemId);
+        }
         else if (sources.Fish.Contains(itemId) || sources.Spearfish.Contains(itemId))
-            AgentFishGuide.Instance()->OpenForItemId(itemId, sources.Spearfish.Contains(itemId));
+        {
+            var fish = AgentFishGuide.Instance();
+            if (fish == null)
+                return false;
+            fish->OpenForItemId(itemId, sources.Spearfish.Contains(itemId));
+        }
         else if (sources.Craftables.Contains(itemId))
-            AgentRecipeNote.Instance()->SearchRecipeByItemId(itemId);
+        {
+            var recipes = AgentRecipeNote.Instance();
+            if (recipes == null)
+                return false;
+            recipes->SearchRecipeByItemId(itemId);
+        }
         else
+        {
             return false;
+        }
         return true;
     }
 
@@ -93,6 +110,11 @@ internal sealed class ItemActions
             log.Debug(e, "Item Vendor Location didn't answer GetItemVendors.");
             return null;
         }
+        catch (Exception e)
+        {
+            log.Warning(e, "Item Vendor Location failed answering GetItemVendors.");
+            return null;
+        }
     }
 
     public void ShowVendors(uint itemId)
@@ -101,7 +123,7 @@ internal sealed class ItemActions
         {
             openVendorResults.InvokeFunc(itemId);
         }
-        catch (IpcError e)
+        catch (Exception e)
         {
             log.Warning(e, "Couldn't open Item Vendor Location's results.");
         }

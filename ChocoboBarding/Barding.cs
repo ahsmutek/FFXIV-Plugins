@@ -159,17 +159,23 @@ internal static class Barding
     public static string JobName(ClassJob job) =>
         CultureInfo.CurrentCulture.TextInfo.ToTitleCase(job.Name.ExtractText());
 
-    public static unsafe bool IsChocoboOut() => UIState.Instance()->Buddy.CompanionInfo.TimeLeft > 0;
+    public static unsafe bool IsChocoboOut()
+    {
+        var state = UIState.Instance();
+        return state != null && state->Buddy.CompanionInfo.TimeLeft > 0;
+    }
 
     public static unsafe uint WornRowId(int slot)
     {
-        return UIState.Instance()->Buddy.CompanionInfo.BuddyEquipRowIds[slot];
+        var state = UIState.Instance();
+        return state == null ? 0u : state->Buddy.CompanionInfo.BuddyEquipRowIds[slot];
     }
 
     // Selecting the piece a slot already wears takes it off.
     public static unsafe bool SendOne(int slot, uint rowId)
     {
-        var agent = AgentModule.Instance()->GetAgentByInternalId(AgentId.Buddy);
+        var agents = AgentModule.Instance();
+        var agent = agents == null ? null : agents->GetAgentByInternalId(AgentId.Buddy);
         if (agent == null)
             return false;
 
