@@ -1,5 +1,4 @@
 using System;
-using System.IO;
 using Dalamud.Game.Command;
 using Dalamud.Interface.Windowing;
 using Dalamud.IoC;
@@ -13,8 +12,6 @@ namespace FlickWheel;
 public sealed class Plugin : IDalamudPlugin
 {
     private const string CommandName = "/flick";
-    private const string OldCommandName = "/jobwheel";
-    private const string OldConfigFile = "JobWheel.json";
 
     [PluginService]
     private static IDalamudPluginInterface PluginInterface { get; set; } = null!;
@@ -62,7 +59,7 @@ public sealed class Plugin : IDalamudPlugin
 
     public Plugin()
     {
-        config = LoadConfig();
+        config = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
         if (config.Migrate())
             Save();
 
@@ -90,10 +87,6 @@ public sealed class Plugin : IDalamudPlugin
             HelpMessage = "Open Flick Wheel settings. Hold your hotkey (Ctrl+, by default) and flick the right stick toward an entry.\n" +
                           "/flick chat → Hide or show the chat log.",
         });
-        CommandManager.AddHandler(OldCommandName, new CommandInfo(OnCommand)
-        {
-            ShowInHelp = false,
-        });
     }
 
     private void OnCommand(string command, string args)
@@ -102,34 +95,6 @@ public sealed class Plugin : IDalamudPlugin
             chatLog.Toggle();
         else
             configWindow.Toggle();
-    }
-
-    // Carries settings over from Job Wheel, rewriting the old assembly name in "$type"
-    // entries. The old file is kept.
-    private static Configuration LoadConfig()
-    {
-        if (PluginInterface.GetPluginConfig() is Configuration saved)
-            return saved;
-
-        var oldPath = Path.Combine(PluginInterface.ConfigFile.DirectoryName!, OldConfigFile);
-        if (File.Exists(oldPath))
-        {
-            try
-            {
-                var text = File.ReadAllText(oldPath)
-                               .Replace("JobWheel.", "FlickWheel.")
-                               .Replace(", JobWheel", ", FlickWheel");
-                File.WriteAllText(PluginInterface.ConfigFile.FullName, text);
-                if (PluginInterface.GetPluginConfig() is Configuration migrated)
-                    return migrated;
-            }
-            catch (Exception)
-            {
-                // An unreadable old file just means starting from defaults.
-            }
-        }
-
-        return new Configuration();
     }
 
     private void Save() => PluginInterface.SavePluginConfig(config);
@@ -143,7 +108,6 @@ public sealed class Plugin : IDalamudPlugin
     public void Dispose()
     {
         CommandManager.RemoveHandler(CommandName);
-        CommandManager.RemoveHandler(OldCommandName);
         PluginInterface.UiBuilder.Draw -= Draw;
         input.Dispose();
         chatLog.Dispose();

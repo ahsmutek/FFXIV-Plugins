@@ -25,7 +25,7 @@ or the one picked for your job (`/cbarding job`). Only equips barding you own, a
 with the Companion window closed.
 
 ### [Flick Wheel](FlickWheel/)
-A controller radial menu (formerly Job Wheel). Hold `Ctrl + ,`, flick the right stick
+A controller radial menu. Hold `Ctrl + ,`, flick the right stick
 toward an entry, let go. Wheels for combat jobs, crafting/gathering jobs, and your own
 shortcuts: windows, actions, items, emotes, macros and chat commands. `/flick`
 
