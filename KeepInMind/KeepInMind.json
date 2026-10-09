@@ -2,7 +2,7 @@
   "Author": "Kotanna",
   "Name": "Keep in Mind",
   "Punchline": "A simple checklist of ingredients to gather or buy.",
-  "Description": "Right-click an ingredient in the Crafting Log and choose \"Keep in mind\" to add it to one shared checklist. Tick items off as you gather or buy them. Right-click an item in the list to see where Item Vendor Location says it's sold.",
+  "Description": "Right-click an item in the Crafting Log or Gathering Log and choose \"Keep in mind\" to add it to one shared checklist, grouped and coloured by where you get it. Items you hold in retainers or the saddlebag stand out (with Allagan Tools). Right-click an item in the list to see where Item Vendor Location says it is sold.",
   "ApplicableVersion": "any",
   "Tags": [
     "crafting",

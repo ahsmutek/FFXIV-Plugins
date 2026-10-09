@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Frozen;
 using System.Collections.Generic;
 using System.Linq;
 using Dalamud.Plugin;
@@ -7,7 +6,6 @@ using Dalamud.Plugin.Ipc;
 using Dalamud.Plugin.Ipc.Exceptions;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
-using Lumina.Excel.Sheets;
 
 namespace KeepInMind;
 
@@ -18,50 +16,34 @@ internal sealed class ItemActions
 
     private readonly IDalamudPluginInterface pluginInterface;
     private readonly IPluginLog log;
+    private readonly Sources sources;
     private readonly ICallGateSubscriber<uint, bool, HashSet<(uint npcId, uint territory, (float x, float y))>?> getItemVendors;
     private readonly ICallGateSubscriber<uint, object?> openVendorResults;
 
-    private readonly FrozenSet<uint> gatherables;
-    private readonly FrozenSet<uint> fish;
-    private readonly FrozenSet<uint> spearfish;
-    private readonly FrozenSet<uint> craftables;
+    private static readonly TimeSpan VendorCheckEvery = TimeSpan.FromSeconds(2);
 
-    public ItemActions(IDalamudPluginInterface pluginInterface, IDataManager data, IPluginLog log)
+    private readonly Dictionary<uint, bool> soldByVendor = [];
+    private bool vendorPluginWasLoaded;
+    private bool vendorUnanswered;
+    private DateTime nextVendorCheck;
+
+    public ItemActions(IDalamudPluginInterface pluginInterface, Sources sources, IPluginLog log)
     {
         this.pluginInterface = pluginInterface;
+        this.sources = sources;
         this.log = log;
         getItemVendors = pluginInterface.GetIpcSubscriber<uint, bool, HashSet<(uint, uint, (float, float))>?>(
             "ItemVendorLocation.GetItemVendors");
         openVendorResults = pluginInterface.GetIpcSubscriber<uint, object?>("ItemVendorLocation.OpenVendorResults");
-
-        gatherables = data.GetExcelSheet<GatheringItem>()
-                          .Select(g => g.Item.RowId)
-                          .Where(id => id is > 0 and < 1000000)
-                          .ToFrozenSet();
-        fish = data.GetExcelSheet<FishParameter>().Select(f => f.Item.RowId)
-                   .Where(id => id is > 0 and < 1000000)
-                   .ToFrozenSet();
-        spearfish = data.GetExcelSheet<SpearfishingItem>().Select(f => f.Item.RowId)
-                        .Where(id => id is > 0 and < 1000000)
-                        .ToFrozenSet();
-        craftables = data.GetExcelSheet<Recipe>().Select(r => r.ItemResult.RowId)
-                         .Where(id => id != 0)
-                         .ToFrozenSet();
     }
-
-    public string? LogName(uint itemId) =>
-        gatherables.Contains(itemId) ? "Gathering Log"
-        : fish.Contains(itemId) || spearfish.Contains(itemId) ? "Fish Guide"
-        : craftables.Contains(itemId) ? "Crafting Log"
-        : null;
 
     public unsafe bool OpenLog(uint itemId)
     {
-        if (gatherables.Contains(itemId))
+        if (sources.Gatherables.Contains(itemId))
             AgentGatheringNote.Instance()->OpenGatherableByItemId((ushort)itemId);
-        else if (fish.Contains(itemId) || spearfish.Contains(itemId))
-            AgentFishGuide.Instance()->OpenForItemId(itemId, spearfish.Contains(itemId));
-        else if (craftables.Contains(itemId))
+        else if (sources.Fish.Contains(itemId) || sources.Spearfish.Contains(itemId))
+            AgentFishGuide.Instance()->OpenForItemId(itemId, sources.Spearfish.Contains(itemId));
+        else if (sources.Craftables.Contains(itemId))
             AgentRecipeNote.Instance()->SearchRecipeByItemId(itemId);
         else
             return false;
@@ -70,10 +52,38 @@ internal sealed class ItemActions
 
     public bool VendorPluginLoaded => IsLoaded(VendorPlugin);
 
-    public bool? HasVendors(uint itemId)
+    public Source SourcesOf(uint itemId) => sources.Of(itemId) | (SoldByVendor(itemId) ? Source.Vendor : Source.None);
+
+    // The list asks every frame, so answers are kept and the plugin is only re-checked now and then.
+    public bool SoldByVendor(uint itemId)
     {
-        if (!VendorPluginLoaded)
-            return null;
+        if (DateTime.UtcNow >= nextVendorCheck)
+        {
+            nextVendorCheck = DateTime.UtcNow + VendorCheckEvery;
+            vendorUnanswered = false;
+            var loaded = VendorPluginLoaded;
+            if (loaded != vendorPluginWasLoaded)
+            {
+                soldByVendor.Clear();
+                vendorPluginWasLoaded = loaded;
+            }
+        }
+        if (soldByVendor.TryGetValue(itemId, out var sold))
+            return sold;
+        if (!vendorPluginWasLoaded || vendorUnanswered)
+            return false;
+
+        if (HasVendors(itemId) is not { } answer)
+        {
+            vendorUnanswered = true;
+            return false;
+        }
+        soldByVendor[itemId] = answer;
+        return answer;
+    }
+
+    private bool? HasVendors(uint itemId)
+    {
         try
         {
             return getItemVendors.InvokeFunc(itemId, false) is { Count: > 0 };

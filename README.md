@@ -39,8 +39,9 @@ Lets the minimap zoom out past the game's 1.25 limit, down to 0.25, and keeps yo
 across job changes, zoning and logins. `/minimapzoom`
 
 ### [Keep in Mind](KeepInMind/)
-A checklist of ingredients to gather or buy by hand. Right-click an ingredient in the
-Crafting Log and choose **Keep in mind**. `/keepinmind`
+A checklist of ingredients to gather or buy by hand. Right-click an item in the
+Crafting or Gathering Log and choose **Keep in mind**; the list groups and colours items by
+where you get them. `/keepinmind`
 
 ### [ControllerKeeper](ControllerKeeper/)
 Stops pad freezes when unrelated hardware (a USB stick, a virtual drive) comes and goes,

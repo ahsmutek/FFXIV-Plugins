@@ -36,29 +36,38 @@ public sealed class Plugin : IDalamudPlugin
     private static IGamepadState GamepadState { get; set; } = null!;
 
     [PluginService]
+    private static IAddonLifecycle AddonLifecycle { get; set; } = null!;
+
+    [PluginService]
     private static IPluginLog Log { get; set; } = null!;
 
     private readonly Configuration config;
     private readonly WindowSystem windows = new("KeepInMind");
     private readonly ChecklistWindow window;
-    private readonly RecipeNoteMenu menu;
+    private readonly SettingsWindow settings;
+    private readonly LogMenu menu;
     private readonly Stock stock;
-    private readonly NativeTooltip tooltip = new();
+    private readonly NativeTooltip tooltip;
 
     public Plugin()
     {
         config = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
         config.Items = [.. config.Items.DistinctBy(i => i.ItemId)];
 
-        var actions = new ItemActions(PluginInterface, DataManager, Log);
-        window = new ChecklistWindow(config, Save, actions, DataManager, TextureProvider, tooltip, GamepadState);
+        tooltip = new NativeTooltip(AddonLifecycle);
+        var sources = new Sources(DataManager);
+        var actions = new ItemActions(PluginInterface, sources, Log);
+        stock = new Stock(Framework, ClientState, PluginInterface, Log, config, Save);
+        settings = new SettingsWindow(config, Save);
+        window = new ChecklistWindow(config, Save, actions, stock, DataManager, TextureProvider, tooltip, GamepadState,
+                                     () => settings.IsOpen = true);
         windows.AddWindow(window);
+        windows.AddWindow(settings);
         PluginInterface.UiBuilder.Draw += Draw;
         PluginInterface.UiBuilder.OpenMainUi += window.Toggle;
-        PluginInterface.UiBuilder.OpenConfigUi += window.Toggle;
+        PluginInterface.UiBuilder.OpenConfigUi += settings.Toggle;
 
-        menu = new RecipeNoteMenu(ContextMenu, DataManager, Add);
-        stock = new Stock(Framework, ClientState, config, Save);
+        menu = new LogMenu(ContextMenu, DataManager, sources, Add);
 
         CommandManager.AddHandler(CommandName, new CommandInfo((_, _) => window.Toggle())
         {
@@ -98,7 +107,7 @@ public sealed class Plugin : IDalamudPlugin
         stock.Dispose();
         PluginInterface.UiBuilder.Draw -= Draw;
         PluginInterface.UiBuilder.OpenMainUi -= window.Toggle;
-        PluginInterface.UiBuilder.OpenConfigUi -= window.Toggle;
+        PluginInterface.UiBuilder.OpenConfigUi -= settings.Toggle;
         windows.RemoveAllWindows();
         tooltip.Dispose();
     }

@@ -10,17 +10,22 @@ using Recipe = Lumina.Excel.Sheets.Recipe;
 
 namespace KeepInMind;
 
-// The game keeps the right-clicked item in AgentRecipeNote.
-internal sealed class RecipeNoteMenu : IDisposable
+// The game keeps the right-clicked item in the log's agent.
+internal sealed class LogMenu : IDisposable
 {
+    // 4 when a Gathering Log item was right-clicked, 1 for a location; offset as in GatherBuddy.
+    private const int GatheringNoteContextKind = 0x38;
+
     private readonly IContextMenu contextMenu;
+    private readonly Sources sources;
     private readonly Action<uint, int> add;
 
     private readonly FrozenSet<uint> ingredients;
 
-    public RecipeNoteMenu(IContextMenu contextMenu, IDataManager data, Action<uint, int> add)
+    public LogMenu(IContextMenu contextMenu, IDataManager data, Sources sources, Action<uint, int> add)
     {
         this.contextMenu = contextMenu;
+        this.sources = sources;
         this.add = add;
         ingredients = data.GetExcelSheet<Recipe>()
                           .SelectMany(r => r.Ingredient.Select(i => i.RowId))
@@ -33,14 +38,32 @@ internal sealed class RecipeNoteMenu : IDisposable
 
     private unsafe void OnMenuOpened(IMenuOpenedArgs args)
     {
-        if (args.MenuType != ContextMenuType.Default || args.AddonName != "RecipeNote")
+        if (args.MenuType != ContextMenuType.Default)
             return;
 
-        var itemId = BaseItemId(AgentRecipeNote.Instance()->ContextMenuResultItemId);
-        if (!ingredients.Contains(itemId))
+        uint itemId;
+        int amount;
+        if (args.AddonName == "RecipeNote")
+        {
+            itemId = BaseItemId(AgentRecipeNote.Instance()->ContextMenuResultItemId);
+            if (!ingredients.Contains(itemId))
+                return;
+            amount = AmountInShownRecipe(itemId);
+        }
+        else if (args.AddonName == "GatheringNote")
+        {
+            if (*(byte*)(args.AgentPtr + GatheringNoteContextKind) != 4)
+                return;
+            itemId = BaseItemId(AgentGatheringNote.Instance()->ContextMenuItemId);
+            if (!sources.Gatherables.Contains(itemId))
+                return;
+            amount = 1;
+        }
+        else
+        {
             return;
+        }
 
-        var amount = AmountInShownRecipe(itemId);
         args.AddMenuItem(new MenuItem
         {
             Name = "Keep in mind",
