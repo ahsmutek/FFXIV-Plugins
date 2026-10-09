@@ -4,6 +4,7 @@ using Dalamud.Interface.Windowing;
 using Dalamud.IoC;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
+using Icons;
 
 namespace KeepInMind;
 
@@ -51,6 +52,7 @@ public sealed class Plugin : IDalamudPlugin
 
     public Plugin()
     {
+        TablerIcons.Init(TextureProvider);
         config = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
         config.Items = [.. config.Items.DistinctBy(i => i.ItemId)];
 

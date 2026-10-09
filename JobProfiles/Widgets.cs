@@ -3,9 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
-using Dalamud.Interface;
-using Dalamud.Interface.Components;
 using Dalamud.Interface.Utility;
+using Icons;
 using Shortcuts;
 
 namespace JobProfiles;
@@ -59,7 +58,7 @@ internal sealed class Widgets(ShortcutCatalog catalog, ShortcutPicker picker, Ic
                 ImGui.SameLine();
             else
                 ImGui.SameLine(removeX);
-            if (ImGuiComponents.IconButton(FontAwesomeIcon.Times))
+            if (TablerIcons.Button(TablerIcon.X))
                 remove = i;
             if (ImGui.IsItemHovered())
                 ImGui.SetTooltip("Remove");

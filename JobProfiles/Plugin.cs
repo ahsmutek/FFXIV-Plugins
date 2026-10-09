@@ -4,6 +4,7 @@ using Dalamud.Interface.Windowing;
 using Dalamud.IoC;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
+using Icons;
 using Shortcuts;
 
 namespace JobProfiles;
@@ -62,6 +63,7 @@ public sealed class Plugin : IDalamudPlugin
 
     public Plugin()
     {
+        TablerIcons.Init(Textures);
         config = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
         if (config.Migrate())
             Save();

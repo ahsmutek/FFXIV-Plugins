@@ -4,9 +4,8 @@ using System.Linq;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Game.ClientState.GamePad;
 using Dalamud.Game.ClientState.Keys;
-using Dalamud.Interface;
-using Dalamud.Interface.Components;
 using Dalamud.Plugin.Services;
+using Icons;
 
 namespace JobProfiles;
 
@@ -285,7 +284,7 @@ internal sealed class ButtonsTab
             ImGui.SetTooltip("Do something: run macros, commands, menus, items, emotes… one after another.\nHold a key: hold a key down while the button is, e.g. a Flick Wheel wheel's own hotkey,\nso the button opens that wheel: hold, flick, let go.");
 
         ImGui.SameLine();
-        if (ImGuiComponents.IconButton(FontAwesomeIcon.Times))
+        if (TablerIcons.Button(TablerIcon.X))
             remove = (binding, rule);
         if (ImGui.IsItemHovered())
             ImGui.SetTooltip("Remove");
