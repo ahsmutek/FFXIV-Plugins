@@ -24,11 +24,13 @@ sub-ingredients.
 
 ## Groups and colours
 
-- The list is grouped into your own groups, then Botanist, Miner, Fisher, NPC vendor and
-  Crafting. An item with several sources goes in the first that applies. Turn grouping off, or
-  sort by order added, name or most still needed, in the settings.
-- Items you hold in a retainer or the saddlebag show a box icon, green if that and your bags
-  cover what you need, yellow if not; this needs
+- The list is grouped into Botanist, Miner, Fisher, NPC vendor, Crafting and your own groups.
+  Reorder groups in the settings or from a group header's right-click menu; an item with several
+  sources goes in whichever comes first. Turn grouping off, or sort by name or most still needed
+  instead of your own order, in the settings. In your own order, drag an item up or down within
+  its group (or use Move up / Move down in its menu).
+- Items you hold in a retainer or the saddlebag show a moneybag: a green + if that and your bags
+  cover what you need, a yellow − if not; this needs
   [Allagan Tools](https://github.com/Critical-Impact/InventoryTools). An item's name takes the
   colour you gave it, else its group's, else its source's. All colours can be changed.
 - NPC vendor items need Item Vendor Location to be loaded.

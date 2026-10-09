@@ -13,9 +13,11 @@ public sealed class Configuration : IPluginConfiguration
 
     public List<CustomGroup> Groups { get; set; } = [];
 
+    public List<string> GroupOrder { get; set; } = [];
+
     public bool GroupBySource { get; set; } = true;
 
-    public SortOrder Sort { get; set; } = SortOrder.Added;
+    public SortOrder Sort { get; set; } = SortOrder.Manual;
 
     public CompletedMode Completed { get; set; } = CompletedMode.InPlace;
 
@@ -50,7 +52,7 @@ public sealed class CustomGroup
 
 public enum SortOrder
 {
-    Added,
+    Manual,
     Name,
     Remaining,
 }

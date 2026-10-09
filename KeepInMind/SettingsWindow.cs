@@ -2,11 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
-using Dalamud.Interface;
-using Dalamud.Interface.Components;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Utility.Raii;
 using Dalamud.Interface.Windowing;
+using Icons;
 
 namespace KeepInMind;
 
@@ -16,7 +15,7 @@ internal sealed class SettingsWindow : Window
 
     private static readonly (SortOrder Value, string Label)[] SortOptions =
     [
-        (SortOrder.Added, "Order added"),
+        (SortOrder.Manual, "Your order (drag to move)"),
         (SortOrder.Name, "Name"),
         (SortOrder.Remaining, "Most still needed"),
     ];
@@ -50,7 +49,7 @@ internal sealed class SettingsWindow : Window
             save();
         }
         if (ImGui.IsItemHovered())
-            ImGui.SetTooltip("Your own groups first, then Botanist, Miner, Fisher, NPC vendor and Crafting.\n" +
+            ImGui.SetTooltip("Botanist, Miner, Fisher, NPC vendor, Crafting and your own groups, in the order below.\n" +
                              "An item with several sources goes in the first that applies.");
 
         if (Combo("Sort", config.Sort, SortOptions) is { } sort)
@@ -82,76 +81,75 @@ internal sealed class SettingsWindow : Window
         }
         if (ImGui.IsItemHovered())
             ImGui.SetTooltip("Your retainers or saddlebag hold some, but not all you need. Needs Allagan Tools.");
-        foreach (var source in Sources.Order)
-        {
-            var color = config.SourceColors.GetValueOrDefault(source, Sources.DefaultColors[source]);
-            if (ColorRow(Sources.Name(source), ref color, Sources.DefaultColors[source]))
-            {
-                config.SourceColors[source] = color;
-                save();
-            }
-        }
-
         ImGui.Spacing();
-        ImGui.TextDisabled("Your groups");
-        if (config.Groups.Count == 0)
-        {
-            ImGui.PushTextWrapPos();
-            ImGui.TextUnformatted("None yet. Right-click an item in the list and choose Group to make one.");
-            ImGui.PopTextWrapPos();
-        }
+        ImGui.TextDisabled("Groups");
         DrawGroups();
     }
 
     private void DrawGroups()
     {
+        var order = GroupOrder.Of(config);
         CustomGroup? remove = null;
-        (int From, int To)? move = null;
-        for (var i = 0; i < config.Groups.Count; i++)
+        string? moveId = null;
+        var step = 0;
+        for (var i = 0; i < order.Count; i++)
         {
-            var group = config.Groups[i];
-            using var id = ImRaii.PushId(group.Id.ToString());
+            var groupId = order[i];
+            using var id = ImRaii.PushId(groupId);
 
-            var color = group.Color;
-            if (ImGui.ColorEdit4("##color", ref color, ColorFlags))
-            {
-                group.Color = color;
-                save();
-            }
-            ImGui.SameLine();
-            var name = group.Name;
-            ImGui.SetNextItemWidth(Math.Max(60f, ImGui.GetContentRegionAvail().X - ImGui.GetFrameHeight() * 3 -
-                                                 ImGui.GetStyle().ItemSpacing.X * 3));
-            if (ImGui.InputText("##name", ref name, 40) && name.Trim().Length > 0)
-            {
-                group.Name = name.Trim();
-                save();
-            }
-
-            ImGui.SameLine();
             using (ImRaii.Disabled(i == 0))
             {
                 if (ImGui.ArrowButton("##up", ImGuiDir.Up))
-                    move = (i, i - 1);
+                    (moveId, step) = (groupId, -1);
             }
-            ImGui.SameLine();
-            using (ImRaii.Disabled(i == config.Groups.Count - 1))
+            ImGui.SameLine(0, ImGui.GetStyle().ItemInnerSpacing.X);
+            using (ImRaii.Disabled(i == order.Count - 1))
             {
                 if (ImGui.ArrowButton("##down", ImGuiDir.Down))
-                    move = (i, i + 1);
+                    (moveId, step) = (groupId, 1);
             }
             ImGui.SameLine();
-            if (ImGuiComponents.IconButton(FontAwesomeIcon.Trash))
-                remove = group;
-            if (ImGui.IsItemHovered())
-                ImGui.SetTooltip("Delete the group. Its items go back to their source's group.");
+
+            if (config.Groups.Find(g => GroupOrder.Id(g) == groupId) is { } group)
+            {
+                var color = group.Color;
+                if (ImGui.ColorEdit4("##color", ref color, ColorFlags))
+                {
+                    group.Color = color;
+                    save();
+                }
+                ImGui.SameLine();
+                if (TablerIcons.Button(TablerIcon.Trash))
+                    remove = group;
+                if (ImGui.IsItemHovered())
+                    ImGui.SetTooltip("Delete the group. Its items go back to their source's group.");
+                ImGui.SameLine();
+                var name = group.Name;
+                ImGui.SetNextItemWidth(Math.Max(60f, ImGui.GetContentRegionAvail().X));
+                if (ImGui.InputText("##name", ref name, 40) && name.Trim().Length > 0)
+                {
+                    group.Name = name.Trim();
+                    save();
+                }
+            }
+            else if (Enum.TryParse<Source>(groupId, out var source) && source != Source.None)
+            {
+                var color = config.SourceColors.GetValueOrDefault(source, Sources.DefaultColors[source]);
+                if (ColorRow(Sources.Name(source), ref color, Sources.DefaultColors[source]))
+                {
+                    config.SourceColors[source] = color;
+                    save();
+                }
+            }
+            else
+            {
+                ImGui.AlignTextToFramePadding();
+                ImGui.TextUnformatted(Sources.Name(Source.None));
+            }
         }
 
-        if (move is var (from, to))
-        {
-            (config.Groups[from], config.Groups[to]) = (config.Groups[to], config.Groups[from]);
+        if (moveId != null && GroupOrder.Move(config, moveId, step))
             save();
-        }
         if (remove != null)
         {
             config.Groups.Remove(remove);
@@ -162,6 +160,10 @@ internal sealed class SettingsWindow : Window
             }
             save();
         }
+        ImGui.Spacing();
+        ImGui.PushTextWrapPos();
+        ImGui.TextDisabled("Make your own group from an item's right-click menu in the list.");
+        ImGui.PopTextWrapPos();
     }
 
     private static bool ColorRow(string label, ref Vector4 color, Vector4 fallback)
@@ -171,7 +173,7 @@ internal sealed class SettingsWindow : Window
         ImGui.SameLine();
         using (ImRaii.Disabled(color == fallback))
         {
-            if (ImGuiComponents.IconButton(FontAwesomeIcon.Undo))
+            if (TablerIcons.Button(TablerIcon.ArrowBackUp))
             {
                 color = fallback;
                 changed = true;

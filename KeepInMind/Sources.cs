@@ -8,7 +8,7 @@ using Lumina.Excel.Sheets;
 
 namespace KeepInMind;
 
-// Declared in group priority order, so the lowest set flag is an item's primary source.
+// An item with several sources goes in whichever of their groups comes first in the group order.
 [Flags]
 public enum Source
 {
@@ -79,7 +79,7 @@ internal sealed class Sources
         return source;
     }
 
-    public static Source Primary(Source sources) => Order.FirstOrDefault(s => sources.HasFlag(s));
+    public static Source Primary(Source sources, IEnumerable<Source> order) => order.FirstOrDefault(s => sources.HasFlag(s));
 
     public static string Name(Source source) => source switch
     {

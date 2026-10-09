@@ -4,13 +4,12 @@ using System.Linq;
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Game.ClientState.GamePad;
-using Dalamud.Interface;
-using Dalamud.Interface.Components;
 using Dalamud.Interface.Textures;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Utility.Raii;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin.Services;
+using Icons;
 using Item = Lumina.Excel.Sheets.Item;
 
 namespace KeepInMind;
@@ -19,6 +18,8 @@ internal sealed class ChecklistWindow : Window
 {
     private const string ItemMenu = "##item";
     private const string ClearAllPopup = "Clear all?##clearAll";
+    // Sized for two digits, the usual amount; more still fit, just cramped.
+    private const string AmountWidthSample = "99";
     private static readonly TimeSpan HighlightFor = TimeSpan.FromSeconds(2);
 
     private readonly Configuration config;
@@ -41,7 +42,12 @@ internal sealed class ChecklistWindow : Window
 
     private string newGroupName = "";
 
-    private sealed record Section(string Id, string Label, Vector4? Color, List<KeptItem> Items, bool DefaultOpen = true);
+    private (KeptItem, KeptItem)? swap;
+    private bool reordering;
+    private List<Source> sourcePriority = [.. Sources.Order];
+
+    private sealed record Section(string Id, string Label, Vector4? Color, List<KeptItem> Items, bool DefaultOpen = true,
+                                  bool Movable = false);
 
     public ChecklistWindow(Configuration config, Action save, ItemActions actions, Stock stock, IDataManager data,
                            ITextureProvider textures, NativeTooltip tooltip, IGamepadState gamepad, Action openSettings)
@@ -89,6 +95,10 @@ internal sealed class ChecklistWindow : Window
 
         ImGui.Separator();
         DrawFooter();
+
+        // Reset after the rows, so letting go of a drag doesn't also count as a click that opens the log.
+        if (!ImGui.IsMouseDown(ImGuiMouseButton.Left))
+            reordering = false;
     }
 
     private void DrawList()
@@ -101,6 +111,7 @@ internal sealed class ChecklistWindow : Window
             return;
         }
 
+        sourcePriority = GroupOrder.SourcePriority(config);
         KeptItem? remove = null;
         foreach (var section in Sections())
         {
@@ -115,14 +126,17 @@ internal sealed class ChecklistWindow : Window
                     open = ImGui.CollapsingHeader($"{section.Label} ({done}/{section.Items.Count})###{section.Id}",
                                                   section.DefaultOpen ? ImGuiTreeNodeFlags.DefaultOpen : ImGuiTreeNodeFlags.None);
                 }
+                if (section.Movable)
+                    DrawGroupHeaderMenu(section.Id);
                 if (!open)
                     continue;
             }
 
-            foreach (var kept in section.Items)
+            var items = section.Items;
+            for (var i = 0; i < items.Count; i++)
             {
-                if (DrawRow(kept))
-                    remove = kept;
+                if (DrawRow(items[i], i > 0 ? items[i - 1] : null, i < items.Count - 1 ? items[i + 1] : null))
+                    remove = items[i];
             }
         }
 
@@ -131,6 +145,41 @@ internal sealed class ChecklistWindow : Window
             config.Items.Remove(remove);
             save();
         }
+        if (swap is var (a, b))
+        {
+            int ia = config.Items.IndexOf(a), ib = config.Items.IndexOf(b);
+            (config.Items[ia], config.Items[ib]) = (b, a);
+            swap = null;
+            save();
+        }
+    }
+
+    // Headers toggle on click, so they can't be dragged like rows; right-click or Y moves them instead.
+    private void DrawGroupHeaderMenu(string groupId)
+    {
+        const string popup = "##groupMenu";
+        if (ImGui.IsItemClicked(ImGuiMouseButton.Right) ||
+            (ImGui.IsItemFocused() && ImGui.IsKeyPressed(ImGuiKey.GamepadFaceUp, false)))
+        {
+            ImGui.OpenPopup($"{popup}{groupId}");
+        }
+        if (!ImGui.BeginPopup($"{popup}{groupId}"))
+            return;
+
+        var order = GroupOrder.Of(config);
+        var index = order.IndexOf(groupId);
+        if (ImGui.Selectable("Move group up", false, index <= 0 ? ImGuiSelectableFlags.Disabled : ImGuiSelectableFlags.None) &&
+            GroupOrder.Move(config, groupId, -1))
+        {
+            save();
+        }
+        if (ImGui.Selectable("Move group down", false,
+                             index >= order.Count - 1 ? ImGuiSelectableFlags.Disabled : ImGuiSelectableFlags.None) &&
+            GroupOrder.Move(config, groupId, 1))
+        {
+            save();
+        }
+        ImGui.EndPopup();
     }
 
     private List<Section> Sections()
@@ -144,14 +193,19 @@ internal sealed class ChecklistWindow : Window
         }
         else
         {
+            var groups = new List<Section>();
             foreach (var group in config.Groups)
-                sections.Add(new Section(group.Id.ToString(), group.Name, group.Color,
-                                         Sorted(shown.Where(i => i.GroupId == group.Id))));
+                groups.Add(new Section(GroupOrder.Id(group), group.Name, group.Color,
+                                       Sorted(shown.Where(i => i.GroupId == group.Id)), Movable: true));
 
             var automatic = shown.Where(i => GroupOf(i) == null).ToList();
             foreach (var source in Sources.Order.Append(Source.None))
-                sections.Add(new Section(source.ToString(), Sources.Name(source), SourceColor(source),
-                                         Sorted(automatic.Where(i => Sources.Primary(actions.SourcesOf(i.ItemId)) == source))));
+                groups.Add(new Section(GroupOrder.Id(source), Sources.Name(source), SourceColor(source),
+                                       Sorted(automatic.Where(i => PrimarySource(i) == source)),
+                                       Movable: true));
+
+            var order = GroupOrder.Of(config);
+            sections.AddRange(groups.OrderBy(s => order.IndexOf(s.Id)));
         }
 
         if (config.Completed == CompletedMode.Section)
@@ -168,6 +222,8 @@ internal sealed class ChecklistWindow : Window
         _ => [.. items],
     };
 
+    private Source PrimarySource(KeptItem kept) => Sources.Primary(actions.SourcesOf(kept.ItemId), sourcePriority);
+
     private CustomGroup? GroupOf(KeptItem kept) =>
         kept.GroupId is { } id ? config.Groups.Find(g => g.Id == id) : null;
 
@@ -177,9 +233,9 @@ internal sealed class ChecklistWindow : Window
     private Vector4? NameColor(KeptItem kept) =>
         kept.Color ??
         GroupOf(kept)?.Color ??
-        SourceColor(Sources.Primary(actions.SourcesOf(kept.ItemId)));
+        SourceColor(PrimarySource(kept));
 
-    private bool DrawRow(KeptItem kept)
+    private bool DrawRow(KeptItem kept, KeptItem? above, KeptItem? below)
     {
         using var id = ImRaii.PushId((int)kept.ItemId);
         var name = ItemName(kept.ItemId);
@@ -208,19 +264,30 @@ internal sealed class ChecklistWindow : Window
         var stillShort = kept.Needed - Stock.Have(kept.ItemId) - stored.Retainers - stored.Saddlebag;
         Vector4? storageColor = !inStorage ? null : stillShort <= 0 ? config.StorageEnoughColor : config.StorageColor;
         var spacing = ImGui.GetStyle().ItemSpacing.X;
-        var countWidth = ImGui.CalcTextSize("9999").X + ImGui.GetStyle().FramePadding.X * 2 +
+        var countWidth = ImGui.CalcTextSize(AmountWidthSample).X + ImGui.GetStyle().FramePadding.X * 2 +
                          (ImGui.GetFrameHeight() + ImGui.GetStyle().ItemInnerSpacing.X) * 2;
         var removeWidth = ImGui.GetFrameHeight();
-        var storageWidth = inStorage ? StorageIconWidth() + spacing : 0;
+        var storageWidth = inStorage ? TablerIcons.Width + spacing : 0;
         var nameWidth = Math.Max(1f, ImGui.GetContentRegionAvail().X - countWidth - removeWidth - storageWidth - spacing * 2);
         ImGui.AlignTextToFramePadding();
         var color = kept.Done ? ImGui.GetStyle().Colors[(int)ImGuiCol.TextDisabled] : NameColor(kept);
         using (ImRaii.PushColor(ImGuiCol.Text, color ?? default, color.HasValue))
         {
-            if (ImGui.Selectable(name, false, ImGuiSelectableFlags.None, new Vector2(nameWidth, 0)) &&
+            if (ImGui.Selectable(name, false, ImGuiSelectableFlags.None, new Vector2(nameWidth, 0)) && !reordering &&
                 actions.OpenLog(kept.ItemId))
             {
                 leaveGamepadMode = gamepad.EnableGamepadNav;
+            }
+        }
+        // Dragging a name past its neighbour swaps them, as in ImGui's own reorder demo.
+        if (config.Sort == SortOrder.Manual && ImGui.IsItemActive() && !ImGui.IsItemHovered() &&
+            ImGui.IsMouseDragging(ImGuiMouseButton.Left))
+        {
+            if ((ImGui.GetMouseDragDelta(ImGuiMouseButton.Left).Y < 0 ? above : below) is { } neighbour)
+            {
+                swap = (kept, neighbour);
+                reordering = true;
+                ImGui.ResetMouseDragDelta(ImGuiMouseButton.Left);
             }
         }
         if (ImGui.IsItemHovered())
@@ -245,14 +312,14 @@ internal sealed class ChecklistWindow : Window
         DrawNeeded(kept);
 
         ImGui.SameLine();
-        if (ImGuiComponents.IconButton(FontAwesomeIcon.Times))
+        if (TablerIcons.Button(TablerIcon.X))
             removed = true;
         if (ImGui.IsItemHovered())
             ImGui.SetTooltip("Remove from the list");
 
         if (ImGui.BeginPopup(ItemMenu))
         {
-            if (DrawItemMenu(kept, name))
+            if (DrawItemMenu(kept, name, above, below))
                 removed = true;
             ImGui.EndPopup();
         }
@@ -265,18 +332,10 @@ internal sealed class ChecklistWindow : Window
         return removed;
     }
 
-    private static float StorageIconWidth()
-    {
-        using var font = ImRaii.PushFont(UiBuilder.IconFont);
-        return ImGui.CalcTextSize(FontAwesomeIcon.Box.ToIconString()).X;
-    }
-
     private static void DrawStorageIcon((int Retainers, int Saddlebag) stored, int stillShort, Vector4 color)
     {
-        ImGui.AlignTextToFramePadding();
-        using (ImRaii.PushFont(UiBuilder.IconFont))
-        using (ImRaii.PushColor(ImGuiCol.Text, color))
-            ImGui.TextUnformatted(FontAwesomeIcon.Box.ToIconString());
+        ImGui.SetCursorPosY(ImGui.GetCursorPosY() + ImGui.GetStyle().FramePadding.Y);
+        TablerIcons.Draw(stillShort <= 0 ? TablerIcon.MoneybagPlus : TablerIcon.MoneybagMinus, color);
         if (!ImGui.IsItemHovered())
             return;
 
@@ -285,8 +344,7 @@ internal sealed class ChecklistWindow : Window
             places.Add($"{stored.Retainers} with retainers");
         if (stored.Saddlebag > 0)
             places.Add($"{stored.Saddlebag} in the saddlebag");
-        ImGui.SetTooltip(string.Join(", ", places) +
-                         (stillShort <= 0 ? "\nEnough, with your bags" : $"\n{stillShort} short, even with your bags"));
+        ImGui.SetTooltip(string.Join(", ", places));
     }
 
     private void DrawNeeded(KeptItem kept)
@@ -299,7 +357,7 @@ internal sealed class ChecklistWindow : Window
         if (ImGui.Button("-", button))
             needed--;
         ImGui.SameLine(0, inner);
-        ImGui.SetNextItemWidth(ImGui.CalcTextSize("9999").X + ImGui.GetStyle().FramePadding.X * 2);
+        ImGui.SetNextItemWidth(ImGui.CalcTextSize(AmountWidthSample).X + ImGui.GetStyle().FramePadding.X * 2);
         ImGui.InputInt("##needed", ref needed, 0, 0);
         if (ImGui.IsItemHovered())
             ImGui.SetTooltip($"How many you need (you have {Stock.Have(kept.ItemId)})");
@@ -316,7 +374,7 @@ internal sealed class ChecklistWindow : Window
         }
     }
 
-    private bool DrawItemMenu(KeptItem kept, string name)
+    private bool DrawItemMenu(KeptItem kept, string name, KeptItem? above, KeptItem? below)
     {
         ImGui.TextDisabled(name);
         var sources = actions.SourcesOf(kept.ItemId);
@@ -344,6 +402,14 @@ internal sealed class ChecklistWindow : Window
         ImGui.Separator();
         DrawColorMenu(kept);
         DrawGroupMenu(kept);
+        // For controllers, which can't drag; only your own order can be changed.
+        if (config.Sort == SortOrder.Manual)
+        {
+            if (ImGui.Selectable("Move up", false, above == null ? ImGuiSelectableFlags.Disabled : ImGuiSelectableFlags.None))
+                swap = (kept, above!);
+            if (ImGui.Selectable("Move down", false, below == null ? ImGuiSelectableFlags.Disabled : ImGuiSelectableFlags.None))
+                swap = (kept, below!);
+        }
 
         ImGui.Separator();
         if (ImGui.Selectable(kept.Done ? "Mark as not done" : "Mark as done"))
@@ -445,7 +511,7 @@ internal sealed class ChecklistWindow : Window
         }
 
         ImGui.SameLine(ImGui.GetContentRegionMax().X - ImGui.GetFrameHeight());
-        if (ImGuiComponents.IconButton(FontAwesomeIcon.Cog))
+        if (TablerIcons.Button(TablerIcon.Settings))
             openSettings();
         if (ImGui.IsItemHovered())
             ImGui.SetTooltip("Settings");
