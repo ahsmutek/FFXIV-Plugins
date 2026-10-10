@@ -15,7 +15,7 @@ public sealed class Configuration : IPluginConfiguration
 
     public List<string> GroupOrder { get; set; } = [];
 
-    public bool GroupBySource { get; set; } = true;
+    public Grouping Grouping { get; set; } = Grouping.Source;
 
     public SortOrder Sort { get; set; } = SortOrder.Manual;
 
@@ -26,6 +26,16 @@ public sealed class Configuration : IPluginConfiguration
     public Vector4 StorageEnoughColor { get; set; } = Sources.DefaultStorageEnoughColor;
 
     public Dictionary<Source, Vector4> SourceColors { get; set; } = new(Sources.DefaultColors);
+
+    // The game only knows retainer names once it has loaded them, so they're remembered.
+    public List<KnownRetainer> Retainers { get; set; } = [];
+}
+
+public sealed class KnownRetainer
+{
+    public ulong Id { get; set; }
+
+    public string Name { get; set; } = "";
 }
 
 public sealed class KeptItem
@@ -48,6 +58,13 @@ public sealed class CustomGroup
     public string Name { get; set; } = "";
 
     public Vector4 Color { get; set; } = new(1f, 1f, 1f, 1f);
+}
+
+public enum Grouping
+{
+    None,
+    Source,
+    Storage,
 }
 
 public enum SortOrder

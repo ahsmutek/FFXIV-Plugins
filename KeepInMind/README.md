@@ -24,9 +24,14 @@ sub-ingredients.
 
 ## Groups and colours
 
-- The list is grouped into Botanist, Miner, Fisher, NPC vendor, Crafting and your own groups.
-  Reorder groups in the settings or from a group header's right-click menu; an item with several
-  sources goes in whichever comes first. Turn grouping off, or sort by name or most still needed
+- The list is grouped into the zones you gather in, NPC vendor, Crafting and your own groups.
+  Zones follow game order (expansion, then region) and sit where the first of Botanist, Miner and
+  Fisher is in the group order; an item found in several zones goes under the one with its
+  lowest-level node. Gatherable items show their class's icon. Reorder groups in the settings or
+  from a group header's right-click menu; an item with several sources goes in whichever comes
+  first. **Retainers first** puts items you still need that a
+  retainer holds under that retainer's name (the one holding the most), then the saddlebag, before
+  the other groups. Turn grouping off, or sort by name or most still needed
   instead of your own order, in the settings. In your own order, drag an item up or down within
   its group (or use Move up / Move down in its menu).
 - Items you hold in a retainer or the saddlebag show a moneybag: a green + if that and your bags
@@ -41,9 +46,13 @@ sub-ingredients.
 - The menu entry reads the right-clicked item from `AgentRecipeNote` or `AgentGatheringNote`, as
   Item Vendor Location and GatherBuddy do.
 - Item Vendor Location and Allagan Tools only add to the game's own menus and tooltips, so the
-  list calls their IPC (`GetItemVendors`, `OpenVendorResults`; `ItemCountOwned`). Checked against
-  Item Vendor Location 2.14.0.1.
-- Gathering classes come from the `GatheringPointBase` sheet.
+  list calls their IPC (`GetItemVendors`, `OpenVendorResults`; `ItemCountOwned`,
+  `GetItemCountsByCharacter`). Checked against Item Vendor Location 2.14.0.1 and Allagan Tools
+  15.0.12.
+- Retainer names come from `RetainerManager` and are remembered, so they show before the game
+  has loaded them.
+- Gathering classes come from the `GatheringPointBase` sheet, zones from `GatheringPoint`,
+  `FishingSpot` and `SpearfishingItem`.
 - The game only anchors tooltips to its own windows, so the plugin shows the `ItemDetail`
   window directly, as [Chat 2](https://github.com/Infiziert90/ChatTwo) does, and moves it beside
   the list because game windows draw under ImGui.

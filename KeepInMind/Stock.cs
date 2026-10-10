@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Ipc;
 using Dalamud.Plugin.Ipc.Exceptions;
@@ -14,12 +15,8 @@ internal sealed class Stock : IDisposable
     private static readonly TimeSpan CheckEvery = TimeSpan.FromSeconds(0.5);
     private static readonly TimeSpan CheckStorageEvery = TimeSpan.FromSeconds(2);
 
-    private static readonly uint[] RetainerTypes =
-    [
-        (uint)InventoryType.RetainerPage1, (uint)InventoryType.RetainerPage2, (uint)InventoryType.RetainerPage3,
-        (uint)InventoryType.RetainerPage4, (uint)InventoryType.RetainerPage5, (uint)InventoryType.RetainerPage6,
-        (uint)InventoryType.RetainerPage7, (uint)InventoryType.RetainerCrystals,
-    ];
+    // Allagan Tools' InventoryCategory: RetainerBags and Crystals, which also holds your own.
+    private static readonly uint[] RetainerCategories = [4, 13];
 
     private static readonly uint[] SaddlebagTypes =
     [
@@ -34,10 +31,13 @@ internal sealed class Stock : IDisposable
     private readonly Action save;
     private readonly ICallGateSubscriber<bool> storageReady;
     private readonly ICallGateSubscriber<uint, bool, uint[], uint> storageCount;
+    private readonly ICallGateSubscriber<uint, bool, uint[], bool, Dictionary<ulong, uint>> countsByCharacter;
+    private readonly ICallGateSubscriber<ulong> currentCharacter;
 
     private Dictionary<uint, (int Needed, bool Enough)> last = [];
     private DateTime nextCheck;
     private Dictionary<uint, (int Retainers, int Saddlebag)> stored = [];
+    private Dictionary<uint, List<(ulong Retainer, int Count)>> holders = [];
     private DateTime nextStorageCheck;
 
     public Stock(IFramework framework, IClientState clientState, IDalamudPluginInterface pluginInterface,
@@ -50,6 +50,9 @@ internal sealed class Stock : IDisposable
         this.save = save;
         storageReady = pluginInterface.GetIpcSubscriber<bool>("AllaganTools.IsInitialized");
         storageCount = pluginInterface.GetIpcSubscriber<uint, bool, uint[], uint>("AllaganTools.ItemCountOwned");
+        countsByCharacter = pluginInterface.GetIpcSubscriber<uint, bool, uint[], bool, Dictionary<ulong, uint>>(
+            "AllaganTools.GetItemCountsByCharacter");
+        currentCharacter = pluginInterface.GetIpcSubscriber<ulong>("AllaganTools.CurrentCharacter");
         framework.Update += OnUpdate;
     }
 
@@ -65,6 +68,13 @@ internal sealed class Stock : IDisposable
     }
 
     public (int Retainers, int Saddlebag) Stored(uint itemId) => stored.GetValueOrDefault(itemId);
+
+    // Most first.
+    public IReadOnlyList<(ulong Retainer, int Count)> Holders(uint itemId) =>
+        holders.TryGetValue(itemId, out var list) ? list : [];
+
+    public string RetainerName(ulong retainerId) =>
+        config.Retainers.Find(r => r.Id == retainerId)?.Name is { Length: > 0 } name ? name : "Retainer";
 
     private void OnUpdate(IFramework _)
     {
@@ -99,17 +109,27 @@ internal sealed class Stock : IDisposable
     // Allagan Tools remembers retainers and the saddlebag from when they were last opened.
     private void CheckStorage()
     {
+        RememberRetainers();
         var now = new Dictionary<uint, (int Retainers, int Saddlebag)>(config.Items.Count);
+        var nowHolders = new Dictionary<uint, List<(ulong Retainer, int Count)>>();
         try
         {
             if (storageReady.InvokeFunc())
             {
+                var player = currentCharacter.InvokeFunc();
                 foreach (var kept in config.Items)
                 {
-                    var retainers = (int)storageCount.InvokeFunc(kept.ItemId, true, RetainerTypes);
+                    var byRetainer = countsByCharacter.InvokeFunc(kept.ItemId, true, RetainerCategories, false)
+                                                      .Where(c => c.Key != player && c.Value > 0)
+                                                      .Select(c => (c.Key, (int)c.Value))
+                                                      .OrderByDescending(c => c.Item2)
+                                                      .ToList();
+                    var retainers = byRetainer.Sum(c => c.Item2);
                     var saddlebag = (int)storageCount.InvokeFunc(kept.ItemId, true, SaddlebagTypes);
                     if (retainers > 0 || saddlebag > 0)
                         now[kept.ItemId] = (retainers, saddlebag);
+                    if (byRetainer.Count > 0)
+                        nowHolders[kept.ItemId] = byRetainer;
                 }
             }
         }
@@ -118,8 +138,30 @@ internal sealed class Stock : IDisposable
         }
         catch (Exception e)
         {
-            log.Debug(e, "Allagan Tools didn't answer ItemCountOwned.");
+            log.Debug(e, "Allagan Tools didn't answer an item count.");
         }
         stored = now;
+        holders = nowHolders;
+    }
+
+    private unsafe void RememberRetainers()
+    {
+        var manager = RetainerManager.Instance();
+        if (manager == null || !manager->IsReady)
+            return;
+
+        var seen = new List<KnownRetainer>();
+        foreach (ref var r in manager->Retainers)
+        {
+            if (r.RetainerId != 0 && r.Available)
+                seen.Add(new KnownRetainer { Id = r.RetainerId, Name = r.NameString });
+        }
+        if (seen.Count == 0 ||
+            seen.Select(r => (r.Id, r.Name)).SequenceEqual(config.Retainers.Select(r => (r.Id, r.Name))))
+        {
+            return;
+        }
+        config.Retainers = seen;
+        save();
     }
 }

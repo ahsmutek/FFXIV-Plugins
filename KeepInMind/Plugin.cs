@@ -61,7 +61,7 @@ public sealed class Plugin : IDalamudPlugin
         var actions = new ItemActions(PluginInterface, sources, Log);
         stock = new Stock(Framework, ClientState, PluginInterface, Log, config, Save);
         settings = new SettingsWindow(config, Save);
-        window = new ChecklistWindow(config, Save, actions, stock, DataManager, TextureProvider, tooltip, GamepadState,
+        window = new ChecklistWindow(config, Save, actions, sources, stock, DataManager, TextureProvider, tooltip, GamepadState,
                                      () => settings.IsOpen = true);
         windows.AddWindow(window);
         windows.AddWindow(settings);

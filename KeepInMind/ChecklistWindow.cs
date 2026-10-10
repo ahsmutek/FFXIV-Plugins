@@ -25,6 +25,7 @@ internal sealed class ChecklistWindow : Window
     private readonly Configuration config;
     private readonly Action save;
     private readonly ItemActions actions;
+    private readonly Sources sources;
     private readonly Stock stock;
     private readonly IDataManager data;
     private readonly ITextureProvider textures;
@@ -49,14 +50,16 @@ internal sealed class ChecklistWindow : Window
     private sealed record Section(string Id, string Label, Vector4? Color, List<KeptItem> Items, bool DefaultOpen = true,
                                   bool Movable = false);
 
-    public ChecklistWindow(Configuration config, Action save, ItemActions actions, Stock stock, IDataManager data,
-                           ITextureProvider textures, NativeTooltip tooltip, IGamepadState gamepad, Action openSettings)
+    public ChecklistWindow(Configuration config, Action save, ItemActions actions, Sources sources, Stock stock,
+                           IDataManager data, ITextureProvider textures, NativeTooltip tooltip, IGamepadState gamepad,
+                           Action openSettings)
         : base("Keep in Mind###KeepInMind")
     {
         this.gamepad = gamepad;
         this.config = config;
         this.save = save;
         this.actions = actions;
+        this.sources = sources;
         this.stock = stock;
         this.data = data;
         this.textures = textures;
@@ -132,12 +135,7 @@ internal sealed class ChecklistWindow : Window
                     continue;
             }
 
-            var items = section.Items;
-            for (var i = 0; i < items.Count; i++)
-            {
-                if (DrawRow(items[i], i > 0 ? items[i - 1] : null, i < items.Count - 1 ? items[i + 1] : null))
-                    remove = items[i];
-            }
+            DrawRows(section.Items, ref remove);
         }
 
         if (remove != null)
@@ -151,6 +149,15 @@ internal sealed class ChecklistWindow : Window
             (config.Items[ia], config.Items[ib]) = (b, a);
             swap = null;
             save();
+        }
+    }
+
+    private void DrawRows(List<KeptItem> items, ref KeptItem? remove)
+    {
+        for (var i = 0; i < items.Count; i++)
+        {
+            if (DrawRow(items[i], i > 0 ? items[i - 1] : null, i < items.Count - 1 ? items[i + 1] : null))
+                remove = items[i];
         }
     }
 
@@ -187,25 +194,45 @@ internal sealed class ChecklistWindow : Window
         var shown = config.Completed == CompletedMode.InPlace ? config.Items : config.Items.Where(i => !i.Done).ToList();
         var sections = new List<Section>();
 
-        if (!config.GroupBySource)
+        if (config.Grouping == Grouping.None)
         {
             sections.Add(new Section("all", "", null, Sorted(shown)));
         }
         else
         {
-            var groups = new List<Section>();
-            foreach (var group in config.Groups)
-                groups.Add(new Section(GroupOrder.Id(group), group.Name, group.Color,
-                                       Sorted(shown.Where(i => i.GroupId == group.Id)), Movable: true));
-
-            var automatic = shown.Where(i => GroupOf(i) == null).ToList();
-            foreach (var source in Sources.Order.Append(Source.None))
-                groups.Add(new Section(GroupOrder.Id(source), Sources.Name(source), SourceColor(source),
-                                       Sorted(automatic.Where(i => PrimarySource(i) == source)),
-                                       Movable: true));
+            if (config.Grouping == Grouping.Storage)
+            {
+                sections.AddRange(StorageSections(shown));
+                var fetched = sections.SelectMany(s => s.Items).ToHashSet();
+                shown = [.. shown.Where(i => !fetched.Contains(i))];
+            }
 
             var order = GroupOrder.Of(config);
-            sections.AddRange(groups.OrderBy(s => order.IndexOf(s.Id)));
+            var groups = new List<(int At, Section Section)>();
+            foreach (var group in config.Groups)
+                groups.Add((order.IndexOf(GroupOrder.Id(group)),
+                            new Section(GroupOrder.Id(group), group.Name, group.Color,
+                                        Sorted(shown.Where(i => i.GroupId == group.Id)), Movable: true)));
+
+            var automatic = shown.Where(i => GroupOf(i) == null).ToList();
+            foreach (var source in Sources.Order.Append(Source.None).Where(s => !Sources.IsGathering(s)))
+                groups.Add((order.IndexOf(GroupOrder.Id(source)),
+                            new Section(GroupOrder.Id(source), Sources.Name(source), SourceColor(source),
+                                        Sorted(automatic.Where(i => PrimarySource(i) == source)), Movable: true)));
+
+            // Zones take the place of the first gathering class in the group order, in game order among themselves.
+            var zonesAt = Sources.Gathering.Min(s => order.IndexOf(GroupOrder.Id(s)));
+            var zones = automatic.Where(i => Sources.IsGathering(PrimarySource(i)))
+                                 .GroupBy(i => sources.ZoneOf(PrimarySource(i), i.ItemId))
+                                 .OrderBy(z => z.Key == null)
+                                 .ThenBy(z => z.Key?.Expansion)
+                                 .ThenBy(z => z.Key?.Region)
+                                 .ThenBy(z => z.Key?.Name, StringComparer.CurrentCultureIgnoreCase);
+            foreach (var zone in zones)
+                groups.Add((zonesAt, new Section($"zone{zone.Key?.Id ?? 0}", zone.Key?.Name ?? "Unknown area", null,
+                                                 Sorted(zone))));
+
+            sections.AddRange(groups.OrderBy(g => g.At).Select(g => g.Section));
         }
 
         if (config.Completed == CompletedMode.Section)
@@ -213,6 +240,24 @@ internal sealed class ChecklistWindow : Window
 
         sections.RemoveAll(s => s.Items.Count == 0);
         return sections;
+    }
+
+    // Only items still short; each goes to the retainer holding the most, else the saddlebag.
+    private IEnumerable<Section> StorageSections(List<KeptItem> shown)
+    {
+        var pending = shown.Where(i => !i.Done).ToList();
+        var byRetainer = pending.Where(i => stock.Holders(i.ItemId).Count > 0)
+                                .GroupBy(i => stock.Holders(i.ItemId)[0].Retainer)
+                                .OrderBy(g => config.Retainers.FindIndex(r => r.Id == g.Key) is var at and >= 0
+                                                  ? at
+                                                  : int.MaxValue);
+        foreach (var retainer in byRetainer)
+            yield return new Section($"retainer{retainer.Key}", stock.RetainerName(retainer.Key), config.StorageColor,
+                                     Sorted(retainer));
+
+        yield return new Section("saddlebag", "Saddlebag", config.StorageColor,
+                                 Sorted(pending.Where(i => stock.Holders(i.ItemId).Count == 0 &&
+                                                           stock.Stored(i.ItemId).Saddlebag > 0)));
     }
 
     private List<KeptItem> Sorted(IEnumerable<KeptItem> items) => config.Sort switch
@@ -268,7 +313,10 @@ internal sealed class ChecklistWindow : Window
                          (ImGui.GetFrameHeight() + ImGui.GetStyle().ItemInnerSpacing.X) * 2;
         var removeWidth = ImGui.GetFrameHeight();
         var storageWidth = inStorage ? TablerIcons.Width + spacing : 0;
-        var nameWidth = Math.Max(1f, ImGui.GetContentRegionAvail().X - countWidth - removeWidth - storageWidth - spacing * 2);
+        var gatherer = Sources.Primary(actions.SourcesOf(kept.ItemId), sourcePriority.Where(Sources.IsGathering));
+        var gathererWidth = gatherer != Source.None ? ImGui.GetFontSize() + spacing : 0;
+        var nameWidth = Math.Max(1f, ImGui.GetContentRegionAvail().X - countWidth - removeWidth - storageWidth -
+                                     gathererWidth - spacing * 2);
         ImGui.AlignTextToFramePadding();
         var color = kept.Done ? ImGui.GetStyle().Colors[(int)ImGuiCol.TextDisabled] : NameColor(kept);
         using (ImRaii.PushColor(ImGuiCol.Text, color ?? default, color.HasValue))
@@ -302,10 +350,16 @@ internal sealed class ChecklistWindow : Window
         if (kept.Done)
             StrikeThrough(name);
 
+        if (gatherer != Source.None)
+        {
+            ImGui.SameLine();
+            DrawGathererIcon(gatherer);
+        }
+
         if (inStorage)
         {
             ImGui.SameLine();
-            DrawStorageIcon(stored, stillShort, storageColor!.Value);
+            DrawStorageIcon(kept.ItemId, stored, stillShort, storageColor!.Value);
         }
 
         ImGui.SameLine();
@@ -332,16 +386,23 @@ internal sealed class ChecklistWindow : Window
         return removed;
     }
 
-    private static void DrawStorageIcon((int Retainers, int Saddlebag) stored, int stillShort, Vector4 color)
+    private void DrawGathererIcon(Source gatherer)
+    {
+        ImGui.SetCursorPosY(ImGui.GetCursorPosY() + ImGui.GetStyle().FramePadding.Y);
+        ImGui.Image(textures.GetFromGameIcon(new GameIconLookup(Sources.Icon(gatherer))).GetWrapOrEmpty().Handle,
+                    new Vector2(ImGui.GetFontSize()));
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip(Sources.Name(gatherer));
+    }
+
+    private void DrawStorageIcon(uint itemId, (int Retainers, int Saddlebag) stored, int stillShort, Vector4 color)
     {
         ImGui.SetCursorPosY(ImGui.GetCursorPosY() + ImGui.GetStyle().FramePadding.Y);
         TablerIcons.Draw(stillShort <= 0 ? TablerIcon.MoneybagPlus : TablerIcon.MoneybagMinus, color);
         if (!ImGui.IsItemHovered())
             return;
 
-        var places = new List<string>(2);
-        if (stored.Retainers > 0)
-            places.Add($"{stored.Retainers} with retainers");
+        var places = stock.Holders(itemId).Select(h => $"{h.Count} with {stock.RetainerName(h.Retainer)}").ToList();
         if (stored.Saddlebag > 0)
             places.Add($"{stored.Saddlebag} in the saddlebag");
         ImGui.SetTooltip(string.Join(", ", places));
@@ -377,10 +438,10 @@ internal sealed class ChecklistWindow : Window
     private bool DrawItemMenu(KeptItem kept, string name, KeptItem? above, KeptItem? below)
     {
         ImGui.TextDisabled(name);
-        var sources = actions.SourcesOf(kept.ItemId);
-        ImGui.TextDisabled(sources == Source.None
+        var itemSources = actions.SourcesOf(kept.ItemId);
+        ImGui.TextDisabled(itemSources == Source.None
                                ? "No known source"
-                               : string.Join(" · ", Sources.Order.Where(s => sources.HasFlag(s)).Select(Sources.Name)));
+                               : string.Join(" · ", Sources.Order.Where(s => itemSources.HasFlag(s)).Select(Sources.Name)));
         ImGui.Separator();
 
         if (!actions.VendorPluginLoaded)
@@ -389,7 +450,7 @@ internal sealed class ChecklistWindow : Window
             ImGui.Selectable("Vendor location (Item Vendor Location isn't loaded)");
             ImGui.EndDisabled();
         }
-        else if (sources.HasFlag(Source.Vendor))
+        else if (itemSources.HasFlag(Source.Vendor))
         {
             if (ImGui.Selectable("Vendor location"))
                 actions.ShowVendors(kept.ItemId);

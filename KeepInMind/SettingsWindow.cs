@@ -13,6 +13,13 @@ internal sealed class SettingsWindow : Window
 {
     private const ImGuiColorEditFlags ColorFlags = ImGuiColorEditFlags.NoInputs | ImGuiColorEditFlags.NoAlpha;
 
+    private static readonly (Grouping Value, string Label)[] GroupingOptions =
+    [
+        (Grouping.None, "Nothing"),
+        (Grouping.Source, "Source"),
+        (Grouping.Storage, "Retainers first, then source"),
+    ];
+
     private static readonly (SortOrder Value, string Label)[] SortOptions =
     [
         (SortOrder.Manual, "Your order (drag to move)"),
@@ -42,15 +49,17 @@ internal sealed class SettingsWindow : Window
     public override void Draw()
     {
         ImGui.TextDisabled("List");
-        var grouped = config.GroupBySource;
-        if (ImGui.Checkbox("Group by source", ref grouped))
+        if (Combo("Group by", config.Grouping, GroupingOptions) is { } grouping)
         {
-            config.GroupBySource = grouped;
+            config.Grouping = grouping;
             save();
         }
         if (ImGui.IsItemHovered())
-            ImGui.SetTooltip("Botanist, Miner, Fisher, NPC vendor, Crafting and your own groups, in the order below.\n" +
-                             "An item with several sources goes in the first that applies.");
+            ImGui.SetTooltip("Your own groups, NPC vendor, Crafting, and gathered items by zone, in the order below.\n" +
+                             "An item with several sources goes in the first that applies; zones take the place\n" +
+                             "of the first gathering class.\n" +
+                             "With retainers first, items you still need from a retainer or the saddlebag come\n" +
+                             "before all of those, under the retainer holding the most. Needs Allagan Tools.");
 
         if (Combo("Sort", config.Sort, SortOptions) is { } sort)
         {
