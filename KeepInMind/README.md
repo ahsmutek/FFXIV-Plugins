@@ -38,6 +38,10 @@ sub-ingredients.
   cover what you need, a yellow − if not; this needs
   [Allagan Tools](https://github.com/Critical-Impact/InventoryTools). An item's name takes the
   colour you gave it, else its group's, else its source's. All colours can be changed.
+- The game's item tooltip shows how many of a listed item you need and have, under its
+  description, in blue: `Keep in Mind: need 12, have 5, 4 in retainers`.
+- In your inventory, saddlebag and a retainer's inventory, slots holding an item you still need get
+  a border in the same green or yellow.
 - NPC vendor items need Item Vendor Location to be loaded.
 - Completed items can stay in place, move to a collapsed **Completed** section, or be hidden.
 
@@ -49,6 +53,13 @@ sub-ingredients.
   list calls their IPC (`GetItemVendors`, `OpenVendorResults`; `ItemCountOwned`,
   `GetItemCountsByCharacter`). Checked against Item Vendor Location 2.14.0.1 and Allagan Tools
   15.0.12.
+- Slots are matched to items through `ItemOrderModule`'s sorters (bags, saddlebag, active
+  retainer), which list items in the order the windows show them, and the page each grid shows
+  comes from its window's tab (the large retainer window keeps all five pages open, stacked two
+  to a tab). A slot is only bordered if it also shows that item's icon. Borders are drawn with
+  ImGui over the slot nodes, and skipped where the game's tooltip or context menu covers a slot.
+- The game fills the item tooltip's text during `ItemDetail`'s update, so the line is added by
+  hooking the function that lays it out, found by the same signature as Simple Tweaks uses.
 - Retainer names come from `RetainerManager` and are remembered, so they show before the game
   has loaded them.
 - Gathering classes come from the `GatheringPointBase` sheet, zones from `GatheringPoint`,

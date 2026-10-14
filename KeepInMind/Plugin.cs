@@ -40,6 +40,12 @@ public sealed class Plugin : IDalamudPlugin
     private static IAddonLifecycle AddonLifecycle { get; set; } = null!;
 
     [PluginService]
+    private static IGameGui GameGui { get; set; } = null!;
+
+    [PluginService]
+    private static IGameInteropProvider GameInterop { get; set; } = null!;
+
+    [PluginService]
     private static IPluginLog Log { get; set; } = null!;
 
     private readonly Configuration config;
@@ -49,6 +55,8 @@ public sealed class Plugin : IDalamudPlugin
     private readonly LogMenu menu;
     private readonly Stock stock;
     private readonly NativeTooltip tooltip;
+    private readonly SlotHighlight highlight;
+    private readonly ItemTooltip itemTooltip;
 
     public Plugin()
     {
@@ -60,6 +68,8 @@ public sealed class Plugin : IDalamudPlugin
         var sources = new Sources(DataManager);
         var actions = new ItemActions(PluginInterface, sources, Log);
         stock = new Stock(Framework, ClientState, PluginInterface, Log, config, Save);
+        highlight = new SlotHighlight(GameGui, DataManager, config, stock);
+        itemTooltip = new ItemTooltip(GameInterop, DataManager, GameGui, Log, config, stock);
         settings = new SettingsWindow(config, Save);
         window = new ChecklistWindow(config, Save, actions, sources, stock, DataManager, TextureProvider, tooltip, GamepadState,
                                      () => settings.IsOpen = true);
@@ -71,10 +81,18 @@ public sealed class Plugin : IDalamudPlugin
 
         menu = new LogMenu(ContextMenu, DataManager, sources, Add);
 
-        CommandManager.AddHandler(CommandName, new CommandInfo((_, _) => window.Toggle())
+        CommandManager.AddHandler(CommandName, new CommandInfo(OnCommand)
         {
             HelpMessage = "Show or hide your Keep in Mind list.",
         });
+    }
+
+    private void OnCommand(string command, string args)
+    {
+        if (args.Trim() == "debug")
+            highlight.Dump(Log);
+        else
+            window.Toggle();
     }
 
     private void Add(uint itemId, int amount)
@@ -97,6 +115,7 @@ public sealed class Plugin : IDalamudPlugin
     private void Draw()
     {
         windows.Draw();
+        highlight.Draw();
         tooltip.EndFrame();
     }
 
@@ -106,6 +125,7 @@ public sealed class Plugin : IDalamudPlugin
     {
         CommandManager.RemoveHandler(CommandName);
         menu.Dispose();
+        itemTooltip.Dispose();
         stock.Dispose();
         PluginInterface.UiBuilder.Draw -= Draw;
         PluginInterface.UiBuilder.OpenMainUi -= window.Toggle;
