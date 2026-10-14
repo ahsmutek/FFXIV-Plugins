@@ -43,9 +43,11 @@ A checklist of ingredients to gather or buy by hand. Right-click an item in the
 Crafting or Gathering Log and choose **Keep in mind**; the list groups and colours items by
 where you get them. `/keepinmind`
 
-### [Glam Off](GlamOff/)
-Adds **Try On Original** to the item menu for glamoured gear, which opens the Fitting Room
-with the item's own look instead of its glamour. Works with a controller.
+### [GlamKit](GlamKit/)
+Small glamour helpers, each can be turned off. **Glam Off** in the item menu of glamoured gear opens
+the Fitting Room with the item's own look. **Keep for Glam** marks gear you want in the glamour dresser
+later: it's bordered in your bags and Armoury Chest and marked in its tooltip until it's in the
+dresser. `/glamkit`
 
 ### [ControllerKeeper](ControllerKeeper/)
 Stops pad freezes when unrelated hardware (a USB stick, a virtual drive) comes and goes,

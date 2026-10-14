@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Dalamud.NET.Sdk/15.0.0">
+  <PropertyGroup>
+    <Version>1.1.0.0</Version>
+    <PackageProjectUrl>https://github.com/anna-wro/FFXIV-Plugins</PackageProjectUrl>
+    <PackageLicenseExpression>AGPL-3.0-or-later</PackageLicenseExpression>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <!-- Tabler Icons and their MIT notice, shared with Keep in Mind and Job Profiles. -->
+  <ItemGroup>
+    <Compile Include="../shared/Icons/*.cs" LinkBase="shared/Icons" />
+    <EmbeddedResource Include="../shared/Icons/*.png" LogicalName="Icons.%(Filename)%(Extension)" />
+    <None Include="../shared/Icons/LICENSE-tabler-icons.txt" Link="LICENSE-tabler-icons.txt" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>
