@@ -64,8 +64,8 @@ public sealed class Plugin : IDalamudPlugin
         TablerIcons.Init(TextureProvider);
         config = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
 
-        glamOff = new GlamOff(ContextMenu, config);
-        menu = new KeeperMenu(ContextMenu, DataManager, config, SetKept);
+        glamOff = new GlamOff(ContextMenu, GameGui, config);
+        menu = new KeeperMenu(ContextMenu, GameGui, DataManager, config, SetKept);
         tooltip = new NativeTooltip(AddonLifecycle);
         highlight = new SlotHighlight(GameGui, DataManager, config);
         itemTooltip = new ItemTooltip(GameInterop, DataManager, GameGui, Log, config);

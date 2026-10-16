@@ -12,13 +12,16 @@ internal sealed class KeeperMenu : IDisposable
     private const uint SoulCrystal = 62;
 
     private readonly IContextMenu contextMenu;
+    private readonly IGameGui gameGui;
     private readonly IDataManager data;
     private readonly Configuration config;
     private readonly Action<uint, bool> setKept;
 
-    public KeeperMenu(IContextMenu contextMenu, IDataManager data, Configuration config, Action<uint, bool> setKept)
+    public KeeperMenu(IContextMenu contextMenu, IGameGui gameGui, IDataManager data, Configuration config,
+                      Action<uint, bool> setKept)
     {
         this.contextMenu = contextMenu;
+        this.gameGui = gameGui;
         this.data = data;
         this.config = config;
         this.setKept = setKept;
@@ -31,10 +34,14 @@ internal sealed class KeeperMenu : IDisposable
     {
         if (!config.GlamKeeperEnabled)
             return;
-        if (args.MenuType != ContextMenuType.Inventory || args.Target is not MenuTargetInventory { TargetItem: { } item })
-            return;
 
-        var itemId = item.BaseItemId;
+        uint itemId;
+        if (args.AddonName == ExpertDelivery.Addon)
+            itemId = ExpertDelivery.MenuItemId(args, gameGui);
+        else if (args.MenuType == ContextMenuType.Inventory && args.Target is MenuTargetInventory { TargetItem: { } item })
+            itemId = item.BaseItemId;
+        else
+            return;
         if (!IsGear(itemId))
             return;
 

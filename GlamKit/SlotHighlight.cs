@@ -1,13 +1,16 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.UI;
+using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using FFXIVClientStructs.FFXIV.Client.UI.Misc;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using FFXIVClientStructs.Interop;
+using Icons;
 using Lumina.Excel.Sheets;
 
 namespace GlamKit;
@@ -20,6 +23,7 @@ internal sealed unsafe class SlotHighlight
 {
     private const float Thickness = 2f;
     private const float Rounding = 6f;
+    private const float IconGap = 4f;
 
     // Game windows draw under ImGui, so slots under these are left alone rather than drawn over them.
     private static readonly string[] Covers = ["ItemDetail", "ContextMenu", "Tooltip"];
@@ -74,6 +78,109 @@ internal sealed unsafe class SlotHighlight
         {
             DrawSlots(&armoury->AtkUnitBase, armoury->Slots, 0, armourySorter, inventory);
         }
+
+        DrawExpertDelivery(inventory);
+    }
+
+    // Expert Delivery's rows aren't in the agent's order, so a row is marked when it shows the name of a
+    // kept item the agent lists: a hanger after the name.
+    private void DrawExpertDelivery(InventoryManager* inventory)
+    {
+        var addon = Addon<AtkUnitBase>(ExpertDelivery.Addon);
+        var list = addon == null ? null : List(addon);
+        if (list == null || KeptDeliveryNames(inventory) is not { Count: > 0 } kept)
+            return;
+
+        var offset = ImGui.GetMainViewport().Pos;
+        var drawList = ImGui.GetBackgroundDrawList();
+        var color = ImGui.GetColorU32(config.KeeperColor);
+        var listNode = &list->OwnerNode->AtkResNode;
+        var clipMin = offset + new Vector2(listNode->ScreenX, listNode->ScreenY);
+        var clipMax = clipMin + new Vector2(listNode->Width, listNode->Height) * addon->Scale;
+        drawList.PushClipRect(clipMin, clipMax, true);
+        for (var i = 0; i < list->AllocatedItemRendererListLength; i++)
+        {
+            var renderer = list->ItemRendererList[i].AtkComponentListItemRenderer;
+            if (renderer == null || renderer->OwnerNode == null)
+                continue;
+            var name = NameNode(&renderer->AtkComponentButton.AtkComponentBase.UldManager, kept);
+            if (name == null || !Shown(&name->AtkResNode))
+                continue;
+
+            ushort width, height;
+            name->GetTextDrawSize(&width, &height, null, 0, -1, false);
+            var scale = addon->Scale * name->AtkResNode.ScaleX;
+            var size = height * scale;
+            var min = offset + new Vector2(name->AtkResNode.ScreenX + (width + IconGap) * scale,
+                                           name->AtkResNode.ScreenY + (name->AtkResNode.Height * scale - size) / 2);
+            if (Covered(min, min + new Vector2(size)))
+                continue;
+            TablerIcons.DrawAt(drawList, TablerIcon.Hanger, min, size, color);
+        }
+        drawList.PopClipRect();
+    }
+
+    private HashSet<string> KeptDeliveryNames(InventoryManager* inventory)
+    {
+        var names = new HashSet<string>();
+        var agent = AgentGrandCompanySupply.Instance();
+        if (agent == null || agent->ItemArray == null)
+            return names;
+        for (var i = 0; i < agent->NumItems; i++)
+        {
+            ref var row = ref agent->ItemArray[i];
+            var item = inventory->GetInventorySlot(row.Inventory, row.Slot);
+            if (item != null && config.IsKept(item->GetBaseItemId()))
+                names.Add(ExpertDelivery.Plain(ref row.ItemName));
+        }
+        return names;
+    }
+
+    private static AtkComponentList* List(AtkUnitBase* addon)
+    {
+        for (var i = 0; i < addon->UldManager.NodeListCount; i++)
+        {
+            var node = addon->UldManager.NodeList[i];
+            if (node == null || (ushort)node->Type < 1000)
+                continue;
+            var component = ((AtkComponentNode*)node)->Component;
+            if (component != null && component->GetComponentType() == ComponentType.List)
+                return (AtkComponentList*)component;
+        }
+        return null;
+    }
+
+    private static AtkTextNode* NameNode(AtkUldManager* uld, HashSet<string> names)
+    {
+        for (var i = 0; i < uld->NodeListCount; i++)
+        {
+            var node = uld->NodeList[i];
+            if (node == null)
+                continue;
+            if (node->Type == NodeType.Text && names.Contains(ExpertDelivery.Plain(ref ((AtkTextNode*)node)->NodeText)))
+                return (AtkTextNode*)node;
+            if ((ushort)node->Type >= 1000 && ((AtkComponentNode*)node)->Component is var component && component != null &&
+                NameNode(&component->UldManager, names) is var found && found != null)
+                return found;
+        }
+        return null;
+    }
+
+    // The plain text of every text node, nested components included.
+    private static List<string> Texts(AtkUldManager* uld, List<string>? texts = null)
+    {
+        texts ??= [];
+        for (var i = 0; i < uld->NodeListCount; i++)
+        {
+            var node = uld->NodeList[i];
+            if (node == null)
+                continue;
+            if (node->Type == NodeType.Text)
+                texts.Add(ExpertDelivery.Plain(ref ((AtkTextNode*)node)->NodeText));
+            else if ((ushort)node->Type >= 1000 && ((AtkComponentNode*)node)->Component is var component && component != null)
+                Texts(&component->UldManager, texts);
+        }
+        return texts;
     }
 
     // The Armoury Chest shows one category at a time. Rather than trust a tab-to-category table, the sorter
@@ -204,6 +311,23 @@ internal sealed unsafe class SlotHighlight
             log.Information($"{name}: visible {addon->IsVisible}, at {addon->X},{addon->Y}, tab {Tab(addon)}, " +
                             $"page {page?.ToString() ?? "hidden"}, {slots.Length} slots, first icons {string.Join(" ", shown)}{extra}");
         }
+
+        var delivery = (AtkUnitBase*)gameGui.GetAddonByName(ExpertDelivery.Addon).Address;
+        var inventoryManager = InventoryManager.Instance();
+        if (delivery == null || inventoryManager == null)
+            return;
+        var list = List(delivery);
+        var kept = KeptDeliveryNames(inventoryManager);
+        var rows = new List<string>();
+        for (var i = 0; list != null && i < list->AllocatedItemRendererListLength && rows.Count < 6; i++)
+        {
+            var renderer = list->ItemRendererList[i].AtkComponentListItemRenderer;
+            if (renderer != null)
+                rows.Add($"[{string.Join("|", Texts(&renderer->AtkComponentButton.AtkComponentBase.UldManager))}]" +
+                         (NameNode(&renderer->AtkComponentButton.AtkComponentBase.UldManager, kept) != null ? " kept" : ""));
+        }
+        log.Information($"{ExpertDelivery.Addon}: visible {delivery->IsVisible}, list {(list == null ? "none" : "found")}, " +
+                        $"kept {string.Join(", ", kept)}, rows {string.Join(" ", rows)}");
     }
 
     private T* Addon<T>(string name) where T : unmanaged

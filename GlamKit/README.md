@@ -8,8 +8,8 @@ Small glamour helpers. Each can be turned off in settings (`/xlsettings` → Gla
 Try on a glamoured item as it looks without its glamour.
 
 Open the item menu on glamoured gear (inventory, Armoury Chest, Character window, retainer,
-saddlebag; right-click, or **X** on a controller) and choose **Glam Off**. The Fitting Room
-opens with the item's own model and dye. The game's **Try On** still shows the glamour.
+saddlebag, Grand Company Expert Delivery; right-click, or **X** on a controller) and choose
+**Glam Off**. The Fitting Room opens with the item's own model and dye. The game's **Try On** still shows the glamour.
 
 The entry only appears on items that have a glamour. Nothing about the item changes.
 
@@ -19,7 +19,8 @@ For gear you wear for its stats but want in the glamour dresser once you replace
 
 Open the item menu on gear and choose **Keep for Glam** (or **Stop Keeping for Glam**). Kept gear:
 
-- is bordered in your bags, saddlebag, retainer and Armoury Chest windows (colour in settings);
+- is bordered in your bags, saddlebag, retainer and Armoury Chest windows, and has a hanger after its name
+  in Expert Delivery (colour in settings);
 - says "Kept for glam" in its tooltip;
 - stops being kept once it's in the glamour dresser or armoire, with a line in chat. The game only knows
   what's in them once you've opened them this session.

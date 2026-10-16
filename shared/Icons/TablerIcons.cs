@@ -11,6 +11,7 @@ namespace Icons;
 internal enum TablerIcon
 {
     ArrowBackUp,
+    Hanger,
     MoneybagMinus,
     MoneybagPlus,
     Settings,
@@ -46,6 +47,10 @@ internal static partial class TablerIcons
                                            ImGui.GetColorU32(ImGuiCol.Text));
         return clicked;
     }
+
+    // For drawing over game windows, which have no ImGui layout to follow.
+    public static void DrawAt(ImDrawListPtr drawList, TablerIcon icon, Vector2 min, float size, uint color) =>
+        drawList.AddImage(Texture(icon), min, min + new Vector2(size), Vector2.Zero, Vector2.One, color);
 
     private static ImTextureID Texture(TablerIcon icon) =>
         textures?.GetFromManifestResource(typeof(TablerIcons).Assembly, Resources[(int)icon]).GetWrapOrEmpty().Handle ??
