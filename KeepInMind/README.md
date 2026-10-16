@@ -31,7 +31,7 @@ sub-ingredients.
   from a group header's right-click menu; an item with several sources goes in whichever comes
   first. **Retainers first** puts items you still need that a
   retainer holds under that retainer's name (the one holding the most), then the saddlebag, before
-  the other groups. Turn grouping off, or sort by name or most still needed
+  the other groups. Turn grouping off, or sort by inventory order, name or most still needed
   instead of your own order, in the settings. In your own order, drag an item up or down within
   its group (or use Move up / Move down in its menu).
 - Items you hold in a retainer or the saddlebag show a moneybag: a green + if that and your bags

@@ -72,6 +72,7 @@ public enum SortOrder
     Manual,
     Name,
     Remaining,
+    Inventory,
 }
 
 public enum CompletedMode

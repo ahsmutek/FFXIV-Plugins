@@ -23,6 +23,7 @@ internal sealed class SettingsWindow : Window
     private static readonly (SortOrder Value, string Label)[] SortOptions =
     [
         (SortOrder.Manual, "Your order (drag to move)"),
+        (SortOrder.Inventory, "Inventory order"),
         (SortOrder.Name, "Name"),
         (SortOrder.Remaining, "Most still needed"),
     ];

@@ -264,6 +264,7 @@ internal sealed class ChecklistWindow : Window
     {
         SortOrder.Name => [.. items.OrderBy(i => ItemName(i.ItemId), StringComparer.CurrentCultureIgnoreCase)],
         SortOrder.Remaining => [.. items.OrderByDescending(i => i.Done ? int.MinValue : i.Needed - Stock.Have(i.ItemId))],
+        SortOrder.Inventory => [.. items.OrderBy(i => InventoryKey(i.ItemId))],
         _ => [.. items],
     };
 
@@ -616,6 +617,14 @@ internal sealed class ChecklistWindow : Window
         data.GetExcelSheet<Item>().GetRowOrDefault(itemId)?.Name.ExtractText() is { Length: > 0 } name
             ? name
             : $"Item #{itemId}";
+
+    // As the game sorts bags: item category, then sort category, then id.
+    private (int, int, int, uint) InventoryKey(uint itemId) =>
+        data.GetExcelSheet<Item>().GetRowOrDefault(itemId) is { } item
+            ? (item.ItemUICategory.ValueNullable?.OrderMajor ?? int.MaxValue,
+               item.ItemUICategory.ValueNullable?.OrderMinor ?? int.MaxValue,
+               item.ItemSortCategory.ValueNullable?.Param ?? int.MaxValue, itemId)
+            : (int.MaxValue, int.MaxValue, int.MaxValue, itemId);
 
     private uint ItemIcon(uint itemId) => data.GetExcelSheet<Item>().GetRowOrDefault(itemId)?.Icon ?? 0;
 }
