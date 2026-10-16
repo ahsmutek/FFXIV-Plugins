@@ -23,7 +23,7 @@ internal sealed unsafe class SlotHighlight
 {
     private const float Thickness = 2f;
     private const float Rounding = 6f;
-    private const float IconGap = 4f;
+    private const float IconGap = 8f;
 
     // Game windows draw under ImGui, so slots under these are left alone rather than drawn over them.
     private static readonly string[] Covers = ["ItemDetail", "ContextMenu", "Tooltip"];
@@ -101,7 +101,9 @@ internal sealed unsafe class SlotHighlight
         for (var i = 0; i < list->AllocatedItemRendererListLength; i++)
         {
             var renderer = list->ItemRendererList[i].AtkComponentListItemRenderer;
-            if (renderer == null || renderer->OwnerNode == null)
+            // Rows past the end of a shorter list keep their old text.
+            if (renderer == null || renderer->OwnerNode == null || renderer->ListItemIndex < 0 ||
+                renderer->ListItemIndex >= list->ListLength)
                 continue;
             var name = NameNode(&renderer->AtkComponentButton.AtkComponentBase.UldManager, kept);
             if (name == null || !Shown(&name->AtkResNode))
@@ -323,10 +325,10 @@ internal sealed unsafe class SlotHighlight
         {
             var renderer = list->ItemRendererList[i].AtkComponentListItemRenderer;
             if (renderer != null)
-                rows.Add($"[{string.Join("|", Texts(&renderer->AtkComponentButton.AtkComponentBase.UldManager))}]" +
+                rows.Add($"{renderer->ListItemIndex}[{string.Join("|", Texts(&renderer->AtkComponentButton.AtkComponentBase.UldManager))}]" +
                          (NameNode(&renderer->AtkComponentButton.AtkComponentBase.UldManager, kept) != null ? " kept" : ""));
         }
-        log.Information($"{ExpertDelivery.Addon}: visible {delivery->IsVisible}, list {(list == null ? "none" : "found")}, " +
+        log.Information($"{ExpertDelivery.Addon}: visible {delivery->IsVisible}, list {(list == null ? "none" : list->ListLength + " long")}, " +
                         $"kept {string.Join(", ", kept)}, rows {string.Join(" ", rows)}");
     }
 
