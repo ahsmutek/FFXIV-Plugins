@@ -6,7 +6,6 @@ using Dalamud.Bindings.ImGui;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.UI;
-using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using FFXIVClientStructs.FFXIV.Client.UI.Misc;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using FFXIVClientStructs.Interop;
@@ -41,6 +40,7 @@ internal sealed unsafe class SlotHighlight
     private readonly IDataManager data;
     private readonly Configuration config;
     private readonly Dictionary<uint, uint> icons = [];
+    private readonly Dictionary<uint, string> names = [];
 
     public SlotHighlight(IGameGui gameGui, IDataManager data, Configuration config)
     {
@@ -79,17 +79,18 @@ internal sealed unsafe class SlotHighlight
             DrawSlots(&armoury->AtkUnitBase, armoury->Slots, 0, armourySorter, inventory);
         }
 
-        DrawExpertDelivery(inventory);
+        foreach (var name in ItemLists.Addons)
+            DrawItemList(name);
     }
 
-    // Expert Delivery's rows aren't in the agent's order, so a row is marked when it shows the name of a
-    // kept item the agent lists: a hanger after the name.
-    private void DrawExpertDelivery(InventoryManager* inventory)
+    // A row of a window listing gear by name is marked when it shows a kept item's name: a hanger after it.
+    private void DrawItemList(string addonName)
     {
-        var addon = Addon<AtkUnitBase>(ExpertDelivery.Addon);
+        var addon = Addon<AtkUnitBase>(addonName);
         var list = addon == null ? null : List(addon);
-        if (list == null || KeptDeliveryNames(inventory) is not { Count: > 0 } kept)
+        if (list == null)
             return;
+        var kept = KeptNames();
 
         var offset = ImGui.GetMainViewport().Pos;
         var drawList = ImGui.GetBackgroundDrawList();
@@ -98,14 +99,9 @@ internal sealed unsafe class SlotHighlight
         var clipMin = offset + new Vector2(listNode->ScreenX, listNode->ScreenY);
         var clipMax = clipMin + new Vector2(listNode->Width, listNode->Height) * addon->Scale;
         drawList.PushClipRect(clipMin, clipMax, true);
-        for (var i = 0; i < list->AllocatedItemRendererListLength; i++)
+        foreach (var row in Rows(list))
         {
-            var renderer = list->ItemRendererList[i].AtkComponentListItemRenderer;
-            // Rows past the end of a shorter list keep their old text.
-            if (renderer == null || renderer->OwnerNode == null || renderer->ListItemIndex < 0 ||
-                renderer->ListItemIndex >= list->ListLength)
-                continue;
-            var name = NameNode(&renderer->AtkComponentButton.AtkComponentBase.UldManager, kept);
+            var name = NameNode(&row.Value->AtkComponentButton.AtkComponentBase.UldManager, kept);
             if (name == null || !Shown(&name->AtkResNode))
                 continue;
 
@@ -122,20 +118,39 @@ internal sealed unsafe class SlotHighlight
         drawList.PopClipRect();
     }
 
-    private HashSet<string> KeptDeliveryNames(InventoryManager* inventory)
+    private HashSet<string> KeptNames()
     {
-        var names = new HashSet<string>();
-        var agent = AgentGrandCompanySupply.Instance();
-        if (agent == null || agent->ItemArray == null)
-            return names;
-        for (var i = 0; i < agent->NumItems; i++)
+        var kept = new HashSet<string>();
+        foreach (var item in config.Items)
         {
-            ref var row = ref agent->ItemArray[i];
-            var item = inventory->GetInventorySlot(row.Inventory, row.Slot);
-            if (item != null && config.IsKept(item->GetBaseItemId()))
-                names.Add(ExpertDelivery.Plain(ref row.ItemName));
+            if (!names.TryGetValue(item.ItemId, out var name))
+                names[item.ItemId] = name = data.GetExcelSheet<Item>().GetRowOrDefault(item.ItemId)?.Name.ExtractText() ?? "";
+            if (name.Length > 0)
+                kept.Add(name);
         }
-        return names;
+        return kept;
+    }
+
+    // A list's or tree list's rows in use. Rows past the end of a shorter list keep their old text.
+    private static List<Pointer<AtkComponentListItemRenderer>> Rows(AtkComponentList* list)
+    {
+        var rows = new List<Pointer<AtkComponentListItemRenderer>>();
+        var isList = list->GetComponentType() == ComponentType.List;
+        ref var uld = ref list->AtkComponentBase.UldManager;
+        for (var i = 0; i < uld.NodeListCount; i++)
+        {
+            var node = uld.NodeList[i];
+            if (node == null || (ushort)node->Type < 1000)
+                continue;
+            var component = ((AtkComponentNode*)node)->Component;
+            if (component == null || component->GetComponentType() != ComponentType.ListItemRenderer)
+                continue;
+            var renderer = (AtkComponentListItemRenderer*)component;
+            if (isList && (renderer->ListItemIndex < 0 || renderer->ListItemIndex >= list->ListLength))
+                continue;
+            rows.Add(renderer);
+        }
+        return rows;
     }
 
     private static AtkComponentList* List(AtkUnitBase* addon)
@@ -146,7 +161,7 @@ internal sealed unsafe class SlotHighlight
             if (node == null || (ushort)node->Type < 1000)
                 continue;
             var component = ((AtkComponentNode*)node)->Component;
-            if (component != null && component->GetComponentType() == ComponentType.List)
+            if (component != null && component->GetComponentType() is ComponentType.List or ComponentType.TreeList)
                 return (AtkComponentList*)component;
         }
         return null;
@@ -159,7 +174,7 @@ internal sealed unsafe class SlotHighlight
             var node = uld->NodeList[i];
             if (node == null)
                 continue;
-            if (node->Type == NodeType.Text && names.Contains(ExpertDelivery.Plain(ref ((AtkTextNode*)node)->NodeText)))
+            if (node->Type == NodeType.Text && names.Contains(ItemLists.Plain(ref ((AtkTextNode*)node)->NodeText)))
                 return (AtkTextNode*)node;
             if ((ushort)node->Type >= 1000 && ((AtkComponentNode*)node)->Component is var component && component != null &&
                 NameNode(&component->UldManager, names) is var found && found != null)
@@ -178,7 +193,7 @@ internal sealed unsafe class SlotHighlight
             if (node == null)
                 continue;
             if (node->Type == NodeType.Text)
-                texts.Add(ExpertDelivery.Plain(ref ((AtkTextNode*)node)->NodeText));
+                texts.Add(ItemLists.Plain(ref ((AtkTextNode*)node)->NodeText));
             else if ((ushort)node->Type >= 1000 && ((AtkComponentNode*)node)->Component is var component && component != null)
                 Texts(&component->UldManager, texts);
         }
@@ -314,22 +329,22 @@ internal sealed unsafe class SlotHighlight
                             $"page {page?.ToString() ?? "hidden"}, {slots.Length} slots, first icons {string.Join(" ", shown)}{extra}");
         }
 
-        var delivery = (AtkUnitBase*)gameGui.GetAddonByName(ExpertDelivery.Addon).Address;
-        var inventoryManager = InventoryManager.Instance();
-        if (delivery == null || inventoryManager == null)
-            return;
-        var list = List(delivery);
-        var kept = KeptDeliveryNames(inventoryManager);
-        var rows = new List<string>();
-        for (var i = 0; list != null && i < list->AllocatedItemRendererListLength && rows.Count < 6; i++)
+        var kept = KeptNames();
+        foreach (var name in ItemLists.Addons)
         {
-            var renderer = list->ItemRendererList[i].AtkComponentListItemRenderer;
-            if (renderer != null)
-                rows.Add($"{renderer->ListItemIndex}[{string.Join("|", Texts(&renderer->AtkComponentButton.AtkComponentBase.UldManager))}]" +
-                         (NameNode(&renderer->AtkComponentButton.AtkComponentBase.UldManager, kept) != null ? " kept" : ""));
+            var addon = (AtkUnitBase*)gameGui.GetAddonByName(name).Address;
+            var list = addon == null ? null : List(addon);
+            if (list == null)
+                continue;
+            var rows = new List<string>();
+            foreach (var renderer in Rows(list))
+            {
+                if (rows.Count < 8)
+                    rows.Add($"{renderer.Value->ListItemIndex}[{string.Join("|", Texts(&renderer.Value->AtkComponentButton.AtkComponentBase.UldManager))}]" +
+                             (NameNode(&renderer.Value->AtkComponentButton.AtkComponentBase.UldManager, kept) != null ? " kept" : ""));
+            }
+            log.Information($"{name}: visible {addon->IsVisible}, {list->GetComponentType()} {list->ListLength} long, rows {string.Join(" ", rows)}");
         }
-        log.Information($"{ExpertDelivery.Addon}: visible {delivery->IsVisible}, list {(list == null ? "none" : list->ListLength + " long")}, " +
-                        $"kept {string.Join(", ", kept)}, rows {string.Join(" ", rows)}");
     }
 
     private T* Addon<T>(string name) where T : unmanaged

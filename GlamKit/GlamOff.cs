@@ -33,11 +33,11 @@ internal sealed class GlamOff : IDisposable
         uint itemId;
         byte stain0, stain1;
         bool crest;
-        if (args.AddonName == ExpertDelivery.Addon)
+        if (ItemLists.Lists(args.AddonName))
         {
-            if (GlamouredDelivery(ExpertDelivery.MenuItemId(args, gameGui)) is not { } delivered)
+            if (Listed(ItemLists.MenuItemId(args, gameGui)) is not { } listed)
                 return;
-            (itemId, stain0, stain1, crest) = delivered;
+            (itemId, stain0, stain1, crest) = listed;
         }
         else if (args.MenuType == ContextMenuType.Inventory &&
                  args.Target is MenuTargetInventory { TargetItem: { GlamourId: not 0 } item })
@@ -64,24 +64,11 @@ internal sealed class GlamOff : IDisposable
         });
     }
 
-    // Expert Delivery's list keeps the real inventory slot of each item.
-    private static unsafe (uint ItemId, byte Stain0, byte Stain1, bool Crest)? GlamouredDelivery(uint baseItemId)
+    private static unsafe (uint ItemId, byte Stain0, byte Stain1, bool Crest)? Listed(uint baseItemId)
     {
-        var agent = AgentGrandCompanySupply.Instance();
-        var inventory = InventoryManager.Instance();
-        if (baseItemId == 0 || agent == null || agent->ItemArray == null || inventory == null)
-            return null;
-
-        for (var i = 0; i < agent->NumItems; i++)
-        {
-            ref var row = ref agent->ItemArray[i];
-            var slot = inventory->GetInventorySlot(row.Inventory, row.Slot);
-            if (slot == null || slot->GetBaseItemId() != baseItemId || slot->GlamourId == 0)
-                continue;
-            return (baseItemId, slot->GetStain(0), slot->GetStain(1),
-                    slot->Flags.HasFlag(InventoryItem.ItemFlags.CompanyCrestApplied));
-        }
-        return null;
+        var item = ItemLists.GlamouredCopy(baseItemId);
+        return item == null ? null :
+               (baseItemId, item->GetStain(0), item->GetStain(1), item->Flags.HasFlag(InventoryItem.ItemFlags.CompanyCrestApplied));
     }
 
     private static unsafe uint AddonId(nint addonPtr) => addonPtr == 0 ? 0u : ((AtkUnitBase*)addonPtr)->Id;

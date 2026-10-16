@@ -36,8 +36,8 @@ internal sealed class KeeperMenu : IDisposable
             return;
 
         uint itemId;
-        if (args.AddonName == ExpertDelivery.Addon)
-            itemId = ExpertDelivery.MenuItemId(args, gameGui);
+        if (ItemLists.Lists(args.AddonName))
+            itemId = ItemLists.MenuItemId(args, gameGui);
         else if (args.MenuType == ContextMenuType.Inventory && args.Target is MenuTargetInventory { TargetItem: { } item })
             itemId = item.BaseItemId;
         else
