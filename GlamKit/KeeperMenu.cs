@@ -38,11 +38,13 @@ internal sealed class KeeperMenu : IDisposable
         uint itemId;
         if (ItemLists.Lists(args.AddonName))
             itemId = ItemLists.MenuItemId(args, gameGui);
+        else if (ItemLists.IsVentureReport(args, gameGui))
+            itemId = ItemLists.VentureReward(args, gameGui);
         else if (args.MenuType == ContextMenuType.Inventory && args.Target is MenuTargetInventory { TargetItem: { } item })
             itemId = item.BaseItemId;
         else
             return;
-        if (!IsGear(itemId))
+        if (!IsGear(data, itemId))
             return;
 
         var kept = config.IsKept(itemId);
@@ -55,7 +57,7 @@ internal sealed class KeeperMenu : IDisposable
         });
     }
 
-    private bool IsGear(uint itemId) =>
+    public static bool IsGear(IDataManager data, uint itemId) =>
         data.GetExcelSheet<Item>().GetRowOrDefault(itemId) is { } row &&
         row.EquipSlotCategory.RowId != 0 && row.ItemUICategory.RowId != SoulCrystal;
 }

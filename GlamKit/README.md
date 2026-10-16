@@ -21,7 +21,8 @@ For gear you wear for its stats but want in the glamour dresser once you replace
 Open the item menu on gear and choose **Keep for Glam** (or **Stop Keeping for Glam**). Kept gear:
 
 - is bordered in your bags, saddlebag, retainer and Armoury Chest windows, and has a hanger after its name
-  in Expert Delivery, the armoire and Glamour Creation (colour in settings);
+  in Expert Delivery, the armoire and Glamour Creation, and beside its icon in the venture report (colour in
+  settings);
 - says "Kept for glam" in its tooltip;
 - stops being kept once it's in the glamour dresser or armoire, with a line in chat. The game only knows
   what's in them once you've opened them this session.
