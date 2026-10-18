@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Numerics;
 using System.Runtime.InteropServices;
-using Dalamud.Bindings.ImGui;
 using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Game.ClientState.GamePad;
 using Dalamud.Game.ClientState.Keys;
@@ -32,6 +31,7 @@ internal sealed class WheelInput : IDisposable
     private readonly IFramework framework;
     private readonly IKeyState keys;
     private readonly IGamepadState gamepad;
+    private readonly PadBlocker blocker;
     private readonly ICondition condition;
     private readonly IPlayerState player;
     private readonly WheelSet wheels;
@@ -39,7 +39,6 @@ internal sealed class WheelInput : IDisposable
     private readonly Action save;
 
     private bool waitForRelease;
-    private bool savedGamepadNav;
     private float gesturePeak;
     private bool swapWasDown;
     private long lastDrawn;
@@ -56,12 +55,13 @@ internal sealed class WheelInput : IDisposable
     public Vector2 StickDirection { get; private set; }
     public float StickTilt { get; private set; }
 
-    public WheelInput(IFramework framework, IKeyState keys, IGamepadState gamepad, ICondition condition,
-                      IPlayerState player, WheelSet wheels, Configuration config, Action save)
+    public WheelInput(IFramework framework, IKeyState keys, IGamepadState gamepad, PadBlocker blocker,
+                      ICondition condition, IPlayerState player, WheelSet wheels, Configuration config, Action save)
     {
         this.framework = framework;
         this.keys = keys;
         this.gamepad = gamepad;
+        this.blocker = blocker;
         this.condition = condition;
         this.player = player;
         this.wheels = wheels;
@@ -189,10 +189,8 @@ internal sealed class WheelInput : IDisposable
         IsOpen = true;
         lastDrawn = Environment.TickCount64;
 
-        // Stops the right stick turning the camera; Dalamud still sees the values.
-        savedGamepadNav = gamepad.EnableGamepadNav;
-        if (!savedGamepadNav)
-            SetPadBlockQuietly(true);
+        // Stops the right stick turning the camera.
+        blocker.Active = true;
     }
 
     private void ShowNext()
@@ -222,16 +220,6 @@ internal sealed class WheelInput : IDisposable
         target?.Run();
     }
 
-    // Dalamud's setter also shows its screen-dimming "gamepad mode" notifier when ImGui has a gamepad.
-    private void SetPadBlockQuietly(bool on)
-    {
-        var io = ImGui.GetIO();
-        var flags = io.BackendFlags;
-        io.BackendFlags = flags & ~ImGuiBackendFlags.HasGamepad;
-        gamepad.EnableGamepadNav = on;
-        io.BackendFlags = flags;
-    }
-
     public void MarkDrawn() => lastDrawn = Environment.TickCount64;
 
     private void Close()
@@ -240,8 +228,7 @@ internal sealed class WheelInput : IDisposable
         Target = null;
         Entries = [];
         StickTilt = 0;
-        if (!savedGamepadNav)
-            SetPadBlockQuietly(false);
+        blocker.Active = false;
 
         if (!openedDirect && Wheel != null && config.LastWheel != Wheel.Id)
         {

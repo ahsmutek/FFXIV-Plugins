@@ -49,9 +49,16 @@ public sealed class Plugin : IDalamudPlugin
     [PluginService]
     private static IBuddyList Buddies { get; set; } = null!;
 
+    [PluginService]
+    private static IGameInteropProvider Interop { get; set; } = null!;
+
+    [PluginService]
+    private static IPluginLog Log { get; set; } = null!;
+
     private readonly Configuration config;
     private readonly WindowSystem windows = new("FlickWheel");
     private readonly ConfigWindow configWindow;
+    private readonly PadBlocker blocker;
     private readonly WheelInput input;
     private readonly WheelOverlay overlay;
     private readonly IconCache icons;
@@ -65,7 +72,8 @@ public sealed class Plugin : IDalamudPlugin
 
         // Modules need the overlay for their settings preview.
         var wheels = new WheelSet(config);
-        input = new WheelInput(Framework, KeyState, Gamepad, Condition, PlayerState, wheels, config, Save);
+        blocker = new PadBlocker(Interop, Log);
+        input = new WheelInput(Framework, KeyState, Gamepad, blocker, Condition, PlayerState, wheels, config, Save);
         icons = new IconCache(Data, Textures);
         overlay = new WheelOverlay(input, wheels, icons, config, Save);
 
@@ -110,6 +118,7 @@ public sealed class Plugin : IDalamudPlugin
         CommandManager.RemoveHandler(CommandName);
         PluginInterface.UiBuilder.Draw -= Draw;
         input.Dispose();
+        blocker.Dispose();
         chatLog.Dispose();
         PluginInterface.UiBuilder.OpenConfigUi -= configWindow.Toggle;
         PluginInterface.UiBuilder.OpenMainUi -= configWindow.Toggle;
