@@ -17,6 +17,12 @@ public sealed class Configuration : IPluginConfiguration
 
     public Vector4 KeeperColor { get; set; } = DefaultKeeperColor;
 
+    public bool JobLevelsEnabled { get; set; } = true;
+
+    public int GreenAbove { get; set; } = 10;
+
+    public int YellowBelow { get; set; } = 5;
+
     public List<KeptItem> Items { get; set; } = [];
 
     public bool IsKept(uint itemId) => itemId != 0 && Items.Exists(i => i.ItemId == itemId);

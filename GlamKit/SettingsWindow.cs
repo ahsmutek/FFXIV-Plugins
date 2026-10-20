@@ -61,6 +61,46 @@ internal sealed class SettingsWindow : Window
                 ImGui.SetTooltip("Reset");
         }
         ImGui.Unindent();
+
+        ImGui.Spacing();
+        var jobLevels = config.JobLevelsEnabled;
+        if (ImGui.Checkbox("Job Levels", ref jobLevels))
+        {
+            config.JobLevelsEnabled = jobLevels;
+            save();
+        }
+        Describe("Gear tooltips show your level on each job that can wear it: green from its level to a few",
+                 "above, yellow a few below, grey otherwise. Gear most jobs can wear shows only the green jobs.");
+
+        ImGui.Indent();
+        var green = config.GreenAbove;
+        if (LevelSlider("Green up to", "levels above", ref green))
+        {
+            config.GreenAbove = green;
+            save();
+        }
+
+        var yellow = config.YellowBelow;
+        if (LevelSlider("Yellow up to", "levels below", ref yellow))
+        {
+            config.YellowBelow = yellow;
+            save();
+        }
+        ImGui.Unindent();
+    }
+
+    // Label before the slider and units after, with the sliders lined up under each other.
+    private static bool LevelSlider(string before, string after, ref int value)
+    {
+        var start = ImGui.GetCursorPosX();
+        ImGui.AlignTextToFramePadding();
+        ImGui.TextUnformatted(before);
+        ImGui.SameLine(start + ImGui.CalcTextSize("Yellow up to").X + ImGui.GetStyle().ItemSpacing.X);
+        ImGui.SetNextItemWidth(120);
+        var changed = ImGui.SliderInt($"##{before}", ref value, 0, 30);
+        ImGui.SameLine();
+        ImGui.TextUnformatted(after);
+        return changed;
     }
 
     private static void Describe(params string[] lines)

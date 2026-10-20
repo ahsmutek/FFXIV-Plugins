@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.InteropServices;
 using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Game.Text.SeStringHandling.Payloads;
 using Dalamud.Hooking;
@@ -10,8 +11,9 @@ using Lumina.Excel.Sheets;
 
 namespace GlamKit;
 
-// Adds a line to the game's item tooltip of kept gear, under the description. The game fills the tooltip's
-// strings during ItemDetail's update, so they're changed just before it lays them out, as Simple Tweaks does.
+// Adds a line to the game's item tooltip of kept gear, under the description, and turns the class/job line into
+// job levels. The game fills the tooltip's strings during ItemDetail's update, so they're changed just before it
+// lays them out, as Simple Tweaks does.
 internal sealed unsafe class ItemTooltip : IDisposable
 {
     private const string GenerateSignature =
@@ -19,6 +21,7 @@ internal sealed unsafe class ItemTooltip : IDisposable
 
     private const string Line = "Kept for glam: move it to the glamour dresser";
     private const int Description = 13;
+    private const int ClassJobCategory = 22;
 
     // The number holding which parts of the tooltip show, and the description's bit in it.
     private const int Visibility = 5;
@@ -35,14 +38,17 @@ internal sealed unsafe class ItemTooltip : IDisposable
     private readonly IGameGui gameGui;
     private readonly IPluginLog log;
     private readonly Configuration config;
+    private readonly JobLevels jobLevels;
     private readonly Hook<GenerateDelegate>? hook;
     private readonly ushort purple;
+    private byte[] lastJobLine = [];
 
     public ItemTooltip(IGameInteropProvider interop, IDataManager data, IGameGui gameGui, IPluginLog log, Configuration config)
     {
         this.gameGui = gameGui;
         this.log = log;
         this.config = config;
+        jobLevels = new JobLevels(data, config);
         purple = Nearest(data, Purple);
         try
         {
@@ -62,6 +68,7 @@ internal sealed unsafe class ItemTooltip : IDisposable
         try
         {
             AddLine(numbers, strings);
+            AddJobLevels(strings);
         }
         catch (Exception e)
         {
@@ -70,13 +77,36 @@ internal sealed unsafe class ItemTooltip : IDisposable
         hook!.Original(addon, numbers, strings);
     }
 
+    private uint HoveredItem()
+    {
+        var agent = AgentItemDetail.Instance();
+        return (uint)((agent != null && agent->ItemId != 0 ? agent->ItemId : gameGui.HoveredItem) % ItemIdModifier);
+    }
+
+    private void AddJobLevels(StringArrayData* strings)
+    {
+        if (!config.JobLevelsEnabled || strings == null || strings->Size <= ClassJobCategory)
+            return;
+        var current = strings->StringArray[ClassJobCategory].Value;
+        if (current == null)
+            return;
+        var currentBytes = MemoryMarshal.CreateReadOnlySpanFromNullTerminated(current);
+        if (currentBytes.Length == 0 || currentBytes.SequenceEqual(lastJobLine))
+            return;
+
+        var line = jobLevels.Line(HoveredItem(), SeString.Parse(currentBytes));
+        if (line == null)
+            return;
+
+        var bytes = line.EncodeWithNullTerminator();
+        lastJobLine = bytes[..^1];
+        fixed (byte* text = bytes)
+            strings->SetValue(ClassJobCategory, text, false, true, false);
+    }
+
     private void AddLine(NumberArrayData* numbers, StringArrayData* strings)
     {
-        if (!config.GlamKeeperEnabled)
-            return;
-        var agent = AgentItemDetail.Instance();
-        var itemId = (uint)((agent != null && agent->ItemId != 0 ? agent->ItemId : gameGui.HoveredItem) % ItemIdModifier);
-        if (strings == null || strings->Size <= Description || !config.IsKept(itemId))
+        if (!config.GlamKeeperEnabled || strings == null || strings->Size <= Description || !config.IsKept(HoveredItem()))
             return;
 
         // Items without a description of their own have it hidden, so it's shown, as Allagan Tools does.
@@ -98,7 +128,7 @@ internal sealed unsafe class ItemTooltip : IDisposable
             strings->SetValue(Description, text, false, true, false);
     }
 
-    private static ushort Nearest(IDataManager data, uint rgb)
+    internal static ushort Nearest(IDataManager data, uint rgb)
     {
         static int Distance(uint a, uint b) =>
             Math.Abs((int)(a >> 16 & 0xFF) - (int)(b >> 16 & 0xFF)) +

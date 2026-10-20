@@ -32,6 +32,15 @@ Allagan Tools, Saddlebag and Retainer).
 
 Gear is kept by item, so every copy of the same item counts as kept.
 
+## Job Levels
+
+A gear tooltip's job line (e.g. "PLD WAR DRK GNB") shows your level on each job instead:
+"PLD 100  WAR 87  DRK 52  GNB –". For a level 50 item, 50–60 is green, 45–49 yellow and anything else grey
+(both ranges are in settings); – means you haven't started that job. Gear that more than 10 jobs can wear keeps
+the game's text and adds up to 5 green jobs, lowest first, e.g. "· WAR 52  BLM 55"; if none are green, the job
+nearest its level. Level 1 gear like that is left as it is. It works on
+any job and in every item tooltip, Market Board included.
+
 ## How it works
 
 Glam Off calls the Fitting Room the same way the menu's **Try On** does, with the glamour left out.
@@ -39,6 +48,8 @@ Glam Off calls the Fitting Room the same way the menu's **Try On** does, with th
 Glam Keeper only reads your inventory and changes your own UI: menu entries, ImGui borders and tooltip
 text. It never presses anything or sends anything to the server. The
 tooltip line uses one hook, the same as Keep in Mind's; if a patch breaks it, only the tooltip line goes.
+
+Job Levels reads your levels from the client and rewrites the tooltip's job line through that same hook.
 
 `/glamkit debug` writes what each inventory window shows to the Dalamud log, for when a border is
 missing or misplaced.
