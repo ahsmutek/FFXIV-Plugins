@@ -36,21 +36,24 @@ Gear is kept by item, so every copy of the same item counts as kept.
 
 A gear tooltip's job line (e.g. "PLD WAR DRK GNB") shows your level on each job instead:
 "PLD 100  WAR 87  DRK 52  GNB –". For a level 50 item, 50–60 is green, 45–49 yellow and anything else grey
-(both ranges are in settings); – means you haven't started that job. Gear that more than 10 jobs can wear keeps
-the game's text and adds up to 5 green jobs, lowest first, e.g. "· WAR 52  BLM 55"; if none are green, the job
-nearest its level. Level 1 gear like that is left as it is. It works on
-any job and in every item tooltip, Market Board included. When your current job can't wear the item, its equip
-level loses the game's level colouring (can be turned off in settings).
+(both ranges are in settings); – means you haven't started that job.
+
+Gear that more than 10 jobs can wear keeps the game's text and adds up to 5 green jobs, lowest first, e.g.
+"· WAR 52  BLM 55", or the job nearest its level if none are green. Level 1 gear like that is left as it is.
+
+The game colours the equip level against your current job even when that job can't wear the item; GlamKit
+colours it only when your job can wear it (optional). It all works on any job and in every item tooltip, Market Board included.
 
 ## How it works
 
 Glam Off calls the Fitting Room the same way the menu's **Try On** does, with the glamour left out.
 
 Glam Keeper only reads your inventory and changes your own UI: menu entries, ImGui borders and tooltip
-text. It never presses anything or sends anything to the server. The
-tooltip line uses one hook, the same as Keep in Mind's; if a patch breaks it, only the tooltip line goes.
+text. It never presses anything or sends anything to the server. The tooltip
+line uses one hook, the same as Keep in Mind's; if a patch breaks it, only the tooltip line goes.
 
-Job Levels reads your levels from the client and rewrites the tooltip's job line through that same hook.
+Job Levels reads your levels from the client and rewrites the tooltip's job line through that same hook. The
+equip level is recoloured just before the tooltip draws.
 
 `/glamkit debug` writes what each inventory window shows to the Dalamud log, for when a border is
 missing or misplaced.

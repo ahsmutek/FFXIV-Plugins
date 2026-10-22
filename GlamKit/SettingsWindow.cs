@@ -88,7 +88,7 @@ internal sealed class SettingsWindow : Window
         }
 
         var uncolour = config.UncolourUnwearableLevel;
-        if (ImGui.Checkbox("Plain equip level on gear your job can't wear", ref uncolour))
+        if (ImGui.Checkbox("Colour the equip level only if your current job can wear it", ref uncolour))
         {
             config.UncolourUnwearableLevel = uncolour;
             save();
