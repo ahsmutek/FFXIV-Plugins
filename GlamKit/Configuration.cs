@@ -23,6 +23,8 @@ public sealed class Configuration : IPluginConfiguration
 
     public int YellowBelow { get; set; } = 5;
 
+    public bool UncolourUnwearableLevel { get; set; } = true;
+
     public List<KeptItem> Items { get; set; } = [];
 
     public bool IsKept(uint itemId) => itemId != 0 && Items.Exists(i => i.ItemId == itemId);

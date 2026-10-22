@@ -68,7 +68,7 @@ public sealed class Plugin : IDalamudPlugin
         menu = new KeeperMenu(ContextMenu, GameGui, DataManager, config, SetKept);
         tooltip = new NativeTooltip(AddonLifecycle);
         highlight = new SlotHighlight(GameGui, DataManager, config);
-        itemTooltip = new ItemTooltip(GameInterop, DataManager, GameGui, Log, config);
+        itemTooltip = new ItemTooltip(GameInterop, AddonLifecycle, DataManager, GameGui, Log, config);
         stored = new Stored(Framework, ClientState, ChatGui, DataManager, config, Save);
         locations = new Locations(Framework, ClientState, PluginInterface, Log, config);
 

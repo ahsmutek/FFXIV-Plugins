@@ -39,7 +39,8 @@ A gear tooltip's job line (e.g. "PLD WAR DRK GNB") shows your level on each job 
 (both ranges are in settings); – means you haven't started that job. Gear that more than 10 jobs can wear keeps
 the game's text and adds up to 5 green jobs, lowest first, e.g. "· WAR 52  BLM 55"; if none are green, the job
 nearest its level. Level 1 gear like that is left as it is. It works on
-any job and in every item tooltip, Market Board included.
+any job and in every item tooltip, Market Board included. When your current job can't wear the item, its equip
+level loses the game's level colouring (can be turned off in settings).
 
 ## How it works
 

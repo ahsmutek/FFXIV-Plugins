@@ -86,6 +86,13 @@ internal sealed class SettingsWindow : Window
             config.YellowBelow = yellow;
             save();
         }
+
+        var uncolour = config.UncolourUnwearableLevel;
+        if (ImGui.Checkbox("Plain equip level on gear your job can't wear", ref uncolour))
+        {
+            config.UncolourUnwearableLevel = uncolour;
+            save();
+        }
         ImGui.Unindent();
     }
 

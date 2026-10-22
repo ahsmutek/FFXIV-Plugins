@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.Game.UI;
@@ -23,6 +24,7 @@ internal sealed unsafe class JobLevels
     private readonly IDataManager data;
     private readonly Configuration config;
     private readonly Dictionary<uint, Job[]> categories = [];
+    private readonly Dictionary<uint, PropertyInfo> columns = [];
     private readonly ushort green;
     private readonly ushort yellow;
     private readonly ushort grey;
@@ -41,6 +43,8 @@ internal sealed unsafe class JobLevels
             .Select(j => (Row: j, Column: typeof(ClassJobCategory).GetProperty(j.Abbreviation.ExtractText())))
             .Where(j => j.Column?.PropertyType == typeof(bool))
             .ToList();
+        foreach (var job in jobs)
+            columns[job.Row.RowId] = job.Column!;
 
         foreach (var category in data.GetExcelSheet<ClassJobCategory>())
         {
@@ -55,6 +59,17 @@ internal sealed unsafe class JobLevels
             if (allowed.Length > 0)
                 categories[category.RowId] = allowed;
         }
+    }
+
+    // Whether the current job can wear the item, or null when it isn't gear.
+    public bool? CurrentJobCanWear(uint itemId)
+    {
+        var player = PlayerState.Instance();
+        if (player == null || !data.GetExcelSheet<Item>().TryGetRow(itemId, out var item) ||
+            item.EquipSlotCategory.RowId == 0 || !item.ClassJobCategory.IsValid)
+            return null;
+        return columns.TryGetValue(player->CurrentClassJobId, out var column) &&
+               (bool)column.GetValue(item.ClassJobCategory.Value)!;
     }
 
     public SeString? Line(uint itemId, SeString original)

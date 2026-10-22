@@ -1,5 +1,7 @@
 using System;
 using System.Runtime.InteropServices;
+using Dalamud.Game.Addon.Lifecycle;
+using Dalamud.Game.Addon.Lifecycle.AddonArgTypes;
 using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Game.Text.SeStringHandling.Payloads;
 using Dalamud.Hooking;
@@ -36,6 +38,7 @@ internal sealed unsafe class ItemTooltip : IDisposable
     private delegate void GenerateDelegate(AddonItemDetail* addon, NumberArrayData* numbers, StringArrayData* strings);
 
     private readonly IGameGui gameGui;
+    private readonly IAddonLifecycle lifecycle;
     private readonly IPluginLog log;
     private readonly Configuration config;
     private readonly JobLevels jobLevels;
@@ -43,8 +46,10 @@ internal sealed unsafe class ItemTooltip : IDisposable
     private readonly ushort purple;
     private byte[] lastJobLine = [];
 
-    public ItemTooltip(IGameInteropProvider interop, IDataManager data, IGameGui gameGui, IPluginLog log, Configuration config)
+    public ItemTooltip(IGameInteropProvider interop, IAddonLifecycle lifecycle, IDataManager data, IGameGui gameGui,
+                       IPluginLog log, Configuration config)
     {
+        this.lifecycle = lifecycle;
         this.gameGui = gameGui;
         this.log = log;
         this.config = config;
@@ -59,9 +64,14 @@ internal sealed unsafe class ItemTooltip : IDisposable
         {
             log.Warning(e, "Couldn't find the item tooltip, so it won't say an item is kept.");
         }
+        lifecycle.RegisterListener(AddonEvent.PreDraw, "ItemDetail", UncolourEquipLevel);
     }
 
-    public void Dispose() => hook?.Dispose();
+    public void Dispose()
+    {
+        lifecycle.UnregisterListener(AddonEvent.PreDraw, "ItemDetail", UncolourEquipLevel);
+        hook?.Dispose();
+    }
 
     private void Generate(AddonItemDetail* addon, NumberArrayData* numbers, StringArrayData* strings)
     {
@@ -102,6 +112,19 @@ internal sealed unsafe class ItemTooltip : IDisposable
         lastJobLine = bytes[..^1];
         fixed (byte* text = bytes)
             strings->SetValue(ClassJobCategory, text, false, true, false);
+    }
+
+    // The game colours the equip level against the current job even when that job can't wear the item. It sets the
+    // colour on the text node after the tooltip is built, so it's reset to the description's before each draw.
+    private void UncolourEquipLevel(AddonEvent type, AddonArgs args)
+    {
+        var addon = (AddonItemDetail*)args.Addon.Address;
+        if (!config.JobLevelsEnabled || !config.UncolourUnwearableLevel || addon == null ||
+            addon->LevelText == null || addon->DescriptionText == null ||
+            jobLevels.CurrentJobCanWear(HoveredItem()) != false)
+            return;
+        addon->LevelText->TextColor = addon->DescriptionText->TextColor;
+        addon->LevelText->EdgeColor = addon->DescriptionText->EdgeColor;
     }
 
     private void AddLine(NumberArrayData* numbers, StringArrayData* strings)
