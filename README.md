@@ -53,6 +53,11 @@ dresser. `/glamkit`
 Stops pad freezes when unrelated hardware (a USB stick, a virtual drive) comes and goes,
 and keeps the game on the controller you picked. `/controllerkeeper`
 
+### [PlaceFinder](PlaceFinder/)
+Finds small named places like The Slow Wash without a web search. List your current zone's
+places, browse by region or A–Z, or search, all with the D-pad and a map preview. Press A to
+open the map with the place flagged. `/place`
+
 ## Building
 
 From a plugin's folder:
