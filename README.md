@@ -62,6 +62,11 @@ open the map with the place flagged. `/place`
 Shows every spot where the B-rank targets of your weekly Elite Mark Bills can spawn, on the
 game's own map, and lets you tick spots off as you check them with the D-pad. `/huntmap`
 
+### [Icon Atlas](IconAtlas/)
+Every game icon ID range, from job actions to map markers and plate frames, with the icons
+drawn from your game files. Search ranges or jump to an ID, then inspect and copy an icon's
+ID or path. `/iconatlas`
+
 ## Building
 
 From a plugin's folder:
