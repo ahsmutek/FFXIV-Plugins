@@ -13,4 +13,9 @@
     <EmbeddedResource Include="../shared/Icons/*.png" LogicalName="Icons.%(Filename)%(Extension)" />
     <None Include="../shared/Icons/LICENSE-tabler-icons.txt" Link="LICENSE-tabler-icons.txt" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
+
+  <!-- Which bag slot holds which item, shared by Keep in Mind and GlamKit. -->
+  <ItemGroup>
+    <Compile Include="../shared/Inventory/*.cs" LinkBase="shared/Inventory" />
+  </ItemGroup>
 </Project>
