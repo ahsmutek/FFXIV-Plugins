@@ -8,12 +8,13 @@ using Lumina.Text.ReadOnly;
 
 namespace GlamKit;
 
-// Game windows that list gear by name without its glamour: Expert Delivery, the armoire and Glamour Creation.
+// Game windows that show gear without its glamour: Expert Delivery, the armoire, Glamour Creation and the
+// Fitting Room.
 internal static unsafe class ItemLists
 {
     public const string VentureReport = "RetainerTaskResult";
 
-    public static readonly string[] Addons = ["GrandCompanySupplyList", "Cabinet", "MiragePrismPrismBoxCrystallize"];
+    public static readonly string[] Addons = ["GrandCompanySupplyList", "Cabinet", "MiragePrismPrismBoxCrystallize", "Tryon"];
 
     private const uint ItemIdModifier = 500_000;
 

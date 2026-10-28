@@ -8,7 +8,7 @@ Small glamour helpers. Each can be turned off in settings (`/xlsettings` → Gla
 Try on a glamoured item as it looks without its glamour.
 
 Open the item menu on glamoured gear (inventory, Armoury Chest, Character window, retainer,
-saddlebag, Grand Company Expert Delivery, armoire, Glamour Creation; right-click, or **X** on a
+saddlebag, Grand Company Expert Delivery, armoire, Glamour Creation, Fitting Room; right-click, or **X** on a
 controller) and choose **Glam Off**. The Fitting Room opens with the item's own model and dye. The
 game's **Try On** still shows the glamour.
 
