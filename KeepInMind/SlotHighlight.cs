@@ -23,7 +23,7 @@ internal sealed unsafe class SlotHighlight
     private const float Rounding = 6f;
 
     // Game windows draw under ImGui, so slots under these are left alone rather than drawn over them.
-    private static readonly string[] Covers = ["ItemDetail", "ContextMenu", "Tooltip"];
+    private static readonly string[] Covers = ["ItemDetail", "ItemDetailCompare", "ContextMenu", "Tooltip", "SelectYesno", "SelectOk"];
 
     private static readonly string[] Grids =
     [
