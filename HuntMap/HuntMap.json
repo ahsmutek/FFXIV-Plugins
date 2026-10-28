@@ -1,0 +1,13 @@
+{
+  "Author": "Kotanna",
+  "Name": "Hunt Map",
+  "Punchline": "See where your weekly elite mark can spawn.",
+  "Description": "Shows every possible spawn point of the B-rank targets on the Elite Mark Bills you hold, on the game's own map. Go through them with the controller and tick off the ones you've checked.",
+  "ApplicableVersion": "any",
+  "Tags": [
+    "hunt",
+    "elite mark",
+    "map",
+    "controller"
+  ]
+}
