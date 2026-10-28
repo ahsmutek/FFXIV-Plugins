@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using Dalamud.Game;
 using Dalamud.Plugin.Services;
 using Lumina.Excel.Sheets;
@@ -16,6 +17,8 @@ public enum JobGroup
     Limited,
     Hand,
     Land,
+    // Every combat role. Last, since rules store groups by number.
+    Combat,
 }
 
 internal sealed class JobGroups(IDataManager data)
@@ -33,6 +36,17 @@ internal sealed class JobGroups(IDataManager data)
         (JobGroup.Hand, "Disciples of the Hand", ["CRP", "BSM", "ARM", "GSM", "LTW", "WVR", "ALC", "CUL"]),
         (JobGroup.Land, "Disciples of the Land", ["MIN", "BTN", "FSH"]),
     ];
+
+    public const string CombatLabel = "Combat jobs";
+
+    public static readonly JobGroup[] CombatRoles =
+        [JobGroup.Tank, JobGroup.Healer, JobGroup.Melee, JobGroup.PhysicalRanged, JobGroup.Caster, JobGroup.Limited];
+
+    public static JobGroup? Parent(JobGroup group) =>
+        CombatRoles.Contains(group) ? JobGroup.Combat : null;
+
+    public static string Label(JobGroup group) =>
+        group == JobGroup.Combat ? CombatLabel : All.First(g => g.Group == group).Label;
 
     private Dictionary<string, ClassJob>? byAbbreviation;
     private Dictionary<uint, (string Abbreviation, JobGroup Group)>? byRow;

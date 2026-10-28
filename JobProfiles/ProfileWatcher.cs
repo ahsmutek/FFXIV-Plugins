@@ -41,8 +41,9 @@ internal sealed class ProfileWatcher : IDisposable
 
         config.Groups.TryGetValue(group, out var forGroup);
         config.Jobs.TryGetValue(abbreviation, out var forJob);
-        var hud = forJob?.HudLayout ?? forGroup?.HudLayout;
-        var steps = forJob?.Steps ?? forGroup?.Steps ?? [];
+        var forParent = JobGroups.Parent(group) is { } parent ? config.Groups.GetValueOrDefault(parent) : null;
+        var hud = forJob?.HudLayout ?? forGroup?.HudLayout ?? forParent?.HudLayout;
+        var steps = forJob?.Steps ?? forGroup?.Steps ?? forParent?.Steps ?? [];
         return (hud is >= 0 ? hud : null, steps);
     }
 

@@ -5,8 +5,8 @@ Also gives controller buttons and keys different actions by job and duty.
 
 ## Jobs tab
 
-`/jobprofiles` opens settings. The list on the left has **Everyone**, the eight roles, and
-any jobs you've customised under their role.
+`/jobprofiles` opens settings. The list on the left has **Everyone**, **Combat jobs**, the
+eight roles, and any jobs you've customised under their role.
 
 | Role | Jobs |
 |---|---|
@@ -25,6 +25,10 @@ A role's page sets:
   like Flick Wheel's shortcuts (menus, actions, items, emotes, macros) or typed as chat
   commands. Steps run in order; `/wait 2` pauses.
 - **Buttons**: what your buttons do for this role (below).
+
+**Combat jobs** is a page like a role's for the six combat roles (Tanks to Limited Jobs). Those
+roles follow it unless they set their own: their HUD layout and steps have a **Same as Combat
+jobs** option, and their button lines win over its lines.
 
 **Everyone** has only Buttons. **+ Customise a job…** gives a job its own page, starting as
 a copy of its role's. Classes use their job's settings.
@@ -47,8 +51,8 @@ any duty, or one duty type), and **what**:
   wheel by its hotkey. Use unmodified keys (F13–F24) so they never clash with a Ctrl or
   Shift you're holding.
 
-The most specific line wins: job over role over Everyone, and one duty type over any duty
-or outside duties, over Anywhere.
+The most specific line wins: job over role over Combat jobs over Everyone, and one duty type
+over any duty or outside duties, over Anywhere.
 
 ## Buttons tab
 

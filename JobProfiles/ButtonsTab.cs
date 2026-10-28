@@ -183,7 +183,7 @@ internal sealed class ButtonsTab
         }
         else if (ImGui.TreeNode($"Set up in {binding.Rules.Count} place{(binding.Rules.Count == 1 ? "" : "s")}###setup"))
         {
-            var rules = binding.Rules.OrderBy(r => r.Job != null ? 2 : r.Group != null ? 1 : 0)
+            var rules = binding.Rules.OrderBy(r => r.Job != null ? 3 : r.Group == JobGroup.Combat ? 1 : r.Group != null ? 2 : 0)
                                .ThenBy(r => (int?)r.Group ?? -1)
                                .ThenBy(r => r.Job)
                                .ThenBy(r => r.Where);
@@ -242,9 +242,8 @@ internal sealed class ButtonsTab
         }
         if (ImGui.IsItemHovered())
             ImGui.SetTooltip("Make one of your buttons do something for this page. If several pages set the same button,\n" +
-                             "the most specific wins: a job beats its role, a role beats Everyone, and a kind of duty\n" +
-                             "(In Raids) beats In any duty / Outside duties, which beat Anywhere.");
-
+                             "the most specific wins: a job beats its role, a role beats Combat jobs, which beats Everyone,\n" +
+                             "and a kind of duty (In Raids) beats In any duty / Outside duties, which beat Anywhere.");
         return changed;
     }
 
@@ -408,7 +407,7 @@ internal sealed class ButtonsTab
 
     private string WhoLabel(Rule rule) =>
         rule.Job != null ? rule.Job :
-        rule.Group is { } group ? JobGroups.All.First(g => g.Group == group).Label :
+        rule.Group is { } group ? JobGroups.Label(group) :
         "Everyone";
 
     // Where: "a" anywhere, "o" outside duties, "d" any duty, "t:5" one duty type.

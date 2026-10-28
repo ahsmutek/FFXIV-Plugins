@@ -137,8 +137,13 @@ internal sealed class ConfigWindow : Window
             page = string.Empty;
 
         ImGui.Spacing();
+        if (ImGui.Selectable($"{JobGroups.CombatLabel}##{JobGroup.Combat}", page == $"g:{JobGroup.Combat}"))
+            page = $"g:{JobGroup.Combat}";
         foreach (var (group, label, jobs) in JobGroups.All)
         {
+            var underCombat = JobGroups.Parent(group) != null;
+            if (underCombat)
+                ImGui.Indent();
             if (ImGui.Selectable($"{label}##{group}", page == $"g:{group}"))
                 page = $"g:{group}";
 
@@ -149,6 +154,8 @@ internal sealed class ConfigWindow : Window
                     page = $"j:{abbreviation}";
                 ImGui.Unindent();
             }
+            if (underCombat)
+                ImGui.Unindent();
         }
 
         ImGui.Spacing();
@@ -204,7 +211,7 @@ internal sealed class ConfigWindow : Window
     private bool DrawEveryone()
     {
         Heading("Everyone");
-        ImGui.TextWrapped("Button behaviour here is for every job, unless a role or job page sets the same button for itself.");
+        ImGui.TextWrapped("Button behaviour here is for every job, unless Combat jobs, a role or a job page sets the same button for itself.");
         ImGui.Spacing();
         Section("Buttons");
         return buttons.DrawBehaviour(string.Empty);
@@ -213,11 +220,18 @@ internal sealed class ConfigWindow : Window
     private bool DrawRole(JobGroup group)
     {
         var changed = false;
-        var (_, label, jobs) = JobGroups.All.First(g => g.Group == group);
+        var label = JobGroups.Label(group);
+        var jobs = group == JobGroup.Combat
+            ? JobGroups.All.Where(g => JobGroups.Parent(g.Group) == group).SelectMany(g => g.Jobs)
+            : JobGroups.All.First(g => g.Group == group).Jobs;
         Heading(label);
         ImGui.TextDisabled(string.Join(" ", jobs.Select(JobShort)));
+        if (group == JobGroup.Combat)
+            ImGui.TextDisabled("Its roles and their jobs follow it unless they set their own.");
 
         config.Groups.TryGetValue(group, out var profile);
+        var parent = JobGroups.Parent(group);
+        var parentProfile = parent is { } p ? config.Groups.GetValueOrDefault(p) : null;
 
         ImGui.Spacing();
         Section("When you switch to one of its jobs");
@@ -225,7 +239,13 @@ internal sealed class ConfigWindow : Window
         ImGui.AlignTextToFramePadding();
         ImGui.TextUnformatted("HUD layout");
         ImGui.SameLine();
-        var options = new List<(int? Value, string Label)> { (null, "Don't change") };
+        var options = parent == null
+            ? new List<(int? Value, string Label)> { (null, "Don't change") }
+            : new List<(int? Value, string Label)>
+            {
+                (null, $"Same as {JobGroups.CombatLabel} ({LayoutName(parentProfile?.HudLayout)})"),
+                (Profile.NoHudLayout, "Don't change"),
+            };
         options.AddRange(LayoutOptions());
         if (widgets.Combo("##hud", ref hud, options, width: 140f))
         {
@@ -233,10 +253,32 @@ internal sealed class ConfigWindow : Window
             changed = true;
         }
 
-        var steps = profile?.Steps ?? [];
-        changed |= widgets.StepList(steps, label, step => (RoleProfile(group).Steps ??= []).Add(step));
-        if (profile is { Steps.Count: 0 })
-            profile.Steps = null;
+        if (parent == null)
+        {
+            var steps = profile?.Steps ?? [];
+            changed |= widgets.StepList(steps, label, step => (RoleProfile(group).Steps ??= []).Add(step));
+            if (profile is { Steps.Count: 0 })
+                profile.Steps = null;
+        }
+        else
+        {
+            // Unlike other pages, an empty list here means do nothing rather than follow Combat jobs.
+            var useParent = profile?.Steps == null;
+            if (ImGui.Checkbox($"Same as {JobGroups.CombatLabel}", ref useParent))
+            {
+                RoleProfile(group).Steps = useParent ? null : (parentProfile?.Steps ?? []).Select(s => s.Copy()).ToList();
+                changed = true;
+            }
+            if (profile?.Steps is { } own)
+            {
+                changed |= widgets.StepList(own, label, own.Add);
+            }
+            else
+            {
+                ImGui.SameLine();
+                ImGui.TextDisabled(widgets.StepNames(parentProfile?.Steps));
+            }
+        }
 
         ImGui.Spacing();
         Section("Buttons");
@@ -253,12 +295,12 @@ internal sealed class ConfigWindow : Window
 
         if (!config.Jobs.TryGetValue(abbreviation, out var profile))
             config.Jobs[abbreviation] = profile = new Profile();
-        config.Groups.TryGetValue(group.Group, out var role);
+        var roleSteps = RoleSteps(group.Group);
 
         ImGui.Spacing();
         Section("When you switch to it");
         var hud = profile.HudLayout;
-        var roleLayout = role?.HudLayout is { } layout ? LayoutLabel(layout) : "Don't change";
+        var roleLayout = LayoutName(RoleLayout(group.Group));
         ImGui.AlignTextToFramePadding();
         ImGui.TextUnformatted("HUD layout");
         ImGui.SameLine();
@@ -277,13 +319,13 @@ internal sealed class ConfigWindow : Window
         var useRole = profile.Steps == null;
         if (ImGui.Checkbox($"Same as {group.Label}", ref useRole))
         {
-            profile.Steps = useRole ? null : (role?.Steps ?? []).Select(s => s.Copy()).ToList();
+            profile.Steps = useRole ? null : (roleSteps ?? []).Select(s => s.Copy()).ToList();
             changed = true;
         }
         if (profile.Steps == null)
         {
             ImGui.SameLine();
-            ImGui.TextDisabled(widgets.StepNames(role?.Steps));
+            ImGui.TextDisabled(widgets.StepNames(roleSteps));
         }
         else
         {
@@ -322,6 +364,17 @@ internal sealed class ConfigWindow : Window
             config.Groups[group] = profile = new Profile();
         return profile;
     }
+
+    // What a role does, counting what it leaves to Combat jobs.
+    private int? RoleLayout(JobGroup group) =>
+        config.Groups.GetValueOrDefault(group)?.HudLayout ??
+        (JobGroups.Parent(group) is { } parent ? config.Groups.GetValueOrDefault(parent)?.HudLayout : null);
+
+    private List<Step>? RoleSteps(JobGroup group) =>
+        config.Groups.GetValueOrDefault(group)?.Steps ??
+        (JobGroups.Parent(group) is { } parent ? config.Groups.GetValueOrDefault(parent)?.Steps : null);
+
+    private string LayoutName(int? layout) => layout is >= 0 ? LayoutLabel(layout.Value) : "Don't change";
 
     private bool IsCustomised(string abbreviation) =>
         config.Jobs.ContainsKey(abbreviation) || config.Bindings.Any(b => b.Rules.Any(r => r.Job == abbreviation));

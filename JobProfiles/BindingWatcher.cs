@@ -72,7 +72,8 @@ internal sealed class BindingWatcher : IDisposable
         var (inDuty, contentType) = duties.Current();
         return binding.Rules
                       .Where(rule =>
-                          (rule.Job != null ? job?.Abbreviation == rule.Job : rule.Group == null || job?.Group == rule.Group) &&
+                          (rule.Job != null ? job?.Abbreviation == rule.Job :
+                           rule.Group == null || job is { } j && (j.Group == rule.Group || JobGroups.Parent(j.Group) == rule.Group)) &&
                           rule.Where switch
                           {
                               DutyScope.OutsideDuty => !inDuty,
@@ -85,7 +86,7 @@ internal sealed class BindingWatcher : IDisposable
     }
 
     private static int Specificity(Rule rule) =>
-        (rule.Job != null ? 20 : rule.Group != null ? 10 : 0) +
+        (rule.Job != null ? 20 : rule.Group == JobGroup.Combat ? 5 : rule.Group != null ? 10 : 0) +
         rule.Where switch
         {
             DutyScope.ContentType => 2,
