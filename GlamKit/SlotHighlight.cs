@@ -15,7 +15,8 @@ using Lumina.Excel.Sheets;
 
 namespace GlamKit;
 
-// Borders the bag, saddlebag, retainer and Armoury Chest slots holding kept gear, as Keep in Mind does.
+// Borders the bag, saddlebag, retainer and Armoury Chest slots holding gear kept for glam, as Keep in Mind does,
+// and badges those holding gear kept for later.
 // Each window's sorter lists its items in the order the window shows them, page after page. A slot is only
 // bordered if it also shows that item's icon, so a wrong guess at the page shown leaves a border out rather
 // than putting one on the wrong item (many items share an icon, so icons alone can't say which item a slot holds).
@@ -24,6 +25,8 @@ internal sealed unsafe class SlotHighlight
     private const float Thickness = 2f;
     private const float Rounding = 6f;
     private const float IconGap = 8f;
+    private const float BadgeSize = 0.35f;
+    private const uint BadgeBackground = 0xC0000000;
 
     // Game windows draw under ImGui, so slots under these are left alone rather than drawn over them.
     private static readonly string[] Covers = ["ItemDetail", "ContextMenu", "Tooltip"];
@@ -54,7 +57,9 @@ internal sealed unsafe class SlotHighlight
     {
         var module = ItemOrderModule.Instance();
         var inventory = InventoryManager.Instance();
-        if (!config.GlamKeeperEnabled || module == null || inventory == null || config.Items.Count == 0)
+        var anyGlam = config.GlamKeeperEnabled && config.Items.Count > 0;
+        var anyLater = config.KeepForLaterEnabled && config.LaterItems.Count > 0;
+        if (module == null || inventory == null || (!anyGlam && !anyLater))
             return;
 
         foreach (var name in Grids)
@@ -85,17 +90,22 @@ internal sealed unsafe class SlotHighlight
         DrawVentureReport();
     }
 
-    // A row of a window listing gear by name is marked when it shows a kept item's name: a hanger after it.
+    // A row of a window listing gear by name is marked when it shows a kept item's name: a hanger after it for
+    // glam, a bookmark for later.
     private void DrawItemList(string addonName)
     {
         var addon = Addon<AtkUnitBase>(addonName);
         var list = addon == null ? null : List(addon);
-        if (list == null || KeptNames() is not { Count: > 0 } kept)
+        if (list == null)
             return;
+        var glamNames = config.GlamKeeperEnabled ? Names(config.Items) : [];
+        var laterNames = config.KeepForLaterEnabled ? Names(config.LaterItems) : [];
+        if (glamNames.Count == 0 && laterNames.Count == 0)
+            return;
+        var kept = glamNames.Union(laterNames).ToHashSet();
 
         var offset = ImGui.GetMainViewport().Pos;
         var drawList = ImGui.GetBackgroundDrawList();
-        var color = ImGui.GetColorU32(config.KeeperColor);
         var listNode = &list->OwnerNode->AtkResNode;
         var clipMin = offset + new Vector2(listNode->ScreenX, listNode->ScreenY);
         var clipMax = clipMin + new Vector2(listNode->Width, listNode->Height) * addon->Scale;
@@ -112,14 +122,13 @@ internal sealed unsafe class SlotHighlight
             var size = height * scale;
             var min = offset + new Vector2(name->AtkResNode.ScreenX + (width + IconGap) * scale,
                                            name->AtkResNode.ScreenY + (name->AtkResNode.Height * scale - size) / 2);
-            if (Covered(min, min + new Vector2(size)))
-                continue;
-            TablerIcons.DrawAt(drawList, TablerIcon.Hanger, min, size, color);
+            var text = ItemLists.Plain(name);
+            DrawMarks(drawList, min, size, IconGap * scale, glamNames.Contains(text), laterNames.Contains(text));
         }
         drawList.PopClipRect();
     }
 
-    // The venture report shows its rewards as icons only, so a kept reward gets a hanger beside its icon.
+    // The venture report shows its rewards as icons only, so a kept reward gets its marks beside its icon.
     private void DrawVentureReport()
     {
         var addon = Addon<AtkUnitBase>(ItemLists.VentureReport);
@@ -129,11 +138,12 @@ internal sealed unsafe class SlotHighlight
 
         var offset = ImGui.GetMainViewport().Pos;
         var drawList = ImGui.GetBackgroundDrawList();
-        var color = ImGui.GetColorU32(config.KeeperColor);
         foreach (var reward in agent->RetainerData.RewardItemIds)
         {
             var itemId = reward % 1_000_000;
-            if (itemId == 0 || !config.IsKept(itemId))
+            var glam = KeptForGlam(itemId);
+            var later = KeptForLater(itemId);
+            if (!glam && !later)
                 continue;
             var icon = IconNode(&addon->UldManager, Icon(itemId));
             if (icon == null || icon->OwnerNode == null || !Shown(&icon->OwnerNode->AtkResNode))
@@ -144,11 +154,28 @@ internal sealed unsafe class SlotHighlight
             var size = node->Height * scale / 2;
             var min = offset + new Vector2(node->ScreenX + (node->Width + IconGap) * scale,
                                            node->ScreenY + (node->Height * scale - size) / 2);
-            if (Covered(min, min + new Vector2(size)))
-                continue;
-            TablerIcons.DrawAt(drawList, TablerIcon.Hanger, min, size, color);
+            DrawMarks(drawList, min, size, IconGap * scale, glam, later);
         }
     }
+
+    // A hanger, then a bookmark, in a row from min.
+    private void DrawMarks(ImDrawListPtr drawList, Vector2 min, float size, float gap, bool glam, bool later)
+    {
+        var count = (glam ? 1 : 0) + (later ? 1 : 0);
+        if (count == 0 || Covered(min, min + new Vector2(count * size + (count - 1) * gap, size)))
+            return;
+        if (glam)
+        {
+            TablerIcons.DrawAt(drawList, TablerIcon.Hanger, min, size, ImGui.GetColorU32(config.KeeperColor));
+            min.X += size + gap;
+        }
+        if (later)
+            TablerIcons.DrawAt(drawList, TablerIcon.Bookmark, min, size, ImGui.GetColorU32(config.LaterColor));
+    }
+
+    private bool KeptForGlam(uint itemId) => config.GlamKeeperEnabled && config.IsKept(itemId);
+
+    private bool KeptForLater(uint itemId) => config.KeepForLaterEnabled && config.IsKeptForLater(itemId);
 
     // HQ icons are 1,000,000 on.
     private static AtkComponentIcon* IconNode(AtkUldManager* uld, uint iconId)
@@ -170,10 +197,10 @@ internal sealed unsafe class SlotHighlight
         return null;
     }
 
-    private HashSet<string> KeptNames()
+    private HashSet<string> Names(IEnumerable<KeptItem> items)
     {
         var kept = new HashSet<string>();
-        foreach (var item in config.Items)
+        foreach (var item in items)
         {
             if (!names.TryGetValue(item.ItemId, out var name))
                 names[item.ItemId] = name = data.GetExcelSheet<Item>().GetRowOrDefault(item.ItemId)?.Name.ExtractText() ?? "";
@@ -322,13 +349,16 @@ internal sealed unsafe class SlotHighlight
         var offset = ImGui.GetMainViewport().Pos;
         var drawList = ImGui.GetBackgroundDrawList();
         var color = ImGui.GetColorU32(config.KeeperColor);
+        var laterColor = ImGui.GetColorU32(config.LaterColor);
         for (var i = 0; i < slots.Length; i++)
         {
             var slot = slots[i].Value;
             if (slot == null || slot->OwnerNode == null)
                 continue;
             var itemId = ItemAt(inventory, sorter, first + i);
-            if (!config.IsKept(itemId))
+            var glam = KeptForGlam(itemId);
+            var later = KeptForLater(itemId);
+            if (!glam && !later)
                 continue;
             // HQ icons are 1,000,000 on.
             if ((uint)Math.Max(0, slot->GetIconId()) % 1_000_000 != Icon(itemId))
@@ -342,7 +372,16 @@ internal sealed unsafe class SlotHighlight
             var max = min + new Vector2(node->Width, node->Height) * scale;
             if (Covered(min, max))
                 continue;
-            drawList.AddRect(min, max, color, Rounding * scale, ImDrawFlags.None, Thickness * scale);
+            if (glam)
+                drawList.AddRect(min, max, color, Rounding * scale, ImDrawFlags.None, Thickness * scale);
+            if (later)
+            {
+                // On a dark disc in the top-right corner, so it reads over any item icon.
+                var size = node->Width * scale * BadgeSize;
+                var center = new Vector2(max.X - size * 0.7f, min.Y + size * 0.7f);
+                drawList.AddCircleFilled(center, size * 0.7f, BadgeBackground);
+                TablerIcons.DrawAt(drawList, TablerIcon.Bookmark, center - new Vector2(size / 2), size, laterColor);
+            }
         }
     }
 
@@ -381,7 +420,7 @@ internal sealed unsafe class SlotHighlight
                             $"page {page?.ToString() ?? "hidden"}, {slots.Length} slots, first icons {string.Join(" ", shown)}{extra}");
         }
 
-        var kept = KeptNames();
+        var kept = Names(config.Items.Concat(config.LaterItems));
         foreach (var name in ItemLists.Addons)
         {
             var addon = (AtkUnitBase*)gameGui.GetAddonByName(name).Address;

@@ -32,6 +32,18 @@ Allagan Tools, Saddlebag and Retainer).
 
 Gear is kept by item, so every copy of the same item counts as kept.
 
+## Keep for Later
+
+For gear worth keeping for its stats or item level rather than its looks, e.g. an off-job set.
+
+Open the item menu on gear and choose **Keep for Later** (or **Stop Keeping for Later**). It works alongside
+Keep for Glam, and a piece can be both. Gear kept for later:
+
+- has a bookmark in the corner of its slot in your bags, saddlebag, retainer and Armoury Chest windows, and
+  after its name or icon wherever Glam Keeper puts a hanger (colour in settings);
+- says "Kept for later" in its tooltip;
+- has its own tab in `/glamkit`, and stays kept until you stop keeping it, glamour dresser or not.
+
 ## Job Levels
 
 A gear tooltip's job line (e.g. "PLD WAR DRK GNB") shows your level on each job instead:
@@ -50,7 +62,8 @@ Glam Off calls the Fitting Room the same way the menu's **Try On** does, with th
 
 Glam Keeper only reads your inventory and changes your own UI: menu entries, ImGui borders and tooltip
 text. It never presses anything or sends anything to the server. The tooltip
-line uses one hook, the same as Keep in Mind's; if a patch breaks it, only the tooltip line goes.
+line uses one hook, the same as Keep in Mind's; if a patch breaks it, only the tooltip line goes. Keep for
+Later works the same way.
 
 Job Levels reads your levels from the client and rewrites the tooltip's job line through that same hook. The
 equip level is recoloured just before the tooltip draws.

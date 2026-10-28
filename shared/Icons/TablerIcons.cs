@@ -11,6 +11,7 @@ namespace Icons;
 internal enum TablerIcon
 {
     ArrowBackUp,
+    Bookmark,
     Hanger,
     MoneybagMinus,
     MoneybagPlus,

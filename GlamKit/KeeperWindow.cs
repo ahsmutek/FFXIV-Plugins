@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
@@ -11,7 +12,7 @@ using Item = Lumina.Excel.Sheets.Item;
 
 namespace GlamKit;
 
-// Everything kept for glam, with where it is now.
+// Everything kept for glam or for later, a tab each, with where it is now.
 internal sealed class KeeperWindow : Window
 {
     private readonly Configuration config;
@@ -47,17 +48,25 @@ internal sealed class KeeperWindow : Window
         windowMax = windowMin + ImGui.GetWindowSize();
 
         var footer = ImGui.GetFrameHeightWithSpacing() + ImGui.GetStyle().ItemSpacing.Y;
-        using (var list = ImRaii.Child("##list", new Vector2(0, -footer)))
+        var off = (string?)null;
+        using (var tabs = ImRaii.TabBar("##tabs"))
         {
-            if (list)
-                DrawList();
+            if (tabs)
+            {
+                if (DrawTab("For Glam", config.Items, "Keep for Glam", "Stop keeping for glam", footer) &&
+                    !config.GlamKeeperEnabled)
+                    off = "Glam Keeper is off in settings.";
+                if (DrawTab("For Later", config.LaterItems, "Keep for Later", "Stop keeping for later", footer) &&
+                    !config.KeepForLaterEnabled)
+                    off = "Keep for Later is off in settings.";
+            }
         }
 
         ImGui.Separator();
-        if (!config.GlamKeeperEnabled)
+        if (off != null)
         {
             ImGui.AlignTextToFramePadding();
-            ImGui.TextDisabled("Glam Keeper is off in settings.");
+            ImGui.TextDisabled(off);
             ImGui.SameLine();
         }
         ImGui.SetCursorPosX(ImGui.GetWindowContentRegionMax().X - ImGui.GetFrameHeight());
@@ -67,30 +76,42 @@ internal sealed class KeeperWindow : Window
             ImGui.SetTooltip("Settings");
     }
 
-    private void DrawList()
+    // Returns whether the tab is the one shown.
+    private bool DrawTab(string label, List<KeptItem> items, string menuEntry, string removeTip, float footer)
     {
-        if (config.Items.Count == 0)
+        using var tab = ImRaii.TabItem($"{label} ({items.Count})###{label}");
+        if (!tab)
+            return false;
+        using var list = ImRaii.Child("##list", new Vector2(0, -footer));
+        if (list)
+            DrawList(items, menuEntry, removeTip);
+        return true;
+    }
+
+    private void DrawList(List<KeptItem> items, string menuEntry, string removeTip)
+    {
+        if (items.Count == 0)
         {
             ImGui.PushTextWrapPos();
-            ImGui.TextDisabled("Nothing kept. Open the item menu on gear and choose Keep for Glam.");
+            ImGui.TextDisabled($"Nothing kept. Open the item menu on gear and choose {menuEntry}.");
             ImGui.PopTextWrapPos();
             return;
         }
 
         KeptItem? remove = null;
-        foreach (var kept in config.Items.OrderBy(i => Name(i.ItemId)))
+        foreach (var kept in items.OrderBy(i => Name(i.ItemId)))
         {
-            if (DrawRow(kept))
+            if (DrawRow(kept, removeTip))
                 remove = kept;
         }
         if (remove != null)
         {
-            config.Items.Remove(remove);
+            items.Remove(remove);
             save();
         }
     }
 
-    private bool DrawRow(KeptItem kept)
+    private bool DrawRow(KeptItem kept, string removeTip)
     {
         using var id = ImRaii.PushId((int)kept.ItemId);
         var iconSize = new Vector2(ImGui.GetFrameHeight() * 1.6f);
@@ -113,7 +134,7 @@ internal sealed class KeeperWindow : Window
         ImGui.SameLine(ImGui.GetContentRegionMax().X - removeWidth);
         var removed = TablerIcons.Button(TablerIcon.X);
         if (ImGui.IsItemHovered())
-            ImGui.SetTooltip("Stop keeping for glam");
+            ImGui.SetTooltip(removeTip);
         return removed;
     }
 

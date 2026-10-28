@@ -69,14 +69,14 @@ internal sealed class Locations : IDisposable
 
     private void OnUpdate(IFramework _)
     {
-        if (DateTime.UtcNow < nextCheck || !clientState.IsLoggedIn || !config.GlamKeeperEnabled)
+        if (DateTime.UtcNow < nextCheck || !clientState.IsLoggedIn || (!config.GlamKeeperEnabled && !config.KeepForLaterEnabled))
             return;
         nextCheck = DateTime.UtcNow + CheckEvery;
 
         var now = new Dictionary<uint, string>();
-        foreach (var kept in config.Items)
+        foreach (var kept in config.Items.Concat(config.LaterItems))
         {
-            if (Find(kept.ItemId) is { } place)
+            if (!now.ContainsKey(kept.ItemId) && Find(kept.ItemId) is { } place)
                 now[kept.ItemId] = place;
         }
         places = now;

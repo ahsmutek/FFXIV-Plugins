@@ -13,7 +13,7 @@ using Lumina.Excel.Sheets;
 
 namespace GlamKit;
 
-// Adds a line to the game's item tooltip of kept gear, under the description, and turns the class/job line into
+// Adds a line to the game's item tooltip of gear kept for glam or later, under the description, and turns the class/job line into
 // job levels. The game fills the tooltip's strings during ItemDetail's update, so they're changed just before it
 // lays them out, as Simple Tweaks does.
 internal sealed unsafe class ItemTooltip : IDisposable
@@ -22,6 +22,7 @@ internal sealed unsafe class ItemTooltip : IDisposable
         "48 89 5C 24 ?? 55 56 57 41 54 41 55 41 56 41 57 48 83 EC ?? 48 8B 42 ?? 4C 8B EA";
 
     private const string Line = "Kept for glam: move it to the glamour dresser";
+    private const string LaterLine = "Kept for later: worth keeping for its stats";
     private const int Description = 13;
     private const int ClassJobCategory = 22;
 
@@ -34,6 +35,7 @@ internal sealed unsafe class ItemTooltip : IDisposable
 
     // The UIColor row nearest this, as the game colours text by row.
     private const uint Purple = 0xC78CFF;
+    private const uint Teal = 0x59D9BF;
 
     private delegate void GenerateDelegate(AddonItemDetail* addon, NumberArrayData* numbers, StringArrayData* strings);
 
@@ -44,6 +46,7 @@ internal sealed unsafe class ItemTooltip : IDisposable
     private readonly JobLevels jobLevels;
     private readonly Hook<GenerateDelegate>? hook;
     private readonly ushort purple;
+    private readonly ushort teal;
     private byte[] lastJobLine = [];
 
     public ItemTooltip(IGameInteropProvider interop, IAddonLifecycle lifecycle, IDataManager data, IGameGui gameGui,
@@ -55,6 +58,7 @@ internal sealed unsafe class ItemTooltip : IDisposable
         this.config = config;
         jobLevels = new JobLevels(data, config);
         purple = Nearest(data, Purple);
+        teal = Nearest(data, Teal);
         try
         {
             hook = interop.HookFromSignature<GenerateDelegate>(GenerateSignature, Generate);
@@ -129,7 +133,12 @@ internal sealed unsafe class ItemTooltip : IDisposable
 
     private void AddLine(NumberArrayData* numbers, StringArrayData* strings)
     {
-        if (!config.GlamKeeperEnabled || strings == null || strings->Size <= Description || !config.IsKept(HoveredItem()))
+        if (strings == null || strings->Size <= Description)
+            return;
+        var itemId = HoveredItem();
+        var glam = config.GlamKeeperEnabled && config.IsKept(itemId);
+        var later = config.KeepForLaterEnabled && config.IsKeptForLater(itemId);
+        if (!glam && !later)
             return;
 
         // Items without a description of their own have it hidden, so it's shown, as Allagan Tools does.
@@ -138,13 +147,18 @@ internal sealed unsafe class ItemTooltip : IDisposable
 
         var current = strings->StringArray[Description].Value;
         var description = current == null ? new SeString() : SeString.Parse(current);
-        if (description.TextValue.Contains(Line))
+        if (description.TextValue.Contains(Line) || description.TextValue.Contains(LaterLine))
             return;
 
         var builder = new SeStringBuilder().Append(description);
         if (description.Payloads.Count > 0)
             builder.Add(NewLinePayload.Payload).Add(NewLinePayload.Payload);
-        builder.AddUiForeground(Line, purple);
+        if (glam)
+            builder.AddUiForeground(Line, purple);
+        if (glam && later)
+            builder.Add(NewLinePayload.Payload);
+        if (later)
+            builder.AddUiForeground(LaterLine, teal);
 
         var bytes = builder.Build().EncodeWithNullTerminator();
         fixed (byte* text = bytes)

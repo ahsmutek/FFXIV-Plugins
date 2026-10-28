@@ -63,6 +63,36 @@ internal sealed class SettingsWindow : Window
         ImGui.Unindent();
 
         ImGui.Spacing();
+        var later = config.KeepForLaterEnabled;
+        if (ImGui.Checkbox("Keep for Later", ref later))
+        {
+            config.KeepForLaterEnabled = later;
+            save();
+        }
+        Describe("For gear worth keeping for its stats or item level. Open the item menu on gear and choose",
+                 "\"Keep for Later\". It gets a bookmark in your bags and Armoury Chest until you stop keeping it.");
+
+        ImGui.Indent();
+        var laterColor = config.LaterColor;
+        if (ImGui.ColorEdit4("Bookmark colour", ref laterColor, ColorFlags))
+        {
+            config.LaterColor = laterColor;
+            save();
+        }
+        if (config.LaterColor != Configuration.DefaultLaterColor)
+        {
+            ImGui.SameLine();
+            if (TablerIcons.Button(TablerIcon.ArrowBackUp, "later"))
+            {
+                config.LaterColor = Configuration.DefaultLaterColor;
+                save();
+            }
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip("Reset");
+        }
+        ImGui.Unindent();
+
+        ImGui.Spacing();
         var jobLevels = config.JobLevelsEnabled;
         if (ImGui.Checkbox("Job Levels", ref jobLevels))
         {
