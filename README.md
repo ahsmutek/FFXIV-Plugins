@@ -58,6 +58,10 @@ Finds small named places like The Slow Wash without a web search. List your curr
 places, browse by region or A–Z, or search, all with the D-pad and a map preview. Press A to
 open the map with the place flagged. `/place`
 
+### [Hunt Map](HuntMap/)
+Shows every spot where the B-rank targets of your weekly Elite Mark Bills can spawn, on the
+game's own map, and lets you tick spots off as you check them with the D-pad. `/huntmap`
+
 ## Building
 
 From a plugin's folder:

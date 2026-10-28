@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Dalamud.NET.Sdk/15.0.0">
+  <PropertyGroup>
+    <Version>1.0.0.0</Version>
+    <PackageProjectUrl>https://github.com/anna-wro/FFXIV-Plugins</PackageProjectUrl>
+    <PackageLicenseExpression>AGPL-3.0-or-later</PackageLicenseExpression>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <!-- Spawn points from https://github.com/RKI027/ffxiv-huntmaps-maker (MIT). -->
+  <ItemGroup>
+    <EmbeddedResource Include="data/marks.json" LogicalName="marks.json" />
+    <None Include="data/LICENSE-ffxiv-huntmaps-maker.txt" Link="LICENSE-ffxiv-huntmaps-maker.txt" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>
