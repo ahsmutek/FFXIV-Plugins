@@ -39,8 +39,8 @@ For gear worth keeping for its stats or item level rather than its looks, e.g. a
 Open the item menu on gear and choose **Keep for Later** (or **Stop Keeping for Later**). It works alongside
 Keep for Glam, and a piece can be both. Gear kept for later:
 
-- has a bookmark in the corner of its slot in your bags, saddlebag, retainer and Armoury Chest windows, and
-  after its name or icon wherever Glam Keeper puts a hanger (colour in settings);
+- is bordered in teal in your bags, saddlebag, retainer and Armoury Chest windows (inside the glam border if
+  it's both), and has a bookmark after its name or icon wherever Glam Keeper puts a hanger (colour in settings);
 - says "Kept for later" in its tooltip;
 - has its own tab in `/glamkit`, and stays kept until you stop keeping it, glamour dresser or not.
 

@@ -70,11 +70,11 @@ internal sealed class SettingsWindow : Window
             save();
         }
         Describe("For gear worth keeping for its stats or item level. Open the item menu on gear and choose",
-                 "\"Keep for Later\". It gets a bookmark in your bags and Armoury Chest until you stop keeping it.");
+                 "\"Keep for Later\". It's bordered in your bags and Armoury Chest until you stop keeping it.");
 
         ImGui.Indent();
         var laterColor = config.LaterColor;
-        if (ImGui.ColorEdit4("Bookmark colour", ref laterColor, ColorFlags))
+        if (ImGui.ColorEdit4("Border colour##later", ref laterColor, ColorFlags))
         {
             config.LaterColor = laterColor;
             save();

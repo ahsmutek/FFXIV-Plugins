@@ -16,7 +16,7 @@ using Lumina.Excel.Sheets;
 namespace GlamKit;
 
 // Borders the bag, saddlebag, retainer and Armoury Chest slots holding gear kept for glam, as Keep in Mind does,
-// and badges those holding gear kept for later.
+// and in teal those holding gear kept for later.
 // Each window's sorter lists its items in the order the window shows them, page after page. A slot is only
 // bordered if it also shows that item's icon, so a wrong guess at the page shown leaves a border out rather
 // than putting one on the wrong item (many items share an icon, so icons alone can't say which item a slot holds).
@@ -25,8 +25,6 @@ internal sealed unsafe class SlotHighlight
     private const float Thickness = 2f;
     private const float Rounding = 6f;
     private const float IconGap = 8f;
-    private const float BadgeSize = 0.35f;
-    private const uint BadgeBackground = 0xC0000000;
 
     // Game windows draw under ImGui, so slots under these are left alone rather than drawn over them.
     private static readonly string[] Covers = ["ItemDetail", "ContextMenu", "Tooltip"];
@@ -376,11 +374,9 @@ internal sealed unsafe class SlotHighlight
                 drawList.AddRect(min, max, color, Rounding * scale, ImDrawFlags.None, Thickness * scale);
             if (later)
             {
-                // On a dark disc in the top-right corner, so it reads over any item icon.
-                var size = node->Width * scale * BadgeSize;
-                var center = new Vector2(max.X - size * 0.7f, min.Y + size * 0.7f);
-                drawList.AddCircleFilled(center, size * 0.7f, BadgeBackground);
-                TablerIcons.DrawAt(drawList, TablerIcon.Bookmark, center - new Vector2(size / 2), size, laterColor);
+                // Inside the glam border when the item has both.
+                var inset = new Vector2(glam ? Thickness * scale : 0);
+                drawList.AddRect(min + inset, max - inset, laterColor, Rounding * scale, ImDrawFlags.None, Thickness * scale);
             }
         }
     }
