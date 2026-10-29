@@ -5,6 +5,7 @@ using Dalamud.IoC;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
 
+using IconAtlasClient;
 using Shortcuts;
 
 namespace FlickWheel;
@@ -63,6 +64,7 @@ public sealed class Plugin : IDalamudPlugin
     private readonly WheelOverlay overlay;
     private readonly IconCache icons;
     private readonly ChatLogToggle chatLog;
+    private readonly IconPicker iconPicker;
 
     public Plugin()
     {
@@ -81,7 +83,9 @@ public sealed class Plugin : IDalamudPlugin
         var switcher = new JobSwitcher(Condition, Toasts);
         wheels.Add(new JobsModule(config, catalog, switcher, icons, overlay));
         chatLog = new ChatLogToggle(Framework);
-        wheels.Add(new ShortcutsModule(config, Save, new ShortcutCatalog(Data, CommandManager, Buddies, chatLog), icons, overlay));
+        iconPicker = new IconPicker(PluginInterface, "FlickWheel");
+        wheels.Add(new ShortcutsModule(config, Save, new ShortcutCatalog(Data, CommandManager, Buddies, chatLog), icons, overlay,
+                                       iconPicker));
 
         configWindow = new ConfigWindow(config, Save, wheels, overlay, KeyState);
         windows.AddWindow(configWindow);
@@ -120,6 +124,7 @@ public sealed class Plugin : IDalamudPlugin
         input.Dispose();
         blocker.Dispose();
         chatLog.Dispose();
+        iconPicker.Dispose();
         PluginInterface.UiBuilder.OpenConfigUi -= configWindow.Toggle;
         PluginInterface.UiBuilder.OpenMainUi -= configWindow.Toggle;
         windows.RemoveAllWindows();

@@ -11,4 +11,9 @@
   <ItemGroup>
     <Compile Include="../shared/Shortcuts/*.cs" LinkBase="shared/Shortcuts" />
   </ItemGroup>
+
+  <!-- Choosing icons in the Icon Atlas plugin, shared with Retainer Cooldown. -->
+  <ItemGroup>
+    <Compile Include="../shared/IconAtlas/*.cs" LinkBase="shared/IconAtlas" />
+  </ItemGroup>
 </Project>

@@ -2,6 +2,7 @@ using Dalamud.Game.Command;
 using Dalamud.Interface.Windowing;
 using Dalamud.IoC;
 using Dalamud.Plugin;
+using Dalamud.Plugin.Ipc;
 using Dalamud.Plugin.Services;
 
 namespace IconAtlas;
@@ -22,6 +23,9 @@ public sealed class Plugin : IDalamudPlugin
     private readonly Configuration config;
     private readonly WindowSystem windows = new("IconAtlas");
     private readonly AtlasWindow atlas;
+    // Other plugins call IconAtlas.Pick(token, purpose, current icon) and hear back on IconAtlas.Picked(token, icon).
+    private readonly ICallGateProvider<string, string, uint, object> pick;
+    private readonly ICallGateProvider<string, uint, object> picked;
 
     public Plugin()
     {
@@ -32,6 +36,11 @@ public sealed class Plugin : IDalamudPlugin
 
         PluginInterface.UiBuilder.Draw += windows.Draw;
         PluginInterface.UiBuilder.OpenMainUi += atlas.Toggle;
+
+        pick = PluginInterface.GetIpcProvider<string, string, uint, object>("IconAtlas.Pick");
+        picked = PluginInterface.GetIpcProvider<string, uint, object>("IconAtlas.Picked");
+        pick.RegisterAction(atlas.Pick);
+        atlas.Picked += OnPicked;
 
         CommandManager.AddHandler(CommandName, new CommandInfo(OnCommand)
         {
@@ -50,11 +59,15 @@ public sealed class Plugin : IDalamudPlugin
             atlas.Search(text);
     }
 
+    private void OnPicked(string token, uint icon) => picked.SendMessage(token, icon);
+
     private void Save() => PluginInterface.SavePluginConfig(config);
 
     public void Dispose()
     {
         CommandManager.RemoveHandler(CommandName);
+        pick.UnregisterAction();
+        atlas.Picked -= OnPicked;
         PluginInterface.UiBuilder.Draw -= windows.Draw;
         PluginInterface.UiBuilder.OpenMainUi -= atlas.Toggle;
         windows.RemoveAllWindows();

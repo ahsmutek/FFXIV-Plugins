@@ -71,8 +71,8 @@ On the **Shortcuts** tab, **+** adds a shortcut to a group:
 - **Commands** – any chat command with your own label and icon, e.g. `/gs change 3`. A
   plugin's command only shows while that plugin is loaded.
 
-Drag a shortcut to reorder it; right-click it to relabel, change its icon, move or remove
-it. Groups can be renamed, recolored, moved, pinned to the top and deleted (Ctrl if not
+Drag a shortcut to reorder it; right-click it to relabel, change its icon (chosen in [Icon Atlas](../IconAtlas/) when
+it's loaded, otherwise by ID), move or remove it. Groups can be renamed, recolored, moved, pinned to the top and deleted (Ctrl if not
 empty). Entries you can't use yet leave their spot empty.
 
 ### More shortcut wheels

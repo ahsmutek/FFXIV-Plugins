@@ -8,9 +8,9 @@ Shows your next retainer venture as a native-looking cooldown icon on the HUD.
 - A second icon of your choice once every venture is done.
 - Tracks the soonest or the last venture to finish.
 - Hover for every retainer's venture state.
-- Pick icons from a browser in settings, or by ID; sizes snap to hotbar sizes (32–128px).
+- Click an icon in settings to choose another in [Icon Atlas](../IconAtlas/) (or type its ID without it); sizes snap to hotbar sizes (32–128px).
 - Optionally hide the timer, or the whole icon while no ventures are running.
-- Reads only `RetainerManager`; no plugin dependencies.
+- Reads only `RetainerManager`; Icon Atlas is optional.
 
 ## Usage
 

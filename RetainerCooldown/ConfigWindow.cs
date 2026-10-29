@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Numerics;
 using Dalamud.Interface.Windowing;
 using Dalamud.Bindings.ImGui;
@@ -8,16 +7,11 @@ namespace RetainerCooldown;
 
 internal sealed class ConfigWindow : Window
 {
-    private const int PageSpan = 200;
-
     private static readonly string[] DisplayModeLabels = ["Fastest to complete", "Latest to complete"];
     private static readonly string[] LengthLabels =
         Array.ConvertAll(Configuration.VentureLengthPresets, preset => preset.Label);
 
     private readonly Plugin plugin;
-    private int browseStart = -1;
-    private readonly List<uint> pageIcons = [];
-    private int pageIconsStart = -1;
     private bool dirty;
     private bool editingComplete;
     private uint savedIconId;
@@ -111,6 +105,12 @@ internal sealed class ConfigWindow : Window
             }
         }
 
+        if (plugin.IconPicker.Available)
+        {
+            ImGui.TextDisabled("Click an icon to choose another in Icon Atlas.");
+            return changed;
+        }
+
         var iconId = (int)(editingComplete ? plugin.Config.CompleteIconId : plugin.Config.IconId);
         ImGui.SetNextItemWidth(120f);
         if (ImGui.InputInt(editingComplete ? "Complete icon ID" : "Icon ID", ref iconId))
@@ -120,62 +120,8 @@ internal sealed class ConfigWindow : Window
             else plugin.Config.IconId = id;
             changed = true;
         }
-
-        if (browseStart < 0)
-            browseStart = Math.Max(0, iconId - iconId % PageSpan);
-
-        if (ImGui.Button("< Prev")) browseStart = Math.Max(0, browseStart - PageSpan);
-        ImGui.SameLine();
-        if (ImGui.Button("Next >")) browseStart += PageSpan;
-        ImGui.SameLine();
-        ImGui.TextDisabled($"{browseStart}\u2013{browseStart + PageSpan - 1}");
-
-        ImGui.BeginChild("iconGrid", new Vector2(0, 240), true);
-        const float cell = 48f;
-        var cols = Math.Max(1, (int)(ImGui.GetContentRegionAvail().X / (cell + 8f)));
-        var shown = 0;
-        foreach (var id in PageIcons())
-        {
-            if (!plugin.TryGetIcon(id, out var w) || w == null) continue;
-
-            ImGui.PushID((int)id);
-            var selectedId = editingComplete ? plugin.Config.CompleteIconId : plugin.Config.IconId;
-            var selected = id == selectedId;
-            if (selected)
-                ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(.9f, .75f, .3f, .8f));
-            if (ImGui.ImageButton(w.Handle, new Vector2(cell)))
-            {
-                if (editingComplete) plugin.Config.CompleteIconId = id;
-                else plugin.Config.IconId = id;
-                changed = true;
-            }
-            if (selected) ImGui.PopStyleColor();
-            if (ImGui.IsItemHovered())
-            {
-                ImGui.BeginTooltip();
-                ImGui.TextUnformatted(id.ToString());
-                ImGui.EndTooltip();
-            }
-            ImGui.PopID();
-
-            if (++shown % cols != 0) ImGui.SameLine();
-        }
-        ImGui.EndChild();
-
+        ImGui.TextDisabled("Load Icon Atlas to choose from every icon.");
         return changed;
-    }
-
-    private List<uint> PageIcons()
-    {
-        if (pageIconsStart == browseStart)
-            return pageIcons;
-
-        pageIcons.Clear();
-        for (var id = (uint)browseStart; id < browseStart + PageSpan; id++)
-            if (plugin.IconExists(id))
-                pageIcons.Add(id);
-        pageIconsStart = browseStart;
-        return pageIcons;
     }
 
     private void DrawIconSlot(bool complete, string label)
@@ -196,7 +142,14 @@ internal sealed class ConfigWindow : Window
         if (clicked)
         {
             editingComplete = complete;
-            browseStart = (int)(iconId - iconId % PageSpan);
+            if (plugin.IconPicker.Available)
+                plugin.IconPicker.Open(complete ? "Retainer Cooldown, all complete" : "Retainer Cooldown, in progress",
+                                       iconId, picked =>
+                                       {
+                                           if (complete) plugin.Config.CompleteIconId = picked;
+                                           else plugin.Config.IconId = picked;
+                                           dirty = true;
+                                       });
         }
 
         ImGui.TextUnformatted(label);

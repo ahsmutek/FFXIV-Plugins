@@ -43,6 +43,8 @@ internal sealed class AtlasWindow : Window, IDisposable
     private string goTo = string.Empty;
     private bool scrollToSelected = true;
     private bool scrollToRange = true;
+    // Set while another plugin asked for an icon, through the IconAtlas.Pick IPC.
+    private (string Token, string Purpose)? picking;
     private int columns = 1;
 
     private string idsKey = string.Empty;
@@ -76,6 +78,17 @@ internal sealed class AtlasWindow : Window, IDisposable
         scrollToSelected = scrollToRange = true;
     }
 
+    public event Action<string, uint>? Picked;
+
+    public void Pick(string token, string purpose, uint current)
+    {
+        picking = (token, purpose);
+        if (current > 0)
+            Show(current);
+        else
+            IsOpen = true;
+    }
+
     public void Search(string text)
     {
         IsOpen = true;
@@ -85,6 +98,7 @@ internal sealed class AtlasWindow : Window, IDisposable
 
     public override void OnClose()
     {
+        picking = null;
         config.LastId = selected;
         save();
     }
@@ -106,6 +120,7 @@ internal sealed class AtlasWindow : Window, IDisposable
 
         ImGui.SameLine();
         ImGui.BeginGroup();
+        DrawPicking();
         DrawHeader();
         var detailHeight = PreviewSize * scale + ImGui.GetStyle().WindowPadding.Y * 2;
         var gridHeight = ImGui.GetContentRegionAvail().Y - detailHeight - ImGui.GetStyle().ItemSpacing.Y;
@@ -266,6 +281,28 @@ internal sealed class AtlasWindow : Window, IDisposable
         save();
     }
 
+    private void DrawPicking()
+    {
+        if (picking is not { } pick)
+            return;
+        ImGui.TextColored(Gold, $"Choosing an icon for {pick.Purpose}");
+        ImGui.SameLine();
+        if (ImGui.Button("Use this icon"))
+            Use(selected);
+        ImGui.SameLine();
+        if (ImGui.Button("Cancel"))
+            IsOpen = false;
+        ImGui.Separator();
+    }
+
+    private void Use(uint id)
+    {
+        if (picking is not { } pick)
+            return;
+        Picked?.Invoke(pick.Token, id);
+        IsOpen = false;
+    }
+
     private void DrawHeader()
     {
         switch (view)
@@ -372,6 +409,8 @@ internal sealed class AtlasWindow : Window, IDisposable
             selected = id;
         if (ImGui.IsItemClicked(ImGuiMouseButton.Right))
             toggleLater = id;
+        if (picking != null && ImGui.IsItemHovered() && ImGui.IsMouseDoubleClicked(ImGuiMouseButton.Left))
+            Use(id);
         var hovered = ImGui.IsItemHovered();
 
         var rounding = ImGui.GetStyle().FrameRounding;
@@ -411,6 +450,8 @@ internal sealed class AtlasWindow : Window, IDisposable
         }
         else
             ImGui.TextColored(Dim, "No icon");
+        if (picking != null)
+            ImGui.TextColored(Dim, "Double-click to use");
         ImGui.TextColored(Dim, favorite ? "Right-click to unfavorite" : "Right-click to favorite");
         ImGui.EndTooltip();
     }

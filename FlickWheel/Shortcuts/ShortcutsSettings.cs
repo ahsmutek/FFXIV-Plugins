@@ -4,24 +4,28 @@ using System.Linq;
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
 
+using IconAtlasClient;
 using Shortcuts;
 
 namespace FlickWheel;
 
 internal sealed class ShortcutsSettings(Configuration config, ShortcutsModule module, ShortcutCatalog catalog, IconCache icons,
-                                        WheelOverlay overlay, ShortcutPicker picker)
+                                        WheelOverlay overlay, ShortcutPicker picker, IconPicker iconPicker)
 {
     // Far-apart hues first.
     private static readonly int[] HueOrder = [11, 6, 0, 2, 14, 8, 3, 16, 12, 5, 9, 15, 1, 4, 7, 10, 13, 17];
 
     private string? selectedUid;
+    // An icon chosen in Icon Atlas arrives between frames; the next Draw reports it so it's saved.
+    private bool iconPicked;
 
     private ShortcutWheel Wheel =>
         module.AllWheels().FirstOrDefault(w => w.Uid == selectedUid) ?? config.Shortcuts!;
 
     public bool Draw()
     {
-        var changed = false;
+        var changed = iconPicked;
+        iconPicked = false;
         changed |= DrawWheelChoice();
         ImGui.Spacing();
         ImGui.TextWrapped("Groups are listed clockwise. Drag a shortcut sideways to move it within its group; right-click it to rename, change its icon, move it to another group or remove it. Press + to add a shortcut.");
@@ -270,7 +274,7 @@ internal sealed class ShortcutsSettings(Configuration config, ShortcutsModule mo
 
     private static string Short(string name) => name.Length <= 3 ? name : name[..3];
 
-    private static bool DrawEntryMenu(List<ShortcutGroup> groups, int groupIndex, ShortcutEntry entry, ref Action? pending)
+    private bool DrawEntryMenu(List<ShortcutGroup> groups, int groupIndex, ShortcutEntry entry, ref Action? pending)
     {
         var changed = false;
 
@@ -282,12 +286,33 @@ internal sealed class ShortcutsSettings(Configuration config, ShortcutsModule mo
             changed = true;
         }
 
-        var icon = (int)entry.IconId;
-        ImGui.SetNextItemWidth(200f);
-        if (ImGui.InputInt("Icon ID (0 = default)", ref icon))
+        if (iconPicker.Available)
         {
-            entry.IconId = (uint)Math.Max(0, icon);
-            changed = true;
+            iconPicker.Button("Choose icon…", entry.Label ?? "a Flick Wheel shortcut", entry.IconId, picked =>
+            {
+                entry.IconId = picked;
+                iconPicked = true;
+            });
+            if (entry.IconId != 0)
+            {
+                ImGui.SameLine();
+                if (ImGui.Button("Default icon"))
+                {
+                    entry.IconId = 0;
+                    changed = true;
+                }
+            }
+        }
+        else
+        {
+            var icon = (int)entry.IconId;
+            ImGui.SetNextItemWidth(200f);
+            if (ImGui.InputInt("Icon ID (0 = default)", ref icon))
+            {
+                entry.IconId = (uint)Math.Max(0, icon);
+                changed = true;
+            }
+            ImGui.TextDisabled("Load Icon Atlas to choose from every icon.");
         }
 
         if (entry.Kind is ShortcutKind.Command or ShortcutKind.Text)

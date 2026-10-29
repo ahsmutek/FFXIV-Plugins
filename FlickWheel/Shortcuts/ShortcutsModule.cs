@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 
+using IconAtlasClient;
 using Shortcuts;
 
 namespace FlickWheel;
@@ -14,7 +15,8 @@ internal sealed class ShortcutsModule : IWheelModule
     private readonly Configuration config;
     private readonly ShortcutCatalog catalog;
 
-    public ShortcutsModule(Configuration config, Action save, ShortcutCatalog catalog, IconCache icons, WheelOverlay overlay)
+    public ShortcutsModule(Configuration config, Action save, ShortcutCatalog catalog, IconCache icons, WheelOverlay overlay,
+                           IconPicker iconPicker)
     {
         this.config = config;
         this.catalog = catalog;
@@ -24,7 +26,7 @@ internal sealed class ShortcutsModule : IWheelModule
             save();
         }
 
-        var settings = new ShortcutsSettings(config, this, catalog, icons, overlay, new ShortcutPicker(catalog, icons));
+        var settings = new ShortcutsSettings(config, this, catalog, icons, overlay, new ShortcutPicker(catalog, icons), iconPicker);
         SettingsTabs = [new("Shortcuts", settings.Draw)];
     }
 

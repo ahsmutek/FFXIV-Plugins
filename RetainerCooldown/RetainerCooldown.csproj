@@ -6,4 +6,9 @@
     <Authors>Kotanna</Authors>
     <PackageLicenseExpression>AGPL-3.0-or-later</PackageLicenseExpression>
   </PropertyGroup>
+
+  <!-- Choosing icons in the Icon Atlas plugin, shared with Flick Wheel. -->
+  <ItemGroup>
+    <Compile Include="../shared/IconAtlas/*.cs" LinkBase="shared/IconAtlas" />
+  </ItemGroup>
 </Project>

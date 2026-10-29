@@ -14,6 +14,8 @@ Right-click an icon, or press **Favorite** in the inspector, to add it to **Favo
 
 **Only IDs with an icon** hides the gaps in a range (on by default). **Size** sets the tile size.
 
+Flick Wheel and Retainer Cooldown open the atlas when you change an icon: pick one and press **Use this icon**, or double-click it, to send it back. Other plugins can do the same over IPC: call `IconAtlas.Pick(token, purpose, currentIcon)` and listen on `IconAtlas.Picked(token, icon)`.
+
 ## How it works
 
 Range descriptions come from [fae-industries/ffxiv-icons](https://github.com/fae-industries/ffxiv-icons), which calls itself incomplete, with a few overlapping ranges evened out. Opening a range checks each of its IDs for an icon file in the background; icons load through Dalamud's texture provider, HD where the game has it.
