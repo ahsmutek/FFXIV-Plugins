@@ -59,8 +59,8 @@ places, browse by region or A–Z, or search, all with the D-pad and a map previ
 open the map with the place flagged. `/place`
 
 ### [Hunt Map](HuntMap/)
-Shows every spot where the B-rank targets of your weekly Elite Mark Bills can spawn, on the
-game's own map, and lets you tick spots off as you check them with the D-pad. `/huntmap`
+Finds where any hunt mark can spawn, B to SS rank, starting with the targets of your Elite Mark
+Bills. Shows the spots on the game's own map and lets you tick them off with the D-pad. `/huntmap`
 
 ### [Icon Atlas](IconAtlas/)
 Every game icon ID range, from job actions to map markers and plate frames, with the icons
