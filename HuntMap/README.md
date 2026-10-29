@@ -1,33 +1,42 @@
 # Hunt Map
 
-Shows where the B-rank targets of your weekly Elite Mark Bills can spawn, on the game's own map, and lets you tick spots off with a controller.
+Shows where any hunt mark can spawn, B to SS rank, on the game's own map, and lets you tick spots off with a controller.
 
 ## Usage
 
-Take an Elite Mark Bill from a Hunt Board, then open `/huntmap`. For one-flick access, add `/huntmap` to a Flick Wheel shortcut wheel.
+`/huntmap` opens it. `/huntmap gatling` opens it straight to the search results. For one-flick access, add `/huntmap` to a Flick Wheel shortcut wheel.
 
-- There's one tab per bill you hold. It opens on the target in your zone, showing its kills and how many spots you've checked.
-- The list shows the target's possible spawn spots, nearest first when you're in its zone, with a map preview beside it. Widen the window if the preview is hidden.
-- While the bill isn't done, the game's map of that zone shows every spot: red for not yet checked, grey for checked.
-
-| Button | Does |
+| Tab | Shows |
 |---|---|
-| D-pad up/down | Move (hold to scroll) |
-| D-pad left/right, L1/R1 | Switch target |
-| **A** | Open the map with a flag on the spot |
-| **X** | Mark the spot checked, or unchecked |
-| **Y** | Flag the nearest spot you haven't checked |
-| **B** | Close |
+| **Bills** | The targets of the Elite Mark Bills you hold, with their kills. |
+| **Here** | The marks in your current zone. |
+| **Browse** | By region (region → zone → mark), or A–Z: every mark under collapsible letters. |
+| **Search** | Every mark whose name or zone contains what you type. A rank on its own, like `s`, also matches. |
+| **Settings** | Close after opening the map (off by default), and which ranks and expansions are shown. |
 
-The game doesn't see these buttons while the window is open. The sticks still move you and the camera. The mouse works too: click a spot to flag it.
+Opening a mark lists its spawn spots, nearest first when you're in its zone. The map next to the list shows the spots: red for unchecked, grey for checked. Widen the window if it's hidden. If a bill's target is in your zone and isn't done yet, the window opens straight on its spots.
 
-Checks are kept per bill and start over when you take a new one.
+**Hunt** (or Start on the pad) makes the mark your target and closes the window. The target's spots, and those of any unfinished bill target, show on the game's map and minimap as red dots, green once checked. Flagging a spot also makes its mark the target; **Stop hunting** clears it. While you're hunting, the window opens on the target's spots, in the tab you started from. Starting or ending a hunt unchecks all of that mark's spots. Spots check themselves off when you get within 20 yalms of one (turn this off in Settings).
+
+| Button | In a list | In a mark's spots |
+|---|---|---|
+| D-pad up/down | Move (hold to scroll) | Move |
+| D-pad left/right, L1/R1 | Switch tab | Switch tab |
+| **A** | Go into a region, zone or mark, or open or close a letter | Open the map with a flag on the spot |
+| **B** | Go back or collapse the letter; at the top, close | Back to the list |
+| **X** | In Browse, switch between By region and A–Z | Mark the spot checked, or unchecked |
+| **Y** | Jump to Search | Flag the nearest spot you haven't checked |
+| **Start/Menu** (≡ in the footer) | Stop hunting | Hunt this mark, or stop hunting it |
+
+The game doesn't see these buttons while the window has focus; click outside it to give the controller back to the game, and click the window to take it again. The sticks still move you and the camera. The mouse works too.
+
+Checks are kept per mark. A bill target's checks start over when you take a new bill.
 
 ## How it works
 
-The plugin reads which Elite bills you hold from the game, and looks up each target's spawn points by name and zone in [ffxiv-huntmaps-maker](https://github.com/RKI027/ffxiv-huntmaps-maker)'s `marks.json`, which is bundled with the plugin. All 77 Elite targets, A Realm Reborn to Dawntrail, are covered. Endwalker and Dawntrail targets have 5–6 spots each, which may be area centres rather than exact points.
+Spawn points come from [ffxiv-huntmaps-maker](https://github.com/RKI027/ffxiv-huntmaps-maker)'s `marks.json`, which is bundled with the plugin, and are matched to the game's maps by zone name. The bills you hold are read from the game. Endwalker and Dawntrail B ranks have 5–6 spots each, which may be area centres rather than exact points.
 
-The spots are added after the map's own markers, so aetherytes and the rest stay, and they're put back whenever the game rebuilds the map. The marker list holds 132 entries shared with the game, so in a busy zone a long list of spots can be cut short.
+Spots are added after the map's and minimap's own markers, so aetherytes and the rest stay. They're put back whenever the game rebuilds them. The map's marker list holds 132 entries shared with the game, so in a busy zone a long list of spots can be cut short.
 
 The spawn data is © 2019 Arkhelyi, MIT licence (`LICENSE-ffxiv-huntmaps-maker.txt`).
 

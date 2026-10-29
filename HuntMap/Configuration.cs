@@ -3,17 +3,29 @@ using Dalamud.Configuration;
 
 namespace HuntMap;
 
-public sealed class BillChecks
-{
-    // MobHuntOrder row; a different one means a new bill, so the checks start over.
-    public uint Order { get; set; }
-    public HashSet<int> Spots { get; set; } = new();
-}
-
 public sealed class Configuration : IPluginConfiguration
 {
-    public int Version { get; set; } = 1;
+    public int Version { get; set; } = 2;
 
-    // By mark bill index.
-    public Dictionary<int, BillChecks> Checked { get; set; } = new();
+    public bool CloseAfterFlag { get; set; }
+
+    public bool CheckOnArrival { get; set; } = true;
+
+    // Key of the mark being hunted.
+    public string? Target { get; set; }
+
+    // Browse lists marks A–Z instead of by region.
+    public bool BrowseByName { get; set; }
+
+    // ExVersion rows whose zones are left out of Browse and Search.
+    public HashSet<uint> HiddenExpansions { get; set; } = new();
+
+    // Left out of Here, Browse and Search.
+    public HashSet<string> HiddenRanks { get; set; } = new();
+
+    // Checked spot indices by mark key.
+    public Dictionary<string, HashSet<int>> CheckedSpots { get; set; } = new();
+
+    // MobHuntOrder row last seen per mark bill index; a different one means a new bill.
+    public Dictionary<int, uint> BillOrders { get; set; } = new();
 }

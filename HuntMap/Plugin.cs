@@ -41,9 +41,6 @@ public sealed class Plugin : IDalamudPlugin
     private static ITextureProvider Textures { get; set; } = null!;
 
     [PluginService]
-    private static IAddonLifecycle AddonLifecycle { get; set; } = null!;
-
-    [PluginService]
     private static IGameInteropProvider Interop { get; set; } = null!;
 
     [PluginService]
@@ -54,29 +51,42 @@ public sealed class Plugin : IDalamudPlugin
     private readonly HuntWindow window;
     private readonly MapMarkers markers;
     private readonly PadBlocker blocker;
+    private readonly Arrivals arrivals;
 
     public Plugin()
     {
         config = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
 
-        var bills = new Bills(Data, new Marks());
-        markers = new MapMarkers(Framework, AddonLifecycle, bills, config);
-        window = new HuntWindow(bills, config, Save, markers, ClientState, Objects, GameGui, Gamepad, Textures);
+        var marks = new Marks(Data);
+        var checks = new Checks(config, Save);
+        var bills = new Bills(Data, marks, checks);
+        markers = new MapMarkers(Framework, GameGui, ClientState, config, Save, marks, bills, checks);
+        arrivals = new Arrivals(Framework, ClientState, Objects, config, bills, checks, markers);
+        window = new HuntWindow(marks, bills, checks, config, Save, markers, ClientState, Objects, GameGui, Gamepad, Textures);
         windows.AddWindow(window);
         blocker = new PadBlocker(Interop, Log);
 
         PluginInterface.UiBuilder.Draw += windows.Draw;
         PluginInterface.UiBuilder.OpenMainUi += window.Toggle;
+        PluginInterface.UiBuilder.OpenConfigUi += window.OpenSettings;
         Framework.Update += OnUpdate;
 
-        CommandManager.AddHandler(CommandName, new CommandInfo((_, _) => window.Toggle())
+        CommandManager.AddHandler(CommandName, new CommandInfo(OnCommand)
         {
-            HelpMessage = "Show where the targets of your Elite Mark Bills can spawn.",
+            HelpMessage = "Show where hunt marks can spawn.\n/huntmap <name> → Search for it.",
         });
     }
 
+    private void OnCommand(string command, string args)
+    {
+        if (args.Trim().Length > 0)
+            window.OpenSearch(args.Trim());
+        else
+            window.Toggle();
+    }
+
     private void OnUpdate(IFramework framework) =>
-        blocker.Active = window.IsOpen && DateTime.UtcNow - window.LastDrawn < DrawnWithin;
+        blocker.Active = window.IsOpen && window.Focused && DateTime.UtcNow - window.LastDrawn < DrawnWithin;
 
     private void Save() => PluginInterface.SavePluginConfig(config);
 
@@ -86,7 +96,9 @@ public sealed class Plugin : IDalamudPlugin
         Framework.Update -= OnUpdate;
         PluginInterface.UiBuilder.Draw -= windows.Draw;
         PluginInterface.UiBuilder.OpenMainUi -= window.Toggle;
+        PluginInterface.UiBuilder.OpenConfigUi -= window.OpenSettings;
         blocker.Dispose();
+        arrivals.Dispose();
         markers.Dispose();
         windows.RemoveAllWindows();
     }
