@@ -9,6 +9,7 @@ using Dalamud.Interface.Windowing;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.Game;
+using IconAtlasClient;
 
 namespace RetainerCooldown;
 
@@ -24,6 +25,7 @@ public sealed class Plugin : IDalamudPlugin
     private readonly ConfigWindow configWindow;
 
     internal Configuration Config { get; }
+    internal IconPicker IconPicker { get; }
 
     // The bell briefly clears RetainerManager while reloading, which would drop the shade.
     private RetainerSnapshot[] retainerCache = [];
@@ -36,6 +38,7 @@ public sealed class Plugin : IDalamudPlugin
         this.textures = textures;
         Config = pi.GetPluginConfig() as Configuration ?? new Configuration();
         if (MigrateConfig()) Save();
+        IconPicker = new IconPicker(pi, "RetainerCooldown");
         hud = new HudWindow(this);
         configWindow = new ConfigWindow(this);
         windows.AddWindow(hud);
@@ -90,6 +93,7 @@ public sealed class Plugin : IDalamudPlugin
         pi.UiBuilder.OpenConfigUi -= ToggleConfig;
         pi.UiBuilder.OpenMainUi -= ToggleConfig;
         windows.RemoveAllWindows();
+        IconPicker.Dispose();
     }
 
     internal unsafe RetainerSnapshot[] ReadRetainers()
