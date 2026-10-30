@@ -191,8 +191,7 @@ internal sealed class WheelOverlay(WheelInput input, WheelSet wheels, IconCache 
         var max = pos + new Vector2(size / 2);
 
         var alpha = entry.Faded ? .4f : 1f;
-        dl.AddImage(icons.Handle(entry.IconId, entry.KeyOutIcon), min, max, Vector2.Zero, Vector2.One,
-                    ImGui.GetColorU32(new Vector4(1f, 1f, 1f, alpha)));
+        icons.Get(entry.IconId, entry.KeyOutIcon).Draw(dl, min, max, ImGui.GetColorU32(new Vector4(1f, 1f, 1f, alpha)));
 
         if (entry.Count is { } count)
             DrawOutlinedText(dl, count.ToString(), max, size * 0.34f, Align.BottomRight);

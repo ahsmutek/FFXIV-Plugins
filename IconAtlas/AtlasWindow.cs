@@ -287,8 +287,10 @@ internal sealed class AtlasWindow : Window, IDisposable
             return;
         ImGui.TextColored(Gold, $"Choosing an icon for {pick.Purpose}");
         ImGui.SameLine();
+        ImGui.BeginDisabled(!textures.TryGetIconPath(new GameIconLookup(selected), out _));
         if (ImGui.Button("Use this icon"))
             Use(selected);
+        ImGui.EndDisabled();
         ImGui.SameLine();
         if (ImGui.Button("Cancel"))
             IsOpen = false;
@@ -297,7 +299,7 @@ internal sealed class AtlasWindow : Window, IDisposable
 
     private void Use(uint id)
     {
-        if (picking is not { } pick)
+        if (picking is not { } pick || !textures.TryGetIconPath(new GameIconLookup(id), out _))
             return;
         Picked?.Invoke(pick.Token, id);
         IsOpen = false;

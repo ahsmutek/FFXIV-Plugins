@@ -12,11 +12,14 @@ internal sealed class IconCache(IDataManager data, ITextureProvider textures) : 
 {
     private readonly Dictionary<uint, IDalamudTextureWrap?> keyed = new();
 
-    public ImTextureID Handle(uint iconId, bool keyOutTile)
+    public GameIcon Get(uint iconId, bool keyOutTile)
     {
         if (keyOutTile && Keyed(iconId) is { } wrap)
-            return wrap.Handle;
-        return textures.GetFromGameIcon(new GameIconLookup(iconId)).GetWrapOrEmpty().Handle;
+            return GameIcon.Of(wrap);
+        // A chosen icon ID may not exist; GetFromGameIcon throws on those, GetFromGame just draws nothing.
+        return GameIcon.Of(textures.TryGetFromGameIcon(new GameIconLookup(iconId), out var texture)
+            ? texture.GetWrapOrEmpty()
+            : textures.GetFromGame($"ui/icon/{iconId / 1000 * 1000:D6}/{iconId:D6}.tex").GetWrapOrEmpty());
     }
 
     public void Dispose()

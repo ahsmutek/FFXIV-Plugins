@@ -116,9 +116,22 @@ internal sealed class HudWindow : Window
         var rounding = size * 0.18f;
 
         if (plugin.TryGetIcon(iconId, out IDalamudTextureWrap? icon) && icon != null)
-            dl.AddImageRounded(icon.Handle, p, max, Vector2.Zero, Vector2.One, 0xFFFFFFFF, rounding);
+        {
+            var (min, fitMax) = Fit(icon, p, max);
+            dl.AddImageRounded(icon.Handle, min, fitMax, Vector2.Zero, Vector2.One, 0xFFFFFFFF, rounding);
+        }
         else
             DrawSlot(dl, p, size);
+    }
+
+    // Not every game icon is square, so it's centred in the box at its own shape.
+    internal static (Vector2 Min, Vector2 Max) Fit(IDalamudTextureWrap icon, Vector2 min, Vector2 max)
+    {
+        var box = max - min;
+        var shape = new Vector2(icon.Width, icon.Height);
+        var size = shape * Math.Min(box.X / shape.X, box.Y / shape.Y);
+        var at = min + (box - size) / 2;
+        return (at, at + size);
     }
 
     private static void DrawSlot(ImDrawListPtr dl, Vector2 p, float size)

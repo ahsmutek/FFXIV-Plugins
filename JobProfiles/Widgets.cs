@@ -26,7 +26,7 @@ internal sealed class Widgets(ShortcutCatalog catalog, ShortcutPicker picker, Ic
             var step = list[i];
             var info = catalog.Describe(step);
             if (info is { IconId: > 0 } shown)
-                ImGui.Image(icons.Handle(shown.IconId, shown.KeyOutIcon), size);
+                icons.Get(shown.IconId, shown.KeyOutIcon).Image(size);
             else
                 ImGui.Dummy(size);
             ImGui.SameLine();

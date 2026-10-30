@@ -134,9 +134,13 @@ internal sealed class ConfigWindow : Window
         if (selected)
             ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(.9f, .75f, .3f, .8f));
 
-        var clicked = plugin.TryGetIcon(iconId, out var wrap) && wrap != null
-            ? ImGui.ImageButton(wrap.Handle, new Vector2(64f))
-            : ImGui.Button("##empty", new Vector2(64f));
+        var padding = ImGui.GetStyle().FramePadding;
+        var clicked = ImGui.Button("##icon", new Vector2(64f) + padding * 2);
+        if (plugin.TryGetIcon(iconId, out var wrap) && wrap != null)
+        {
+            var (min, max) = HudWindow.Fit(wrap, ImGui.GetItemRectMin() + padding, ImGui.GetItemRectMax() - padding);
+            ImGui.GetWindowDrawList().AddImage(wrap.Handle, min, max);
+        }
 
         if (selected) ImGui.PopStyleColor();
         if (clicked)

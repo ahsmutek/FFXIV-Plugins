@@ -167,8 +167,8 @@ internal sealed class JobsSettings(Configuration config, JobCatalog catalog, Ico
             var unlocked = jobs.Any(j => j.Abbreviation == abbreviation);
             var name = info?.Name ?? abbreviation;
             var texture = info is { } found
-                ? icons.Handle(found.IconId, JobLayout.Commands.ContainsKey(abbreviation))
-                : (ImTextureID?)null;
+                ? icons.Get(found.IconId, JobLayout.Commands.ContainsKey(abbreviation))
+                : (GameIcon?)null;
             return new RowIcon(abbreviation, texture, abbreviation, unlocked ? name : $"{name} (locked)", !unlocked);
         });
 
@@ -264,7 +264,7 @@ internal sealed class JobsSettings(Configuration config, JobCatalog catalog, Ico
                 var size = new Vector2(ImGui.GetFrameHeight());
                 var min = ImGui.GetCursorScreenPos();
                 ImGui.GetWindowDrawList().AddRectFilled(min, min + size, ImGui.GetColorU32(JobLayout.ColorOf(job.Group, config)), 3f);
-                ImGui.Image(icons.Handle(job.IconId, false), size);
+                icons.Get(job.IconId, false).Image(size);
                 ImGui.SameLine();
                 ImGui.AlignTextToFramePadding();
                 ImGui.TextUnformatted(ShortName(job));

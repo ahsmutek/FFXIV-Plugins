@@ -268,7 +268,7 @@ internal sealed class ShortcutsSettings(Configuration config, ShortcutsModule mo
             ShortcutKind.BuddyAction => $"{info.Name} (your chocobo isn't out)",
             _ => $"{info.Name} (locked)",
         };
-        var texture = info.IconId != 0 ? icons.Handle(info.IconId, info.KeyOutIcon) : (ImTextureID?)null;
+        var texture = info.IconId != 0 ? icons.Get(info.IconId, info.KeyOutIcon) : (GameIcon?)null;
         return new RowIcon(entry.Uid, texture, Short(info.Name), tooltip, !available);
     }
 

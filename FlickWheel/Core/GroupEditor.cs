@@ -1,10 +1,11 @@
 using System;
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
+using Shortcuts;
 
 namespace FlickWheel;
 
-internal readonly record struct RowIcon(string Id, ImTextureID? Texture, string Label, string Tooltip, bool Dim);
+internal readonly record struct RowIcon(string Id, GameIcon? Texture, string Label, string Tooltip, bool Dim);
 
 internal static class GroupEditor
 {
@@ -122,8 +123,10 @@ internal static class GroupEditor
             ImGui.PushStyleColor(ImGuiCol.ButtonActive, color * new Vector4(1.7f, 1.7f, 1.7f, 1f));
             if (item.Texture is { } texture)
             {
-                ImGui.ImageButton(texture, new Vector2(Icon), Vector2.Zero, Vector2.One, 2, Vector4.Zero,
-                                  new Vector4(1f, 1f, 1f, item.Dim ? .4f : 1f));
+                ImGui.Button("##icon", new Vector2(Icon + 4f));
+                texture.Draw(ImGui.GetWindowDrawList(), ImGui.GetItemRectMin() + new Vector2(2f),
+                             ImGui.GetItemRectMax() - new Vector2(2f),
+                             ImGui.GetColorU32(new Vector4(1f, 1f, 1f, item.Dim ? .4f : 1f)));
             }
             else
             {

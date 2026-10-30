@@ -130,7 +130,7 @@ internal sealed class ShortcutPicker(ShortcutCatalog catalog, IconCache icons)
                 ImGui.TextDisabled(category);
             }
 
-            ImGui.Image(icons.Handle(choice.IconId, false), new Vector2(ImGui.GetFrameHeight()));
+            icons.Get(choice.IconId, false).Image(new Vector2(ImGui.GetFrameHeight()));
             ImGui.SameLine();
             ImGui.AlignTextToFramePadding();
             if (ImGui.Selectable($"{choice.Name}##{choice.Kind}-{choice.RowId}"))
@@ -161,7 +161,7 @@ internal sealed class ShortcutPicker(ShortcutCatalog catalog, IconCache icons)
         newIcon = Math.Max(0, newIcon);
         if (newIcon > 0)
         {
-            ImGui.Image(icons.Handle((uint)newIcon, false), new Vector2(40f));
+            icons.Get((uint)newIcon, false).Image(new Vector2(40f));
             ImGui.SameLine();
         }
 
