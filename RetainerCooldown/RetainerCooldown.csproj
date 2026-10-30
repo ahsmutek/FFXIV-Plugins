@@ -11,4 +11,9 @@
   <ItemGroup>
     <Compile Include="../shared/IconAtlas/*.cs" LinkBase="shared/IconAtlas" />
   </ItemGroup>
+
+  <!-- Controller navigation in the windows, shared by most plugins. -->
+  <ItemGroup>
+    <Compile Include="../shared/Controller/*.cs" LinkBase="shared/Controller" />
+  </ItemGroup>
 </Project>

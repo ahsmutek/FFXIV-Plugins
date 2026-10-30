@@ -54,6 +54,9 @@ internal sealed class BindingWatcher : IDisposable
 
     public bool Paused { get; set; }
 
+    // The settings window has the pad, so its buttons move through the window instead.
+    public bool Navigating { get; set; }
+
     public GamepadButtons HeldButtons()
     {
         var held = GamepadButtons.None;
@@ -96,7 +99,7 @@ internal sealed class BindingWatcher : IDisposable
 
     private void OnUpdate(IFramework _)
     {
-        if (Paused || !config.BindingsEnabled || config.Bindings.Count == 0 || !player.IsLoaded || Typing())
+        if (Paused || Navigating || !config.BindingsEnabled || config.Bindings.Count == 0 || !player.IsLoaded || Typing())
         {
             Release();
             lastHeld = HeldButtons();

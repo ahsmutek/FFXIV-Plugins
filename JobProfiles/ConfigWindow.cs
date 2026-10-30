@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using Controller;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Textures;
 using Dalamud.Interface.Utility;
@@ -33,6 +34,7 @@ internal sealed class ConfigWindow : Window
 
     private string page = $"g:{JobGroup.Tank}";
     private string customiseSearch = string.Empty;
+    private readonly PadTabs tabs = new();
 
     public ConfigWindow(Configuration config, Action save, JobGroups groups, IPlayerState player,
                         ITextureProvider textures, Action applyNow, Widgets widgets, ButtonsTab buttons)
@@ -57,20 +59,21 @@ internal sealed class ConfigWindow : Window
         if (!ImGui.BeginTabBar("tabs"))
             return;
 
-        if (ImGui.BeginTabItem("Jobs"))
+        if (tabs.Item("Jobs"))
         {
             if (DrawJobs())
                 save();
             ImGui.EndTabItem();
         }
 
-        if (ImGui.BeginTabItem("Buttons"))
+        if (tabs.Item("Buttons"))
         {
             if (buttons.DrawButtons())
                 save();
             ImGui.EndTabItem();
         }
 
+        tabs.End();
         ImGui.EndTabBar();
 
         if (widgets.DrawPicker())

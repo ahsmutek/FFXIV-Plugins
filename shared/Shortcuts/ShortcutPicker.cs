@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using Controller;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Utility;
 
@@ -23,6 +24,7 @@ internal sealed class ShortcutPicker(ShortcutCatalog catalog, IconCache icons)
     private List<ShortcutChoice> macros = [];
     private List<ShortcutChoice> favoriteEmotes = [];
     private List<ShortcutChoice> allEmotes = [];
+    private readonly PadTabs tabs = new();
 
     // Call at the same ImGui ID level as Draw, or the popup won't find its opener.
     public void Open(string name, Action<PickedShortcut> onPick)
@@ -58,36 +60,37 @@ internal sealed class ShortcutPicker(ShortcutCatalog catalog, IconCache icons)
 
         if (ImGui.BeginTabBar("pickerTabs"))
         {
-            if (ImGui.BeginTabItem("Menus"))
+            if (tabs.Item("Menus"))
             {
                 changed |= DrawChoices(menus ??= catalog.Menus(), "Nothing matches.");
                 ImGui.EndTabItem();
             }
-            if (ImGui.BeginTabItem("Actions"))
+            if (tabs.Item("Actions"))
             {
                 changed |= DrawChoices(actions ??= catalog.Actions(), "Nothing matches.");
                 ImGui.EndTabItem();
             }
-            if (ImGui.BeginTabItem("Items"))
+            if (tabs.Item("Items"))
             {
                 changed |= DrawChoices(items, "No usable items in your bags match.");
                 ImGui.EndTabItem();
             }
-            if (ImGui.BeginTabItem("Macros"))
+            if (tabs.Item("Macros"))
             {
                 changed |= DrawChoices(macros, "No macros match.");
                 ImGui.EndTabItem();
             }
-            if (ImGui.BeginTabItem("Emotes"))
+            if (tabs.Item("Emotes"))
             {
                 changed |= DrawEmotes();
                 ImGui.EndTabItem();
             }
-            if (ImGui.BeginTabItem("Commands"))
+            if (tabs.Item("Commands"))
             {
                 changed |= DrawCommandForm();
                 ImGui.EndTabItem();
             }
+            tabs.End();
             ImGui.EndTabBar();
         }
 

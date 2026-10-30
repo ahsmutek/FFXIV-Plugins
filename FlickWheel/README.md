@@ -45,7 +45,7 @@ Jobs without a gear set are dimmed. If the switch isn't possible (combat, a duty
 crafting), an error toast appears.
 
 On the **Job layout** tab you can move groups and pin one to the top, drag jobs to
-reorder them, choose which logs to show, and set colors: a style (**Muted, Vivid, Soft,
+reorder them (or right-click one to move it), choose which logs to show, and set colors: a style (**Muted, Vivid, Soft,
 Dark**), one of 18 palette colors or a custom one per group, or **Use job colors** to
 color by role like the game.
 
@@ -71,7 +71,7 @@ On the **Shortcuts** tab, **+** adds a shortcut to a group:
 - **Commands** – any chat command with your own label and icon, e.g. `/gs change 3`. A
   plugin's command only shows while that plugin is loaded.
 
-Drag a shortcut to reorder it; right-click it to relabel, change its icon (chosen in [Icon Atlas](../IconAtlas/) when
+Drag a shortcut to reorder it (or **Move left/right** in its right-click menu); right-click it to relabel, change its icon (chosen in [Icon Atlas](../IconAtlas/) when
 it's loaded, otherwise by ID), move or remove it. Groups can be renamed, recolored, moved, pinned to the top and deleted (Ctrl if not
 empty). Entries you can't use yet leave their spot empty.
 

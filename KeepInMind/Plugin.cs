@@ -1,4 +1,5 @@
 using System.Linq;
+using Controller;
 using Dalamud.Game.Command;
 using Dalamud.Interface.Windowing;
 using Dalamud.IoC;
@@ -57,6 +58,7 @@ public sealed class Plugin : IDalamudPlugin
     private readonly NativeTooltip tooltip;
     private readonly SlotHighlight highlight;
     private readonly ItemTooltip itemTooltip;
+    private readonly PadNav padNav;
 
     public Plugin()
     {
@@ -75,6 +77,7 @@ public sealed class Plugin : IDalamudPlugin
                                      () => settings.IsOpen = true);
         windows.AddWindow(window);
         windows.AddWindow(settings);
+        padNav = new PadNav(GameInterop, GamepadState, Log, windows);
         PluginInterface.UiBuilder.Draw += Draw;
         PluginInterface.UiBuilder.OpenMainUi += window.Toggle;
         PluginInterface.UiBuilder.OpenConfigUi += settings.Toggle;
@@ -114,6 +117,7 @@ public sealed class Plugin : IDalamudPlugin
 
     private void Draw()
     {
+        padNav.Update();
         windows.Draw();
         highlight.Draw();
         tooltip.EndFrame();
@@ -131,6 +135,7 @@ public sealed class Plugin : IDalamudPlugin
         PluginInterface.UiBuilder.OpenMainUi -= window.Toggle;
         PluginInterface.UiBuilder.OpenConfigUi -= settings.Toggle;
         windows.RemoveAllWindows();
+        padNav.Dispose();
         tooltip.Dispose();
     }
 }

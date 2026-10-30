@@ -65,7 +65,7 @@ internal sealed unsafe class PadBlocker : IDisposable
 
     private GamepadButtons Hidden()
     {
-        if (!config.BindingsEnabled || watcher.Paused || config.Bindings.Count == 0)
+        if (!config.BindingsEnabled || watcher.Paused || watcher.Navigating || config.Bindings.Count == 0)
             return GamepadButtons.None;
 
         var held = watcher.HeldButtons();

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using Controller;
 using Dalamud.Game.Command;
 using Dalamud.Interface.Textures;
 using Dalamud.Interface.Textures.TextureWraps;
@@ -23,6 +24,7 @@ public sealed class Plugin : IDalamudPlugin
     private readonly WindowSystem windows = new("RetainerCooldown");
     private readonly HudWindow hud;
     private readonly ConfigWindow configWindow;
+    private readonly PadNav padNav;
 
     internal Configuration Config { get; }
     internal IconPicker IconPicker { get; }
@@ -31,7 +33,8 @@ public sealed class Plugin : IDalamudPlugin
     private RetainerSnapshot[] retainerCache = [];
     private long retainerGapSince;
 
-    public Plugin(IDalamudPluginInterface pi, ICommandManager commands, ITextureProvider textures)
+    public Plugin(IDalamudPluginInterface pi, ICommandManager commands, ITextureProvider textures,
+                  IGamepadState gamepad, IGameInteropProvider interop, IPluginLog log)
     {
         this.pi = pi;
         this.commands = commands;
@@ -43,7 +46,8 @@ public sealed class Plugin : IDalamudPlugin
         configWindow = new ConfigWindow(this);
         windows.AddWindow(hud);
         windows.AddWindow(configWindow);
-        pi.UiBuilder.Draw += windows.Draw;
+        padNav = new PadNav(interop, gamepad, log, windows);
+        pi.UiBuilder.Draw += Draw;
         pi.UiBuilder.OpenConfigUi += ToggleConfig;
         pi.UiBuilder.OpenMainUi += ToggleConfig;
         commands.AddHandler(CommandName, new CommandInfo(OnCommand) { HelpMessage = "Open Retainer Cooldown settings." });
@@ -86,13 +90,20 @@ public sealed class Plugin : IDalamudPlugin
     internal void OpenConfig() => configWindow.IsOpen = true;
     private void OnCommand(string _, string __) => ToggleConfig();
 
+    private void Draw()
+    {
+        padNav.Update();
+        windows.Draw();
+    }
+
     public void Dispose()
     {
         commands.RemoveHandler(CommandName);
-        pi.UiBuilder.Draw -= windows.Draw;
+        pi.UiBuilder.Draw -= Draw;
         pi.UiBuilder.OpenConfigUi -= ToggleConfig;
         pi.UiBuilder.OpenMainUi -= ToggleConfig;
         windows.RemoveAllWindows();
+        padNav.Dispose();
         IconPicker.Dispose();
     }
 

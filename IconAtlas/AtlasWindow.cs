@@ -5,6 +5,7 @@ using System.Linq;
 using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
+using Controller;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Textures;
 using Dalamud.Interface.Textures.TextureWraps;
@@ -225,7 +226,7 @@ internal sealed class AtlasWindow : Window, IDisposable
 
     private void GroupMenu(string g, string id)
     {
-        if (!ImGui.BeginPopupContextItem(id))
+        if (!PadNav.ContextMenu(id))
             return;
         if (ImGui.MenuItem("Show all icons"))
             ShowGroup(g);
@@ -254,7 +255,7 @@ internal sealed class AtlasWindow : Window, IDisposable
             scrollToRange = false;
         }
 
-        if (!ImGui.BeginPopupContextItem($"{id}m"))
+        if (!PadNav.ContextMenu($"{id}m"))
             return;
         var pinned = config.PinnedRanges.Contains(r.Start);
         if (ImGui.MenuItem(pinned ? "Unpin" : "Pin to top"))
@@ -383,10 +384,11 @@ internal sealed class AtlasWindow : Window, IDisposable
             scrollToSelected = false;
         }
 
-        // Only the rows in view are drawn; a view can hold tens of thousands of IDs.
+        // Only the rows in view are drawn, plus one either side for the pad to move onto; a view can hold tens of
+        // thousands of IDs.
         var origin = ImGui.GetCursorPos();
-        var firstRow = Math.Max(0, (int)((ImGui.GetScrollY() - origin.Y) / step));
-        var lastRow = Math.Min(rows, firstRow + (int)(ImGui.GetWindowHeight() / step) + 2);
+        var firstRow = Math.Max(0, (int)((ImGui.GetScrollY() - origin.Y) / step) - 1);
+        var lastRow = Math.Min(rows, firstRow + (int)(ImGui.GetWindowHeight() / step) + 3);
         var drawList = ImGui.GetWindowDrawList();
         for (var row = firstRow; row < lastRow; row++)
         {
@@ -407,11 +409,14 @@ internal sealed class AtlasWindow : Window, IDisposable
     {
         var min = ImGui.GetCursorScreenPos();
         var max = min + new Vector2(size);
-        if (ImGui.InvisibleButton($"##t{id}", new Vector2(size)))
+        var tileId = ImGui.GetID($"##t{id}");
+        if (ImGui.InvisibleButton($"##t{id}", new Vector2(size)) || ImGui.GetCurrentContext().NavJustMovedToId == tileId)
             selected = id;
-        if (ImGui.IsItemClicked(ImGuiMouseButton.Right))
+        var focused = ImGui.IsItemFocused();
+        if (ImGui.IsItemClicked(ImGuiMouseButton.Right) || (focused && ImGui.IsKeyPressed(ImGuiKey.GamepadFaceUp, false)))
             toggleLater = id;
-        if (picking != null && ImGui.IsItemHovered() && ImGui.IsMouseDoubleClicked(ImGuiMouseButton.Left))
+        if (picking != null && ((ImGui.IsItemHovered() && ImGui.IsMouseDoubleClicked(ImGuiMouseButton.Left)) ||
+                                (focused && ImGui.IsKeyPressed(ImGuiKey.GamepadFaceLeft, false))))
             Use(id);
         var hovered = ImGui.IsItemHovered();
 
@@ -452,9 +457,10 @@ internal sealed class AtlasWindow : Window, IDisposable
         }
         else
             ImGui.TextColored(Dim, "No icon");
+        var pad = PadNav.Navigating;
         if (picking != null)
-            ImGui.TextColored(Dim, "Double-click to use");
-        ImGui.TextColored(Dim, favorite ? "Right-click to unfavorite" : "Right-click to favorite");
+            ImGui.TextColored(Dim, pad ? "X to use" : "Double-click to use");
+        ImGui.TextColored(Dim, (pad ? "Y to " : "Right-click to ") + (favorite ? "unfavorite" : "favorite"));
         ImGui.EndTooltip();
     }
 
@@ -509,7 +515,9 @@ internal sealed class AtlasWindow : Window, IDisposable
 
     private void HandleKeys()
     {
-        if (!ImGui.IsWindowFocused(ImGuiFocusedFlags.RootAndChildWindows) || ImGui.GetIO().WantTextInput)
+        // While navigating, the arrows move between tiles and the other controls instead.
+        if (!ImGui.IsWindowFocused(ImGuiFocusedFlags.RootAndChildWindows) || ImGui.GetIO().WantTextInput ||
+            PadNav.Navigating)
             return;
         if (ImGui.IsKeyPressed(ImGuiKey.LeftArrow))
             Step(-1);

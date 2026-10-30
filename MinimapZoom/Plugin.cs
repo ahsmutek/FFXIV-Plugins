@@ -1,4 +1,5 @@
 using System;
+using Controller;
 using Dalamud.Game.Command;
 using Dalamud.Interface.Windowing;
 using Dalamud.IoC;
@@ -27,12 +28,19 @@ public sealed class Plugin : IDalamudPlugin
     private static IPluginLog Log { get; set; } = null!;
 
     [PluginService]
+    private static IGamepadState Gamepad { get; set; } = null!;
+
+    [PluginService]
+    private static IGameInteropProvider Interop { get; set; } = null!;
+
+    [PluginService]
     private static IClientState ClientState { get; set; } = null!;
 
     private readonly Configuration config;
     private readonly WindowSystem windows = new("MinimapZoom");
     private readonly ConfigWindow configWindow;
     private readonly ZoomExtender extender;
+    private readonly PadNav padNav;
 
     public Plugin()
     {
@@ -41,7 +49,8 @@ public sealed class Plugin : IDalamudPlugin
 
         configWindow = new ConfigWindow(config, Save, extender);
         windows.AddWindow(configWindow);
-        PluginInterface.UiBuilder.Draw += windows.Draw;
+        padNav = new PadNav(Interop, Gamepad, Log, windows);
+        PluginInterface.UiBuilder.Draw += Draw;
         PluginInterface.UiBuilder.OpenConfigUi += configWindow.Toggle;
         PluginInterface.UiBuilder.OpenMainUi += configWindow.Toggle;
 
@@ -59,15 +68,22 @@ public sealed class Plugin : IDalamudPlugin
             configWindow.Toggle();
     }
 
+    private void Draw()
+    {
+        padNav.Update();
+        windows.Draw();
+    }
+
     private void Save() => PluginInterface.SavePluginConfig(config);
 
     public void Dispose()
     {
         CommandManager.RemoveHandler(CommandName);
-        PluginInterface.UiBuilder.Draw -= windows.Draw;
+        PluginInterface.UiBuilder.Draw -= Draw;
         PluginInterface.UiBuilder.OpenConfigUi -= configWindow.Toggle;
         PluginInterface.UiBuilder.OpenMainUi -= configWindow.Toggle;
         windows.RemoveAllWindows();
+        padNav.Dispose();
         extender.Dispose();
     }
 }

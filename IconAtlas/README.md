@@ -8,7 +8,8 @@ Browse every game icon by what it's for, drawn straight from your game files.
 
 The list on the left holds every known icon ID range in collapsible categories (job actions, status effects, items, map markers, plates…); hover a range for its IDs. Search by name, or type an ID to find the range it’s in. Click a range to see its icons, or a category name to see all of its icons at once. Right-click a category or range to pin it to the top of the list. Hover an icon for a larger preview, click it to inspect.
 
-The inspector shows the icon's ID, its file path in the game, and its size, with buttons to copy the ID or path. **HQ** shows an item icon's HQ version. Arrow keys step through icons.
+The inspector shows the icon's ID, its file path in the game, and its size, with buttons to copy the ID or path. **HQ** shows an item icon's HQ version. Arrow keys step through icons. With a controller, Y is the right-click
+and X the double-click.
 
 Right-click an icon, or press **Favorite** in the inspector, to add it to **Favorites** at the top of the list; favorites are marked with a gold dot and saved between sessions.
 

@@ -1,4 +1,5 @@
 using System;
+using Controller;
 using Dalamud.Game.Command;
 using Dalamud.Interface.Windowing;
 using Dalamud.IoC;
@@ -65,6 +66,7 @@ public sealed class Plugin : IDalamudPlugin
     private readonly IconCache icons;
     private readonly ChatLogToggle chatLog;
     private readonly IconPicker iconPicker;
+    private readonly PadNav padNav;
 
     public Plugin()
     {
@@ -89,6 +91,7 @@ public sealed class Plugin : IDalamudPlugin
 
         configWindow = new ConfigWindow(config, Save, wheels, overlay, KeyState);
         windows.AddWindow(configWindow);
+        padNav = new PadNav(Interop, Gamepad, Log, windows);
 
         PluginInterface.UiBuilder.Draw += Draw;
         PluginInterface.UiBuilder.OpenConfigUi += configWindow.Toggle;
@@ -113,6 +116,7 @@ public sealed class Plugin : IDalamudPlugin
 
     private void Draw()
     {
+        padNav.Update();
         windows.Draw();
         overlay.Draw();
     }
@@ -128,6 +132,7 @@ public sealed class Plugin : IDalamudPlugin
         PluginInterface.UiBuilder.OpenConfigUi -= configWindow.Toggle;
         PluginInterface.UiBuilder.OpenMainUi -= configWindow.Toggle;
         windows.RemoveAllWindows();
+        padNav.Dispose();
         icons.Dispose();
     }
 }

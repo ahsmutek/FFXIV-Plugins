@@ -1,5 +1,6 @@
 using System;
 using System.Numerics;
+using Controller;
 using Dalamud.Bindings.ImGui;
 using Shortcuts;
 
@@ -114,6 +115,7 @@ internal static class GroupEditor
     {
         var rowStart = ImGui.GetCursorScreenPos().X;
         var dragged = -1;
+        (int From, int To)? moved = null;
         for (var i = 0; i < count; i++)
         {
             var item = icon(i);
@@ -138,9 +140,16 @@ internal static class GroupEditor
                 ImGui.SetTooltip(item.Tooltip);
             if (ImGui.IsItemActive() && ImGui.IsMouseDragging(ImGuiMouseButton.Left))
                 dragged = i;
-            if (context != null && ImGui.BeginPopupContextItem("##context"))
+            if (PadNav.ContextMenu("##context"))
             {
-                context(i);
+                context?.Invoke(i);
+                // Dragging needs the mouse, so the menu moves icons too.
+                if (context != null)
+                    ImGui.Separator();
+                if (ImGui.MenuItem("Move left", false, i > 0))
+                    moved = (i, i - 1);
+                if (ImGui.MenuItem("Move right", false, i < count - 1))
+                    moved = (i, i + 1);
                 ImGui.EndPopup();
             }
 
@@ -150,7 +159,7 @@ internal static class GroupEditor
         }
 
         if (dragged < 0)
-            return null;
+            return moved;
 
         var slot = (int)MathF.Floor((ImGui.GetMousePos().X - rowStart + Gap / 2) / Pitch);
         slot = Math.Clamp(slot, 0, count - 1);

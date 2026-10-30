@@ -2,7 +2,7 @@
 
 My [Dalamud](https://github.com/goatcorp/Dalamud) plugins for Final Fantasy XIV. Each plugin
 has its own folder; `shared/` holds code compiled into more than one (the shortcut picker
-used by Flick Wheel and Job Profiles, and the Icon Atlas link used by Flick Wheel and Retainer Cooldown).
+used by Flick Wheel and Job Profiles, the Icon Atlas link used by Flick Wheel and Retainer Cooldown, and the controller navigation most windows use).
 
 Made for my own use and shared as-is, without support or guarantees. Not published to any
 plugin repository.
@@ -11,6 +11,10 @@ Third-party tools are against the FINAL FANTASY XIV Terms of Service; use at you
 These read game data that can change with any patch, so they may break without notice.
 
 Not affiliated with or endorsed by Square Enix. FINAL FANTASY XIV © SQUARE ENIX CO., LTD.
+
+Every window works with a controller while it has focus, without Dalamud's gamepad mode: D-pad moves,
+A presses, X starts typing, B backs out or closes, Y opens an item's menu (its right-click), L1/R1 switch
+tabs. The game doesn't see those buttons meanwhile.
 
 ## Plugins
 

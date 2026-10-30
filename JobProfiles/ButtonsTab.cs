@@ -39,6 +39,8 @@ internal sealed class ButtonsTab
 
     private Binding? recording;
     private GamepadButtons recordedButtons;
+    // Held when recording started, like the A that pressed Record; left out until let go.
+    private GamepadButtons heldAtStart;
     private readonly HashSet<VirtualKey> recordedKeys = [];
 
     private static readonly VirtualKey[] Modifiers = [VirtualKey.CONTROL, VirtualKey.SHIFT, VirtualKey.MENU];
@@ -59,6 +61,8 @@ internal sealed class ButtonsTab
                                              VirtualKey.XBUTTON1 or VirtualKey.XBUTTON2))
                        .ToArray();
     }
+
+    public bool Recording => recording != null || recordingKey != null;
 
     public void StopRecording()
     {
@@ -321,6 +325,7 @@ internal sealed class ButtonsTab
     {
         StopRecording();
         recording = binding;
+        heldAtStart = watcher.HeldButtons();
         watcher.Paused = true;
     }
 
@@ -339,6 +344,8 @@ internal sealed class ButtonsTab
         }
 
         var held = watcher.HeldButtons();
+        heldAtStart &= held;
+        held &= ~heldAtStart;
         var keysHeld = keys.Concat(Modifiers).Where(BindingWatcher.IsDown).ToList();
         if (held != GamepadButtons.None || keysHeld.Count > 0)
         {

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using Controller;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Game.ClientState.GamePad;
 using Dalamud.Interface.Textures;
@@ -83,6 +84,7 @@ internal sealed class ChecklistWindow : Window
         if (leaveGamepadMode && gamepad.Raw(GamepadButtons.South) == 0)
         {
             gamepad.EnableGamepadNav = false;
+            ImGui.ClearWindowFocus();
             leaveGamepadMode = false;
         }
 
@@ -325,7 +327,7 @@ internal sealed class ChecklistWindow : Window
             if (ImGui.Selectable(name, false, ImGuiSelectableFlags.None, new Vector2(nameWidth, 0)) && !reordering &&
                 actions.OpenLog(kept.ItemId))
             {
-                leaveGamepadMode = gamepad.EnableGamepadNav;
+                leaveGamepadMode = gamepad.EnableGamepadNav || PadNav.Navigating;
             }
         }
         // Dragging a name past its neighbour swaps them, as in ImGui's own reorder demo.

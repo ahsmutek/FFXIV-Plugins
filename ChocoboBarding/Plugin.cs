@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Controller;
 using Dalamud.Game.Command;
 using Dalamud.Interface.Windowing;
 using Dalamud.IoC;
@@ -44,6 +45,12 @@ public sealed class Plugin : IDalamudPlugin
     [PluginService]
     private static ICondition Condition { get; set; } = null!;
 
+    [PluginService]
+    private static IGamepadState Gamepad { get; set; } = null!;
+
+    [PluginService]
+    private static IGameInteropProvider Interop { get; set; } = null!;
+
 #if DEBUG
     [PluginService]
     private static IAgentLifecycle AgentLifecycle { get; set; } = null!;
@@ -61,6 +68,7 @@ public sealed class Plugin : IDalamudPlugin
     private readonly BardingWindow bardingWindow;
     private readonly BardingQueue queue;
     private readonly AutoBarding autoBarding;
+    private readonly PadNav padNav;
 
     public Plugin()
     {
@@ -82,7 +90,8 @@ public sealed class Plugin : IDalamudPlugin
 
         bardingWindow = new BardingWindow(Data, Unlocks, Textures, PlayerState, config, Save);
         windows.AddWindow(bardingWindow);
-        PluginInterface.UiBuilder.Draw += windows.Draw;
+        padNav = new PadNav(Interop, Gamepad, Log, windows);
+        PluginInterface.UiBuilder.Draw += Draw;
         PluginInterface.UiBuilder.OpenConfigUi += bardingWindow.Toggle;
         PluginInterface.UiBuilder.OpenMainUi += bardingWindow.Toggle;
 
@@ -99,10 +108,17 @@ public sealed class Plugin : IDalamudPlugin
         CommandManager.RemoveHandler(BardingCommandName);
         autoBarding.Dispose();
         queue.Dispose();
-        PluginInterface.UiBuilder.Draw -= windows.Draw;
+        PluginInterface.UiBuilder.Draw -= Draw;
         PluginInterface.UiBuilder.OpenConfigUi -= bardingWindow.Toggle;
         PluginInterface.UiBuilder.OpenMainUi -= bardingWindow.Toggle;
         windows.RemoveAllWindows();
+        padNav.Dispose();
+    }
+
+    private void Draw()
+    {
+        padNav.Update();
+        windows.Draw();
     }
 
     private void Save() => PluginInterface.SavePluginConfig(config);

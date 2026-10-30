@@ -1,4 +1,5 @@
 using System;
+using Controller;
 using Dalamud.Game.Command;
 using Dalamud.Interface.Windowing;
 using Dalamud.IoC;
@@ -60,6 +61,8 @@ public sealed class Plugin : IDalamudPlugin
     private readonly ProfileWatcher watcher;
     private readonly BindingWatcher bindings;
     private readonly PadBlocker blocker;
+    private readonly ButtonsTab buttonsTab;
+    private readonly PadNav padNav;
 
     public Plugin()
     {
@@ -78,10 +81,11 @@ public sealed class Plugin : IDalamudPlugin
         blocker = new PadBlocker(Interop, config, bindings, Log);
 
         var widgets = new Widgets(catalog, new ShortcutPicker(catalog, icons), icons);
-        var buttonsTab = new ButtonsTab(config, duties, bindings, widgets, KeyState);
+        buttonsTab = new ButtonsTab(config, duties, bindings, widgets, KeyState);
         configWindow = new ConfigWindow(config, Save, groups, PlayerState, Textures, watcher.ApplyNow, widgets, buttonsTab);
         windows.AddWindow(configWindow);
-        PluginInterface.UiBuilder.Draw += windows.Draw;
+        padNav = new PadNav(Interop, Gamepad, Log, windows);
+        PluginInterface.UiBuilder.Draw += Draw;
         PluginInterface.UiBuilder.OpenConfigUi += configWindow.Toggle;
         PluginInterface.UiBuilder.OpenMainUi += configWindow.Toggle;
 
@@ -100,15 +104,24 @@ public sealed class Plugin : IDalamudPlugin
             configWindow.Toggle();
     }
 
+    private void Draw()
+    {
+        padNav.Paused = buttonsTab.Recording;
+        padNav.Update();
+        bindings.Navigating = padNav.Active;
+        windows.Draw();
+    }
+
     private void Save() => PluginInterface.SavePluginConfig(config);
 
     public void Dispose()
     {
         CommandManager.RemoveHandler(CommandName);
-        PluginInterface.UiBuilder.Draw -= windows.Draw;
+        PluginInterface.UiBuilder.Draw -= Draw;
         PluginInterface.UiBuilder.OpenConfigUi -= configWindow.Toggle;
         PluginInterface.UiBuilder.OpenMainUi -= configWindow.Toggle;
         windows.RemoveAllWindows();
+        padNav.Dispose();
         blocker.Dispose();
         bindings.Dispose();
         watcher.Dispose();

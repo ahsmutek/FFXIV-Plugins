@@ -1,3 +1,4 @@
+using Controller;
 using Dalamud.Game.Command;
 using Dalamud.Interface.Windowing;
 using Dalamud.IoC;
@@ -20,9 +21,19 @@ public sealed class Plugin : IDalamudPlugin
     [PluginService]
     private static ITextureProvider Textures { get; set; } = null!;
 
+    [PluginService]
+    private static IGamepadState Gamepad { get; set; } = null!;
+
+    [PluginService]
+    private static IGameInteropProvider Interop { get; set; } = null!;
+
+    [PluginService]
+    private static IPluginLog Log { get; set; } = null!;
+
     private readonly Configuration config;
     private readonly WindowSystem windows = new("IconAtlas");
     private readonly AtlasWindow atlas;
+    private readonly PadNav padNav;
     // Other plugins call IconAtlas.Pick(token, purpose, current icon) and hear back on IconAtlas.Picked(token, icon).
     private readonly ICallGateProvider<string, string, uint, object> pick;
     private readonly ICallGateProvider<string, uint, object> picked;
@@ -33,8 +44,9 @@ public sealed class Plugin : IDalamudPlugin
 
         atlas = new AtlasWindow(config, Save, Textures);
         windows.AddWindow(atlas);
+        padNav = new PadNav(Interop, Gamepad, Log, windows);
 
-        PluginInterface.UiBuilder.Draw += windows.Draw;
+        PluginInterface.UiBuilder.Draw += Draw;
         PluginInterface.UiBuilder.OpenMainUi += atlas.Toggle;
 
         pick = PluginInterface.GetIpcProvider<string, string, uint, object>("IconAtlas.Pick");
@@ -61,6 +73,12 @@ public sealed class Plugin : IDalamudPlugin
 
     private void OnPicked(string token, uint icon) => picked.SendMessage(token, icon);
 
+    private void Draw()
+    {
+        padNav.Update();
+        windows.Draw();
+    }
+
     private void Save() => PluginInterface.SavePluginConfig(config);
 
     public void Dispose()
@@ -68,9 +86,10 @@ public sealed class Plugin : IDalamudPlugin
         CommandManager.RemoveHandler(CommandName);
         pick.UnregisterAction();
         atlas.Picked -= OnPicked;
-        PluginInterface.UiBuilder.Draw -= windows.Draw;
+        PluginInterface.UiBuilder.Draw -= Draw;
         PluginInterface.UiBuilder.OpenMainUi -= atlas.Toggle;
         windows.RemoveAllWindows();
+        padNav.Dispose();
         atlas.Dispose();
     }
 }

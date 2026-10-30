@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Numerics;
+using Controller;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Game.ClientState.GamePad;
 using Dalamud.Game.ClientState.Keys;
@@ -26,6 +27,7 @@ internal sealed class ConfigWindow : Window
     private readonly string[] keyNames;
     private readonly string[] optionalKeyNames;
     private bool dirty;
+    private readonly PadTabs tabs = new();
 
     public ConfigWindow(Configuration config, Action save, WheelSet wheels, WheelOverlay overlay, IKeyState keyState)
         : base("Flick Wheel Settings###FlickWheelConfig")
@@ -65,7 +67,7 @@ internal sealed class ConfigWindow : Window
 
         if (ImGui.BeginTabBar("tabs"))
         {
-            if (ImGui.BeginTabItem("General"))
+            if (tabs.Item("General"))
             {
                 changed |= DrawGeneral();
                 ImGui.EndTabItem();
@@ -75,7 +77,7 @@ internal sealed class ConfigWindow : Window
             {
                 foreach (var tab in module.SettingsTabs)
                 {
-                    if (ImGui.BeginTabItem(tab.Title))
+                    if (tabs.Item(tab.Title))
                     {
                         changed |= tab.Draw();
                         ImGui.EndTabItem();
@@ -83,6 +85,7 @@ internal sealed class ConfigWindow : Window
                 }
             }
 
+            tabs.End();
             ImGui.EndTabBar();
         }
 

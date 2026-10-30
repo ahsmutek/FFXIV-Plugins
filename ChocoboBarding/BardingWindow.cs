@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using Controller;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Textures;
 using Dalamud.Interface.Windowing;
@@ -30,6 +31,7 @@ internal sealed partial class BardingWindow : Window
     private List<PetGlamour.Pet> pets = [];
     private List<PetGlamour.Resize> resizes = [];
     private string filter = string.Empty;
+    private readonly PadTabs tabs = new();
 
     private readonly SlotChoice[] mix = [SlotChoice.Keep, SlotChoice.Keep, SlotChoice.Keep];
 
@@ -248,7 +250,7 @@ internal sealed partial class BardingWindow : Window
         if (!ImGui.BeginTabBar("tabs"))
             return;
 
-        if (ImGui.BeginTabItem("Barding"))
+        if (tabs.Item("Barding"))
         {
             if (owned.Length == 0)
             {
@@ -263,18 +265,19 @@ internal sealed partial class BardingWindow : Window
             ImGui.EndTabItem();
         }
 
-        if (owned.Length > 0 && ImGui.BeginTabItem("Jobs"))
+        if (owned.Length > 0 && tabs.Item("Jobs"))
         {
             DrawJobs();
             ImGui.EndTabItem();
         }
 
-        if ((pets.Count > 0 || resizes.Count > 0) && ImGui.BeginTabItem("Pets"))
+        if ((pets.Count > 0 || resizes.Count > 0) && tabs.Item("Pets"))
         {
             DrawPets();
             ImGui.EndTabItem();
         }
 
+        tabs.End();
         ImGui.EndTabBar();
     }
 }

@@ -18,4 +18,9 @@
     <EmbeddedResource Include="../shared/Icons/*.png" LogicalName="Icons.%(Filename)%(Extension)" />
     <None Include="../shared/Icons/LICENSE-tabler-icons.txt" Link="LICENSE-tabler-icons.txt" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
+
+  <!-- Controller navigation in the windows, shared by most plugins. -->
+  <ItemGroup>
+    <Compile Include="../shared/Controller/*.cs" LinkBase="shared/Controller" />
+  </ItemGroup>
 </Project>
