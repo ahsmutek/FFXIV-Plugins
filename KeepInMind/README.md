@@ -57,7 +57,7 @@ sub-ingredients.
   retainer), which list items in the order the windows show them, and the page each grid shows
   comes from its window's tab (the large retainer window keeps all five pages open, stacked two
   to a tab). A slot is only bordered if it also shows that item's icon. Borders are drawn with
-  ImGui over the slot nodes, and skipped where the game's tooltip or context menu covers a slot.
+  ImGui over the slot nodes, and skipped where the game's tooltip, context menu or amount picker covers a slot.
 - The game fills the item tooltip's text during `ItemDetail`'s update, so the line is added by
   hooking the function that lays it out, found by the same signature as Simple Tweaks uses.
 - Retainer names come from `RetainerManager` and are remembered, so they show before the game

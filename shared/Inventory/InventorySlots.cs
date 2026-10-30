@@ -23,7 +23,7 @@ internal sealed unsafe class InventorySlots(IGameGui gameGui, IDataManager data)
     public readonly record struct Slot(uint ItemId, Vector2 Min, Vector2 Max, float Scale);
 
     // Game windows draw under ImGui, so slots under these are left out rather than drawn over them.
-    private static readonly string[] Covers = ["ItemDetail", "ItemDetailCompare", "ContextMenu", "Tooltip", "SelectYesno", "SelectOk"];
+    private static readonly string[] Covers = ["ItemDetail", "ItemDetailCompare", "ContextMenu", "Tooltip", "SelectYesno", "SelectOk", "InputNumeric"];
 
     private static readonly string[] Grids =
     [
