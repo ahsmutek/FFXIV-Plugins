@@ -101,14 +101,6 @@ internal sealed class ShortcutPicker(ShortcutCatalog catalog, IconCache icons)
 
     private bool DrawEmotes()
     {
-        if (search.Length == 0)
-        {
-            ImGui.TextDisabled(favoriteEmotes.Count > 0
-                ? "Your favourites. Search to add any other emote."
-                : "No favourite emotes yet. Search to add any emote.");
-            return DrawChoices(favoriteEmotes, string.Empty);
-        }
-
         var others = allEmotes.Where(e => favoriteEmotes.All(f => f.RowId != e.RowId));
         return DrawChoices(favoriteEmotes.Concat(others).ToList(), "No unlocked emotes match.");
     }
