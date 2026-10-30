@@ -22,9 +22,6 @@ internal sealed unsafe class InventorySlots(IGameGui gameGui, IDataManager data)
     // Min and Max are screen positions for ImGui; Scale is the slot's UI scale.
     public readonly record struct Slot(uint ItemId, Vector2 Min, Vector2 Max, float Scale);
 
-    // Game windows draw under ImGui, so slots under these are left out rather than drawn over them.
-    private static readonly string[] Covers = ["ItemDetail", "ItemDetailCompare", "ContextMenu", "Tooltip", "SelectYesno", "SelectOk", "InputNumeric"];
-
     private static readonly string[] Grids =
     [
         "InventoryGrid", "InventoryGrid0", "InventoryGrid1",
@@ -88,7 +85,7 @@ internal sealed unsafe class InventorySlots(IGameGui gameGui, IDataManager data)
             var scale = addon->Scale * node->ScaleX;
             var min = offset + new Vector2(node->ScreenX, node->ScreenY);
             var max = min + new Vector2(node->Width, node->Height) * scale;
-            if (!Covered(min, max))
+            if (!Covered(addon, min, max))
                 into.Add(new Slot(itemId, min, max, scale));
         }
     }
@@ -131,21 +128,42 @@ internal sealed unsafe class InventorySlots(IGameGui gameGui, IDataManager data)
         return true;
     }
 
-    public bool Covered(Vector2 min, Vector2 max)
+    // Game windows draw under ImGui, so a mark is left out where any game window drawn above its own overlaps it.
+    public static bool Covered(AtkUnitBase* owner, Vector2 min, Vector2 max) => Cover(owner, min, max) != null;
+
+    private static AtkUnitBase* Cover(AtkUnitBase* owner, Vector2 min, Vector2 max)
     {
+        var manager = RaptureAtkUnitManager.Instance();
+        if (manager == null || owner == null)
+            return null;
+
         var offset = ImGui.GetMainViewport().Pos;
-        foreach (var name in Covers)
+        var screen = ImGui.GetMainViewport().Size;
+        var list = &manager->AtkUnitManager.AllLoadedUnitsList;
+        for (var i = 0; i < list->Count; i++)
         {
-            var cover = Addon<AtkUnitBase>(name);
-            if (cover == null || cover->RootNode == null)
+            var cover = list->Entries[i].Value;
+            if (cover == null || cover == owner || cover->RootNode == null || !cover->IsVisible || cover->Alpha == 0 ||
+                !Above(cover, owner) || Related(cover, owner))
                 continue;
             var coverMin = offset + new Vector2(cover->X, cover->Y);
-            var coverMax = coverMin + new Vector2(cover->RootNode->Width, cover->RootNode->Height) * cover->Scale;
+            var size = new Vector2(cover->RootNode->Width, cover->RootNode->Height) * cover->Scale;
+            // Full-screen layers such as screen text and fades are see-through.
+            if (size.X >= screen.X * 0.9f && size.Y >= screen.Y * 0.9f)
+                continue;
+            var coverMax = coverMin + size;
             if (min.X < coverMax.X && max.X > coverMin.X && min.Y < coverMax.Y && max.Y > coverMin.Y)
-                return true;
+                return cover;
         }
-        return false;
+        return null;
     }
+
+    // The draw order runs across depth layers, front first: the cursor's is lowest.
+    private static bool Above(AtkUnitBase* a, AtkUnitBase* b) => a->DrawOrderIndex < b->DrawOrderIndex;
+
+    // A bag grid's window frame and its other grids hold it rather than cover it.
+    private static bool Related(AtkUnitBase* a, AtkUnitBase* b) =>
+        a->Id == b->ParentId || b->Id == a->ParentId || (a->ParentId != 0 && a->ParentId == b->ParentId);
 
     // For the plugins' debug commands: what each bag window shows, and the page it's taken to show.
     public void Dump(IPluginLog log)
@@ -163,9 +181,33 @@ internal sealed unsafe class InventorySlots(IGameGui gameGui, IDataManager data)
                 if (pointer.Value != null && shown.Count < 6)
                     shown.Add(pointer.Value->GetIconId().ToString());
             }
+            var cover = "none";
+            if (window.Length > 0 && window[0].Value is var first && first != null && first->OwnerNode != null)
+            {
+                var node = &first->OwnerNode->AtkResNode;
+                var min = ImGui.GetMainViewport().Pos + new Vector2(node->ScreenX, node->ScreenY);
+                var by = Cover(addon, min, min + new Vector2(node->Width, node->Height) * addon->Scale);
+                if (by != null)
+                    cover = $"{by->NameString} {by->DepthLayer}/{by->DrawOrderIndex} id {by->Id} parent {by->ParentId}";
+            }
             log.Information($"{name}: visible {addon->IsVisible}, at {addon->X},{addon->Y}, tab {Tab(addon)}, " +
-                            $"page {page?.ToString() ?? "hidden"}, {window.Length} slots, first icons {string.Join(" ", shown)}");
+                            $"page {page?.ToString() ?? "hidden"}, {window.Length} slots, first icons {string.Join(" ", shown)}, " +
+                            $"layer/order {addon->DepthLayer}/{addon->DrawOrderIndex} id {addon->Id} parent {addon->ParentId}, " +
+                            $"first slot covered by {cover}");
         }
+
+        var manager = RaptureAtkUnitManager.Instance();
+        if (manager == null)
+            return;
+        var list = &manager->AtkUnitManager.AllLoadedUnitsList;
+        var visible = new List<string>();
+        for (var i = 0; i < list->Count; i++)
+        {
+            var unit = list->Entries[i].Value;
+            if (unit != null && unit->IsVisible && unit->Alpha > 0)
+                visible.Add($"{unit->NameString} {unit->DepthLayer}/{unit->DrawOrderIndex}");
+        }
+        log.Information($"Visible windows (layer/order): {string.Join(", ", visible)}");
     }
 
     // The page a grid shows, or null when it's hidden behind another. The small windows show one page per

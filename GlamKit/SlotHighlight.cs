@@ -115,7 +115,7 @@ internal sealed unsafe class SlotHighlight
             var min = offset + new Vector2(name->AtkResNode.ScreenX + (width + IconGap) * scale,
                                            name->AtkResNode.ScreenY + (name->AtkResNode.Height * scale - size) / 2);
             var text = ItemLists.Plain(name);
-            DrawMarks(drawList, min, size, IconGap * scale, glamNames.Contains(text), laterNames.Contains(text));
+            DrawMarks(drawList, addon, min, size, IconGap * scale, glamNames.Contains(text), laterNames.Contains(text));
         }
         drawList.PopClipRect();
     }
@@ -146,15 +146,17 @@ internal sealed unsafe class SlotHighlight
             var size = node->Height * scale / 2;
             var min = offset + new Vector2(node->ScreenX + (node->Width + IconGap) * scale,
                                            node->ScreenY + (node->Height * scale - size) / 2);
-            DrawMarks(drawList, min, size, IconGap * scale, glam, later);
+            DrawMarks(drawList, addon, min, size, IconGap * scale, glam, later);
         }
     }
 
     // A hanger, then a bookmark, in a row from min.
-    private void DrawMarks(ImDrawListPtr drawList, Vector2 min, float size, float gap, bool glam, bool later)
+    private void DrawMarks(ImDrawListPtr drawList, AtkUnitBase* owner, Vector2 min, float size, float gap, bool glam,
+                           bool later)
     {
         var count = (glam ? 1 : 0) + (later ? 1 : 0);
-        if (count == 0 || slots.Covered(min, min + new Vector2(count * size + (count - 1) * gap, size)))
+        var width = count * size + (count - 1) * gap;
+        if (count == 0 || InventorySlots.Covered(owner, min, min + new Vector2(width, size)))
             return;
         if (glam)
         {
