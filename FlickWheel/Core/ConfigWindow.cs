@@ -125,7 +125,7 @@ internal sealed class ConfigWindow : Window
         var wheel = all.FirstOrDefault(w => w.Id == selectedWheel) ?? all[0];
 
         var listWidth = 180f * ImGuiHelpers.GlobalScale;
-        if (ImGui.BeginChild("##wheels", new Vector2(listWidth, 0), true))
+        if (ImGui.BeginChild("##wheels", new Vector2(listWidth, 0), true, ImGuiWindowFlags.NavFlattened))
         {
             foreach (var other in all)
             {
@@ -146,7 +146,7 @@ internal sealed class ConfigWindow : Window
         ImGui.EndChild();
 
         ImGui.SameLine();
-        if (ImGui.BeginChild("##wheel", Vector2.Zero, true))
+        if (ImGui.BeginChild("##wheel", Vector2.Zero, true, ImGuiWindowFlags.NavFlattened))
         {
             DrawOpenedBy(wheel);
             var preview = overlay.Preview;

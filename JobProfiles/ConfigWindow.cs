@@ -121,12 +121,12 @@ internal sealed class ConfigWindow : Window
 
         ImGui.Spacing();
         var listWidth = 190f * ImGuiHelpers.GlobalScale;
-        if (ImGui.BeginChild("##pages", new Vector2(listWidth, 0), true))
+        if (ImGui.BeginChild("##pages", new Vector2(listWidth, 0), true, ImGuiWindowFlags.NavFlattened))
             changed |= DrawPageList();
         ImGui.EndChild();
 
         ImGui.SameLine();
-        if (ImGui.BeginChild("##page", Vector2.Zero, true))
+        if (ImGui.BeginChild("##page", Vector2.Zero, true, ImGuiWindowFlags.NavFlattened))
             changed |= DrawPage();
         ImGui.EndChild();
 

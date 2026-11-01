@@ -115,7 +115,7 @@ internal sealed class AtlasWindow : Window, IDisposable
 
         var scale = ImGuiHelpers.GlobalScale;
         var avail = ImGui.GetContentRegionAvail();
-        if (ImGui.BeginChild("##ranges", new Vector2(ListWidth * scale, avail.Y), true))
+        if (ImGui.BeginChild("##ranges", new Vector2(ListWidth * scale, avail.Y), true, ImGuiWindowFlags.NavFlattened))
             DrawSidebar();
         ImGui.EndChild();
 
@@ -125,10 +125,10 @@ internal sealed class AtlasWindow : Window, IDisposable
         DrawHeader();
         var detailHeight = PreviewSize * scale + ImGui.GetStyle().WindowPadding.Y * 2;
         var gridHeight = ImGui.GetContentRegionAvail().Y - detailHeight - ImGui.GetStyle().ItemSpacing.Y;
-        if (ImGui.BeginChild("##grid", new Vector2(0, gridHeight), true))
+        if (ImGui.BeginChild("##grid", new Vector2(0, gridHeight), true, ImGuiWindowFlags.NavFlattened))
             DrawGrid();
         ImGui.EndChild();
-        if (ImGui.BeginChild("##detail", Vector2.Zero, true))
+        if (ImGui.BeginChild("##detail", Vector2.Zero, true, ImGuiWindowFlags.NavFlattened))
             DrawDetail();
         ImGui.EndChild();
         ImGui.EndGroup();
@@ -149,7 +149,7 @@ internal sealed class AtlasWindow : Window, IDisposable
 
         // Without its own padding the list's highlight would start at the clipped edge of the child.
         ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(ImGui.GetStyle().ItemSpacing.X, 0));
-        var open = ImGui.BeginChild("##list", Vector2.Zero, false, ImGuiWindowFlags.AlwaysUseWindowPadding);
+        var open = ImGui.BeginChild("##list", Vector2.Zero, false, ImGuiWindowFlags.AlwaysUseWindowPadding | ImGuiWindowFlags.NavFlattened);
         ImGui.PopStyleVar();
         if (!open)
         {
