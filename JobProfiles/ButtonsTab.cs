@@ -196,7 +196,7 @@ internal sealed class ButtonsTab
             var rules = binding.Rules.OrderBy(r => r.Job != null ? 3 : r.Group == JobGroup.Combat ? 1 : r.Group != null ? 2 : 0)
                                .ThenBy(r => (int?)r.Group ?? -1)
                                .ThenBy(r => r.Job)
-                               .ThenBy(r => r.Where);
+                               .ThenBy(WhereLabel);
             foreach (var rule in rules)
             {
                 var what = rule.OpensWheel ? $"opens Flick Wheel's {flickWheel.NameOf(rule.WheelHotkey!)}"
@@ -268,7 +268,7 @@ internal sealed class ButtonsTab
         if (ImGui.IsItemHovered())
             ImGui.SetTooltip("Make one of your buttons do something for this page. If several pages set the same button,\n" +
                              "the most specific wins: a job beats its role, a role beats Combat jobs, which beats Everyone,\n" +
-                             "and a kind of duty (In Raids) beats In any duty / Outside duties, which beat Anywhere.");
+                             "and kinds of duty (In Raids) beat other places, which beat Anywhere.");
         return changed;
     }
 
@@ -282,12 +282,7 @@ internal sealed class ButtonsTab
             move = (binding, config.Bindings.First(b => b.Uid == target), rule);
 
         ImGui.SameLine();
-        var where = WhereKey(rule);
-        if (widgets.Combo("##where", ref where, WhereOptions(), searchable: true, width: 140f))
-        {
-            (rule.Where, rule.ContentType) = ParseWhere(where);
-            changed = true;
-        }
+        changed |= widgets.MultiCombo("##where", rule.Places, PlaceOptions(), "Anywhere", searchable: true, width: 140f);
 
         ImGui.SameLine();
         var mode = rule.WheelHotkey != null ? Mode.Wheel : rule.ActsAsKey || recordingKey == rule ? Mode.Key : Mode.Steps;
@@ -476,30 +471,21 @@ internal sealed class ButtonsTab
         rule.Group is { } group ? JobGroups.Label(group) :
         "Everyone";
 
-    // Where: "a" anywhere, "o" outside duties, "d" any duty, "t:5" one duty type.
-    private static string WhereKey(Rule rule) => rule.Where switch
+    private List<(string Value, string Label)> PlaceOptions()
     {
-        DutyScope.OutsideDuty => "o",
-        DutyScope.AnyDuty => "d",
-        DutyScope.ContentType => $"t:{rule.ContentType}",
-        _ => "a",
-    };
-
-    private static (DutyScope, uint) ParseWhere(string key) => key switch
-    {
-        "o" => (DutyScope.OutsideDuty, 0),
-        "d" => (DutyScope.AnyDuty, 0),
-        _ when key.StartsWith("t:") && uint.TryParse(key[2..], out var id) => (DutyScope.ContentType, id),
-        _ => (DutyScope.Anywhere, 0),
-    };
-
-    private List<(string Value, string Label)> WhereOptions()
-    {
-        var options = new List<(string, string)> { ("a", "Anywhere"), ("o", "Outside duties"), ("d", "In any duty") };
+        var options = new List<(string, string)>
+        {
+            ("o", "Outside duties"), ("d", "In any duty"), ("c", "In combat"), ("p", "In a party"),
+        };
         options.AddRange(duties.Kinds().Select(k => ($"t:{k.Id}", $"In {k.Name}")));
         return options;
     }
 
-    private string WhereLabel(Rule rule) =>
-        WhereOptions().FirstOrDefault(o => o.Value == WhereKey(rule)).Label ?? "Anywhere";
+    private string WhereLabel(Rule rule)
+    {
+        if (rule.Places.Count == 0)
+            return "Anywhere";
+        var options = PlaceOptions();
+        return string.Join(" or ", rule.Places.Select(p => options.FirstOrDefault(o => o.Value == p).Label ?? p));
+    }
 }

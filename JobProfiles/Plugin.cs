@@ -30,6 +30,9 @@ public sealed class Plugin : IDalamudPlugin
     private static ICondition Condition { get; set; } = null!;
 
     [PluginService]
+    private static IPartyList PartyList { get; set; } = null!;
+
+    [PluginService]
     private static IDataManager Data { get; set; } = null!;
 
     [PluginService]
@@ -78,7 +81,7 @@ public sealed class Plugin : IDalamudPlugin
         runner = new MacroRunner(Framework, Condition, catalog);
         watcher = new ProfileWatcher(Framework, PlayerState, config, groups, runner);
         var flickWheel = new FlickWheelLink(PluginInterface);
-        bindings = new BindingWatcher(Framework, Gamepad, KeyState, PlayerState, config, groups, duties, runner, flickWheel);
+        bindings = new BindingWatcher(Framework, Gamepad, KeyState, PlayerState, Condition, PartyList, config, groups, duties, runner, flickWheel);
         blocker = new PadBlocker(Interop, config, bindings, Log);
 
         var widgets = new Widgets(catalog, new ShortcutPicker(catalog, icons), icons);

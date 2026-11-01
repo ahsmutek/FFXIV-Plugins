@@ -3,10 +3,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Runtime.InteropServices;
+using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Game.ClientState.GamePad;
 using Dalamud.Game.ClientState.Keys;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.UI;
+using FFXIVClientStructs.FFXIV.Client.UI.Info;
 
 namespace JobProfiles;
 
@@ -19,6 +21,8 @@ internal sealed class BindingWatcher : IDisposable
     private readonly IGamepadState gamepad;
     private readonly IKeyState keys;
     private readonly IPlayerState player;
+    private readonly ICondition condition;
+    private readonly IPartyList party;
     private readonly Configuration config;
     private readonly JobGroups groups;
     private readonly Duties duties;
@@ -36,9 +40,11 @@ internal sealed class BindingWatcher : IDisposable
     private static readonly VirtualKey[] Modifiers = [VirtualKey.CONTROL, VirtualKey.SHIFT, VirtualKey.MENU];
 
     public BindingWatcher(IFramework framework, IGamepadState gamepad, IKeyState keys, IPlayerState player,
-                          Configuration config, JobGroups groups, Duties duties, MacroRunner runner,
-                          FlickWheelLink flickWheel)
+                          ICondition condition, IPartyList party, Configuration config, JobGroups groups,
+                          Duties duties, MacroRunner runner, FlickWheelLink flickWheel)
     {
+        this.condition = condition;
+        this.party = party;
         this.flickWheel = flickWheel;
         this.framework = framework;
         this.gamepad = gamepad;
@@ -78,29 +84,37 @@ internal sealed class BindingWatcher : IDisposable
     {
         var job = groups.Of(player.ClassJob.RowId);
         var (inDuty, contentType) = duties.Current();
+        var inCombat = condition[ConditionFlag.InCombat];
+        var inParty = InParty();
+        var dutyType = inDuty ? $"t:{contentType}" : null;
         return binding.Rules
                       .Where(rule =>
                           (rule.Job != null ? job?.Abbreviation == rule.Job :
                            rule.Group == null || job is { } j && (j.Group == rule.Group || JobGroups.Parent(j.Group) == rule.Group)) &&
-                          rule.Where switch
+                          (rule.Places.Count == 0 || rule.Places.Any(place => place switch
                           {
-                              DutyScope.OutsideDuty => !inDuty,
-                              DutyScope.AnyDuty => inDuty,
-                              DutyScope.ContentType => inDuty && contentType == rule.ContentType,
-                              _ => true,
-                          })
+                              "o" => !inDuty,
+                              "d" => inDuty,
+                              "c" => inCombat,
+                              "p" => inParty,
+                              _ => place == dutyType,
+                          })))
                       .OrderByDescending(Specificity)
                       .FirstOrDefault();
     }
 
+    // The party list stays empty for a cross-world party outside instances.
+    private unsafe bool InParty()
+    {
+        if (party.Length > 0)
+            return true;
+        var crossRealm = InfoProxyCrossRealm.Instance();
+        return crossRealm != null && crossRealm->IsInCrossRealmParty;
+    }
+
     private static int Specificity(Rule rule) =>
         (rule.Job != null ? 20 : rule.Group == JobGroup.Combat ? 5 : rule.Group != null ? 10 : 0) +
-        rule.Where switch
-        {
-            DutyScope.ContentType => 2,
-            DutyScope.AnyDuty or DutyScope.OutsideDuty => 1,
-            _ => 0,
-        };
+        (rule.Places.Count == 0 ? 0 : rule.Places.All(p => p.StartsWith("t:")) ? 2 : 1);
 
     private void OnUpdate(IFramework _)
     {

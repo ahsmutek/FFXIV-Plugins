@@ -106,30 +106,15 @@ internal sealed class Widgets(ShortcutCatalog catalog, ShortcutPicker picker, Ic
         var current = value;
         var selected = Math.Max(0, options.FindIndex(o => EqualityComparer<T>.Default.Equals(o.Value, current)));
         var changed = false;
-        if (width > 0)
-        {
-            var longest = options.Count > 0 ? options.Max(o => ImGui.CalcTextSize(o.Label).X) : 0f;
-            var fit = longest + ImGui.GetStyle().FramePadding.X * 2 + ImGui.GetFrameHeight();
-            width = MathF.Max(width * ImGuiHelpers.GlobalScale, fit);
-        }
-        ImGui.SetNextItemWidth(width);
+        ImGui.SetNextItemWidth(ComboWidth(options.Select(o => o.Label), width));
         if (ImGui.BeginCombo(id, options[selected].Label, searchable ? ImGuiComboFlags.HeightLarge : ImGuiComboFlags.None))
         {
             if (searchable)
-            {
-                if (ImGui.IsWindowAppearing())
-                {
-                    search = string.Empty;
-                    ImGui.SetKeyboardFocusHere();
-                }
-                ImGui.SetNextItemWidth(-1);
-                ImGui.InputTextWithHint("##search", "Search", ref search, 64);
-            }
+                SearchBox();
 
             for (var i = 0; i < options.Count; i++)
             {
-                if (search.Length > 0 && searchable &&
-                    !options[i].Label.Contains(search, StringComparison.CurrentCultureIgnoreCase))
+                if (!Matches(searchable, options[i].Label))
                     continue;
                 if (ImGui.Selectable($"{options[i].Label}##{i}", i == selected) && i != selected)
                 {
@@ -142,4 +127,69 @@ internal sealed class Widgets(ShortcutCatalog catalog, ShortcutPicker picker, Ic
 
         return changed;
     }
+
+    // values stays in the options' order; empty shows as none.
+    public bool MultiCombo<T>(string id, List<T> values, List<(T Value, string Label)> options, string none,
+                              bool searchable = false, float width = -1)
+    {
+        var changed = false;
+        var preview = values.Count == 0
+            ? none
+            : string.Join(", ", options.Where(o => values.Contains(o.Value)).Select(o => o.Label));
+        ImGui.SetNextItemWidth(ComboWidth(options.Select(o => o.Label).Append(none), width));
+        if (ImGui.BeginCombo(id, preview, searchable ? ImGuiComboFlags.HeightLarge : ImGuiComboFlags.None))
+        {
+            if (searchable)
+                SearchBox();
+
+            if (ImGui.Selectable(none, values.Count == 0) && values.Count > 0)
+            {
+                values.Clear();
+                changed = true;
+            }
+
+            for (var i = 0; i < options.Count; i++)
+            {
+                if (!Matches(searchable, options[i].Label))
+                    continue;
+                var ticked = values.Contains(options[i].Value);
+                if (!ImGui.Checkbox($"{options[i].Label}##{i}", ref ticked))
+                    continue;
+                var keep = values.ToHashSet();
+                if (ticked)
+                    keep.Add(options[i].Value);
+                else
+                    keep.Remove(options[i].Value);
+                values.Clear();
+                values.AddRange(options.Select(o => o.Value).Where(keep.Contains));
+                changed = true;
+            }
+            ImGui.EndCombo();
+        }
+
+        return changed;
+    }
+
+    private static float ComboWidth(IEnumerable<string> labels, float width)
+    {
+        if (width <= 0)
+            return width;
+        var longest = labels.Select(l => ImGui.CalcTextSize(l).X).DefaultIfEmpty(0f).Max();
+        var fit = longest + ImGui.GetStyle().FramePadding.X * 2 + ImGui.GetFrameHeight();
+        return MathF.Max(width * ImGuiHelpers.GlobalScale, fit);
+    }
+
+    private void SearchBox()
+    {
+        if (ImGui.IsWindowAppearing())
+        {
+            search = string.Empty;
+            ImGui.SetKeyboardFocusHere();
+        }
+        ImGui.SetNextItemWidth(-1);
+        ImGui.InputTextWithHint("##search", "Search", ref search, 64);
+    }
+
+    private bool Matches(bool searchable, string label) =>
+        !searchable || search.Length == 0 || label.Contains(search, StringComparison.CurrentCultureIgnoreCase);
 }

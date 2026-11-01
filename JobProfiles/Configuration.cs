@@ -44,14 +44,6 @@ public sealed class Profile
     public bool ShouldSerializeMacros() => false;
 }
 
-public enum DutyScope
-{
-    Anywhere,
-    OutsideDuty,
-    AnyDuty,
-    ContentType,
-}
-
 public sealed class Rule
 {
     public string Uid { get; set; } = Guid.NewGuid().ToString("N");
@@ -61,8 +53,16 @@ public sealed class Rule
     public string? Job { get; set; }
     // Both null = anyone.
     public JobGroup? Group { get; set; }
-    public DutyScope Where { get; set; }
+    // Any one matching is enough; empty = anywhere. "o" outside duties, "d" any duty, "c" in combat,
+    // "p" in a party, "t:5" one duty type.
+    public List<string> Places { get; set; } = new();
+
+    // Legacy, read by Migrate only: 1 outside duties, 2 any duty, 3 the duty type in ContentType,
+    // 4 combat, duty or party.
+    public int Where { get; set; }
     public uint ContentType { get; set; }
+    public bool ShouldSerializeWhere() => false;
+    public bool ShouldSerializeContentType() => false;
 
     public VirtualKey HoldKey { get; set; }
     public bool HoldCtrl { get; set; }
@@ -155,6 +155,21 @@ public sealed class Configuration : IPluginConfiguration
             binding.Keys = keys;
             binding.Key = 0;
             binding.Ctrl = binding.Shift = binding.Alt = false;
+            changed = true;
+        }
+
+        foreach (var rule in Bindings.SelectMany(b => b.Rules).Where(r => r.Where != 0))
+        {
+            rule.Places = rule.Where switch
+            {
+                1 => ["o"],
+                2 => ["d"],
+                3 => [$"t:{rule.ContentType}"],
+                4 => ["d", "c", "p"],
+                _ => [],
+            };
+            rule.Where = 0;
+            rule.ContentType = 0;
             changed = true;
         }
 
