@@ -104,7 +104,7 @@ internal sealed class BindingWatcher : IDisposable
 
     private void OnUpdate(IFramework _)
     {
-        if (Paused || Navigating || !config.BindingsEnabled || config.Bindings.Count == 0 || !player.IsLoaded || Typing())
+        if (Paused || Navigating || !config.BindingsEnabled || config.Bindings.Count == 0 || !player.IsLoaded)
         {
             Release();
             lastHeld = HeldButtons();
@@ -112,23 +112,26 @@ internal sealed class BindingWatcher : IDisposable
             return;
         }
 
-        if (holding is var (held, _) && !StillHeld(held))
+        // Pad bindings still work while typing, so they can reach /catproof when a cat has opened chat.
+        var typing = Typing();
+        if (holding is var (held, _) && (!StillHeld(held) || typing && held.HasKeys))
             Release();
 
-        var pressed = Press();
-        HideHeldKeys();
+        var pressed = Press(typing);
+        if (!typing)
+            HideHeldKeys();
         if (pressed != null)
             Fire(pressed);
     }
 
     // Not the game's "just pressed": PadBlocker makes held buttons look newly pressed every frame.
-    private Binding? Press()
+    private Binding? Press(bool typing)
     {
         var held = HeldButtons();
         var pressedButtons = held & ~lastHeld;
         lastHeld = held;
 
-        var keysDown = KeysDown();
+        var keysDown = typing ? new HashSet<VirtualKey>() : KeysDown();
         var pressedKeys = keysDown.Where(k => !lastKeys.Contains(k)).ToHashSet();
         lastKeys = keysDown;
 
@@ -144,7 +147,7 @@ internal sealed class BindingWatcher : IDisposable
     private static bool Held(Binding binding, GamepadButtons held, HashSet<VirtualKey> keysDown) =>
         (binding.Buttons & ~held) == 0 && binding.Keys.All(keysDown.Contains) &&
         (binding.Buttons == GamepadButtons.None || (held & ~binding.Buttons) == 0) &&
-        Modifiers.All(m => binding.Keys.Contains(m) || !keysDown.Contains(m));
+        (!binding.HasKeys || Modifiers.All(m => binding.Keys.Contains(m) || !keysDown.Contains(m)));
 
     private HashSet<VirtualKey> KeysDown()
     {
