@@ -130,13 +130,17 @@ internal sealed class ShortcutsModule : IWheelModule
             var entries = new List<WheelEntry>();
             for (var slot = 0; slot < ring.Slots.Length; slot++)
             {
-                if (!byUid.TryGetValue(ring.Slots[slot].Key, out var entry) || !module.catalog.Available(entry) ||
+                if (!byUid.TryGetValue(ring.Slots[slot].Key, out var entry) ||
                     module.catalog.Describe(entry) is not { } info)
+                    continue;
+
+                var available = module.catalog.Available(entry);
+                if (!available && entry.Kind != ShortcutKind.BuddyAction)
                     continue;
 
                 var count = module.catalog.Count(entry);
                 entries.Add(new WheelEntry(slot, info.Name, info.IconId, () => module.catalog.Run(entry),
-                                           KeyOutIcon: info.KeyOutIcon, Faded: count == 0, Count: count,
+                                           KeyOutIcon: info.KeyOutIcon, Faded: !available || count == 0, Count: count,
                                            Glyph: info.IconId == 0 ? module.pluginIcons.Of(entry) : null));
             }
 

@@ -192,11 +192,11 @@ internal sealed class WheelOverlay(WheelInput input, WheelSet wheels, IconCache 
         var min = pos - new Vector2(size / 2);
         var max = pos + new Vector2(size / 2);
 
-        var alpha = entry.Faded ? .4f : 1f;
+        var shade = entry.Faded ? .4f : 1f;
         if (entry.Glyph is { } pluginGlyph)
-            DrawGlyph(dl, pluginGlyph, pos, size, alpha);
+            DrawGlyph(dl, pluginGlyph, pos, size, shade);
         else
-            icons.Get(entry.IconId, entry.KeyOutIcon).Draw(dl, min, max, ImGui.GetColorU32(new Vector4(1f, 1f, 1f, alpha)));
+            icons.Get(entry.IconId, entry.KeyOutIcon).Draw(dl, min, max, ImGui.GetColorU32(new Vector4(shade, shade, shade, 1f)));
 
         if (entry.Count is { } count)
             DrawOutlinedText(dl, count.ToString(), max, size * 0.34f, Align.BottomRight);
@@ -208,14 +208,14 @@ internal sealed class WheelOverlay(WheelInput input, WheelSet wheels, IconCache 
         }
     }
 
-    private void DrawGlyph(ImDrawListPtr dl, PluginGlyph glyph, Vector2 at, float size, float alpha)
+    private void DrawGlyph(ImDrawListPtr dl, PluginGlyph glyph, Vector2 at, float size, float shade)
     {
         using (glyphFont.Push())
         {
             var text = glyph.Glyph.ToString();
             var fontSize = size * 0.8f;
             var textSize = ImGui.CalcTextSize(text) * (fontSize / ImGui.GetFontSize());
-            var color = (glyph.Color & 0x00FFFFFF) | ((uint)((glyph.Color >> 24) * alpha) << 24);
+            var color = ImGui.GetColorU32(ImGui.ColorConvertU32ToFloat4(glyph.Color) * new Vector4(shade, shade, shade, 1f));
             dl.AddText(ImGui.GetFont(), fontSize, at - textSize / 2, color, text);
         }
     }

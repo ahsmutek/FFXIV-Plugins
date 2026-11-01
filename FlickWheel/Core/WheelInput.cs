@@ -270,12 +270,14 @@ internal sealed class WheelInput : IDisposable
             return current;
         foreach (var entry in Entries)
             if (InSlice(angle, entry.Slot, 0))
-                return entry;
+                return entry.Faded ? null : entry;
 
         WheelEntry? best = null;
         var bestDistance = float.MaxValue;
         foreach (var entry in Entries)
         {
+            if (entry.Faded)
+                continue;
             var distance = WheelRing.AngleDistance(angle, Ring.AngleOf(entry.Slot));
             if (distance < bestDistance)
             {
