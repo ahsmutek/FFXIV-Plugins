@@ -42,6 +42,7 @@ internal sealed class WheelInput : IDisposable
     private bool waitForRelease;
     private float gesturePeak;
     private bool swapWasDown;
+    private bool backWasDown;
     private long lastDrawn;
 
     private HotkeyModifier heldModifier;
@@ -129,8 +130,13 @@ internal sealed class WheelInput : IDisposable
 
         var swapDown = gamepad.Raw(config.SwapButton) > 0;
         if (swapDown && !swapWasDown)
-            ShowNext();
+            ShowNext(1);
         swapWasDown = swapDown;
+
+        var backDown = gamepad.Raw(BackButton) > 0;
+        if (backDown && !backWasDown)
+            ShowNext(-1);
+        backWasDown = backDown;
 
         if (!StillHeld())
         {
@@ -197,6 +203,7 @@ internal sealed class WheelInput : IDisposable
 
         // A swap button already held while opening isn't a tap.
         swapWasDown = gamepad.Raw(config.SwapButton) > 0;
+        backWasDown = gamepad.Raw(BackButton) > 0;
 
         Target = null;
         gesturePeak = 0;
@@ -208,7 +215,15 @@ internal sealed class WheelInput : IDisposable
         blocker.Active = true;
     }
 
-    private void ShowNext()
+    private GamepadButtons BackButton => config.SwapButton switch
+    {
+        GamepadButtons.L1 => GamepadButtons.R1,
+        GamepadButtons.R1 => GamepadButtons.L1,
+        GamepadButtons.L2 => GamepadButtons.R2,
+        _ => GamepadButtons.L2,
+    };
+
+    private void ShowNext(int direction)
     {
         var all = wheels.CycleOf(openedSet!);
         var index = all.FindIndex(w => w.Id == Wheel?.Id);
@@ -216,7 +231,7 @@ internal sealed class WheelInput : IDisposable
         var steps = index < 0 ? all.Count : all.Count - 1;
         for (var i = 1; i <= steps; i++)
         {
-            Show(all[(index + i) % all.Count]);
+            Show(all[((index + direction * i) % all.Count + all.Count) % all.Count]);
             if (Entries.Count > 0)
             {
                 Target = null;

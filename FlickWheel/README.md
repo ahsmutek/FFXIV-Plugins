@@ -6,8 +6,8 @@ hotkey, flick the right stick toward an entry, and let go of the hotkey.
 ## Usage
 
 1. Hold a hotkey, **Ctrl + ,** to start with (map a pad button to it with reWASD or Steam
-   Input). The last wheel you used with it opens; tap **RB** (or LB, LT, RT) to move to
-   its next wheel.
+   Input). The last wheel you used with it opens; tap **RB** to move to its next
+   wheel and **LB** to go back (or LT and RT, if you set that in settings).
 2. Tilt the right stick toward an entry. It stays targeted when the stick springs back,
    until you flick toward another.
 3. Let go of the hotkey to use it. Or set **Pick when** to **The stick returns to center**

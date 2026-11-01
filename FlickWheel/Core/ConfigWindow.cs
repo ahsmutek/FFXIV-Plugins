@@ -182,7 +182,7 @@ internal sealed class ConfigWindow : Window
     private bool DrawHotkeys()
     {
         var changed = false;
-        ImGui.TextWrapped("Hold a hotkey to open its wheels, flick toward an entry and let go. While it's open, tap the next wheel button to move through its wheels.");
+        ImGui.TextWrapped("Hold a hotkey to open its wheels, flick toward an entry and let go. While it's open, tap the next wheel button to move through its wheels, or the matching button on the other side to go back.");
         ImGui.Spacing();
 
         var buttonIndex = Math.Max(0, Array.IndexOf(SwapButtons, config.SwapButton));
