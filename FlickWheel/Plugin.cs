@@ -1,9 +1,11 @@
 using System;
+using System.Linq;
 using Controller;
 using Dalamud.Game.Command;
 using Dalamud.Interface.Windowing;
 using Dalamud.IoC;
 using Dalamud.Plugin;
+using Dalamud.Plugin.Ipc;
 using Dalamud.Plugin.Services;
 
 using IconAtlasClient;
@@ -67,6 +69,8 @@ public sealed class Plugin : IDalamudPlugin
     private readonly ChatLogToggle chatLog;
     private readonly IconPicker iconPicker;
     private readonly PadNav padNav;
+    private readonly ICallGateProvider<(string Uid, string Name)[]> hotkeysIpc;
+    private readonly ICallGateProvider<string, bool, object> holdIpc;
 
     public Plugin()
     {
@@ -75,7 +79,7 @@ public sealed class Plugin : IDalamudPlugin
             Save();
 
         // Modules need the overlay for their settings preview.
-        var wheels = new WheelSet(config);
+        var wheels = new WheelSet();
         blocker = new PadBlocker(Interop, Log);
         input = new WheelInput(Framework, KeyState, Gamepad, blocker, Condition, PlayerState, wheels, config, Save);
         icons = new IconCache(Data, Textures);
@@ -86,12 +90,19 @@ public sealed class Plugin : IDalamudPlugin
         wheels.Add(new JobsModule(config, catalog, switcher, icons, overlay));
         chatLog = new ChatLogToggle(Framework);
         iconPicker = new IconPicker(PluginInterface, "FlickWheel");
-        wheels.Add(new ShortcutsModule(config, Save, new ShortcutCatalog(Data, CommandManager, Buddies, chatLog), icons, overlay,
-                                       iconPicker));
+        var shortcuts = new ShortcutsModule(config, Save, new ShortcutCatalog(Data, CommandManager, Buddies, chatLog), icons,
+                                            overlay, iconPicker);
+        wheels.Add(shortcuts);
 
-        configWindow = new ConfigWindow(config, Save, wheels, overlay, KeyState);
+        configWindow = new ConfigWindow(config, Save, wheels, shortcuts, overlay, input, KeyState);
         windows.AddWindow(configWindow);
         padNav = new PadNav(Interop, Gamepad, Log, windows);
+
+        // For Job Profiles: a button can hold one of these hotkeys open, without it needing a key.
+        hotkeysIpc = PluginInterface.GetIpcProvider<(string Uid, string Name)[]>("FlickWheel.Hotkeys");
+        hotkeysIpc.RegisterFunc(() => config.WheelCycles.Select(h => (h.Uid, h.Name.Length > 0 ? h.Name : "Unnamed")).ToArray());
+        holdIpc = PluginInterface.GetIpcProvider<string, bool, object>("FlickWheel.Hold");
+        holdIpc.RegisterAction(input.Hold);
 
         PluginInterface.UiBuilder.Draw += Draw;
         PluginInterface.UiBuilder.OpenConfigUi += configWindow.Toggle;
@@ -124,6 +135,8 @@ public sealed class Plugin : IDalamudPlugin
     public void Dispose()
     {
         CommandManager.RemoveHandler(CommandName);
+        hotkeysIpc.UnregisterFunc();
+        holdIpc.UnregisterAction();
         PluginInterface.UiBuilder.Draw -= Draw;
         input.Dispose();
         blocker.Dispose();

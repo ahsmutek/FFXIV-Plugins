@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Game.ClientState.GamePad;
 using Dalamud.Game.ClientState.Keys;
@@ -35,6 +36,7 @@ internal sealed class ButtonsTab
     private readonly Duties duties;
     private readonly BindingWatcher watcher;
     private readonly Widgets widgets;
+    private readonly FlickWheelLink flickWheel;
     private readonly VirtualKey[] keys;
 
     private Binding? recording;
@@ -45,14 +47,17 @@ internal sealed class ButtonsTab
 
     private static readonly VirtualKey[] Modifiers = [VirtualKey.CONTROL, VirtualKey.SHIFT, VirtualKey.MENU];
     private Rule? recordingKey;
+    // The line just added: outlined for a moment, and scrolled to once.
+    private (string Uid, long At, bool Scroll) added = (string.Empty, 0, false);
 
     public ButtonsTab(Configuration config, Duties duties, BindingWatcher watcher, Widgets widgets,
-                      IKeyState keyState)
+                      FlickWheelLink flickWheel, IKeyState keyState)
     {
         this.config = config;
         this.duties = duties;
         this.watcher = watcher;
         this.widgets = widgets;
+        this.flickWheel = flickWheel;
         keys = keyState.GetValidVirtualKeys()
                        .Where(k => k is not (VirtualKey.CONTROL or VirtualKey.SHIFT or VirtualKey.MENU or
                                              VirtualKey.LCONTROL or VirtualKey.RCONTROL or VirtualKey.LSHIFT or
@@ -176,6 +181,7 @@ internal sealed class ButtonsTab
         var match = watcher.Match(binding);
         ImGui.TextDisabled(match switch
         {
+            { OpensWheel: true } => $"Here and now: opens Flick Wheel's {flickWheel.NameOf(match.WheelHotkey!)} (from {WhoLabel(match)}, {WhereLabel(match)})",
             { ActsAsKey: true } => $"Here and now: holds {KeyPresser.Describe(match)} (from {WhoLabel(match)}, {WhereLabel(match)})",
             { Steps.Count: > 0 } => $"Here and now: does {widgets.StepNames(match.Steps)} (from {WhoLabel(match)}, {WhereLabel(match)})",
             _ => "Here and now: nothing",
@@ -193,7 +199,8 @@ internal sealed class ButtonsTab
                                .ThenBy(r => r.Where);
             foreach (var rule in rules)
             {
-                var what = rule.ActsAsKey ? $"holds {KeyPresser.Describe(rule)}"
+                var what = rule.OpensWheel ? $"opens Flick Wheel's {flickWheel.NameOf(rule.WheelHotkey!)}"
+                         : rule.ActsAsKey ? $"holds {KeyPresser.Describe(rule)}"
                          : rule.Steps.Count > 0 ? $"does {widgets.StepNames(rule.Steps)}"
                          : "nothing yet";
                 ImGui.BulletText($"{WhoLabel(rule)} · {WhereLabel(rule)}: {what}");
@@ -216,14 +223,26 @@ internal sealed class ButtonsTab
 
         (Binding Binding, Rule Rule)? remove = null;
         (Binding From, Binding To, Rule Rule)? move = null;
-        foreach (var binding in config.Bindings.ToList())
+        var rules = config.Bindings.SelectMany(b => b.Rules.Where(r => WhoKey(r) == who).Select(r => (Binding: b, Rule: r)))
+                          .OrderBy(x => x.Rule.Created)
+                          .ToList();
+        foreach (var (binding, rule) in rules)
         {
-            foreach (var rule in binding.Rules.Where(r => WhoKey(r) == who))
+            ImGui.PushID(rule.Uid);
+            ImGui.BeginGroup();
+            changed |= DrawRule(binding, rule, ref remove, ref move);
+            ImGui.EndGroup();
+            if (rule.Uid == added.Uid && Environment.TickCount64 - added.At < 2000)
             {
-                ImGui.PushID(rule.Uid);
-                changed |= DrawRule(binding, rule, ref remove, ref move);
-                ImGui.PopID();
+                ImGui.GetWindowDrawList().AddRect(ImGui.GetItemRectMin() - new Vector2(4f), ImGui.GetItemRectMax() + new Vector2(4f),
+                                                  ImGui.GetColorU32(ImGuiCol.CheckMark), 4f, ImDrawFlags.None, 2f);
+                if (added.Scroll)
+                {
+                    ImGui.SetScrollHereY(1f);
+                    added.Scroll = false;
+                }
             }
+            ImGui.PopID();
         }
 
         if (remove is var (fromBinding, removed))
@@ -241,7 +260,9 @@ internal sealed class ButtonsTab
         if (ImGui.SmallButton("+ Button behaviour"))
         {
             var (job, group) = ParseWho(who);
-            config.Bindings[0].Rules.Add(new Rule { Job = job, Group = group });
+            var rule = new Rule { Job = job, Group = group, Created = DateTime.UtcNow.Ticks };
+            config.Bindings[0].Rules.Add(rule);
+            added = (rule.Uid, Environment.TickCount64, true);
             changed = true;
         }
         if (ImGui.IsItemHovered())
@@ -269,22 +290,25 @@ internal sealed class ButtonsTab
         }
 
         ImGui.SameLine();
-        var actsAsKey = rule.ActsAsKey || recordingKey == rule;
-        if (widgets.Combo("##mode", ref actsAsKey, [(false, "Do something"), (true, "Hold a key")], width: 120f))
+        var mode = rule.WheelHotkey != null ? Mode.Wheel : rule.ActsAsKey || recordingKey == rule ? Mode.Key : Mode.Steps;
+        if (widgets.Combo("##mode", ref mode, [(Mode.Steps, "Do something"), (Mode.Key, "Hold a key"), (Mode.Wheel, "Open Flick Wheel")],
+                          width: 140f))
         {
-            if (actsAsKey)
+            rule.HoldKey = 0;
+            rule.HoldCtrl = rule.HoldShift = rule.HoldAlt = false;
+            rule.WheelHotkey = null;
+            if (recordingKey == rule)
+                StopRecording();
+            if (mode == Mode.Key)
                 StartKeyRecording(rule);
-            else
-            {
-                rule.HoldKey = 0;
-                rule.HoldCtrl = rule.HoldShift = rule.HoldAlt = false;
-                if (recordingKey == rule)
-                    StopRecording();
-            }
+            else if (mode == Mode.Wheel)
+                rule.WheelHotkey = flickWheel.Hotkeys().FirstOrDefault().Uid ?? string.Empty;
             changed = true;
         }
         if (ImGui.IsItemHovered())
-            ImGui.SetTooltip("Do something: run macros, commands, menus, items, emotes… one after another.\nHold a key: hold a key down while the button is, e.g. a Flick Wheel wheel's own hotkey,\nso the button opens that wheel: hold, flick, let go.");
+            ImGui.SetTooltip("Do something: run macros, commands, menus, items, emotes… one after another.\n" +
+                             "Hold a key: hold a key down while the button is.\n" +
+                             "Open Flick Wheel: open one of Flick Wheel's hotkeys while the button is held: hold, flick, let go.");
 
         ImGui.SameLine();
         if (TablerIcons.Button(TablerIcon.X))
@@ -293,7 +317,11 @@ internal sealed class ButtonsTab
             ImGui.SetTooltip("Remove");
 
         ImGui.Indent();
-        if (actsAsKey)
+        if (mode == Mode.Wheel)
+        {
+            changed |= DrawWheelChoice(rule);
+        }
+        else if (mode == Mode.Key)
         {
             var label = recordingKey == rule ? "Press the key… (Esc cancels)"
                         : rule.ActsAsKey ? KeyPresser.Describe(rule) : "Not set: click, then press a key";
@@ -312,6 +340,37 @@ internal sealed class ButtonsTab
         ImGui.Unindent();
         ImGui.Spacing();
         return changed;
+    }
+
+    private enum Mode
+    {
+        Steps,
+        Key,
+        Wheel,
+    }
+
+    private bool DrawWheelChoice(Rule rule)
+    {
+        if (!flickWheel.Available)
+        {
+            ImGui.TextDisabled("Load Flick Wheel to choose one of its hotkeys.");
+            return false;
+        }
+
+        var options = flickWheel.Hotkeys().Select(h => (h.Uid, h.Name)).ToList();
+        if (rule.WheelHotkey is { Length: > 0 } current && options.All(o => o.Uid != current))
+            options.Insert(0, (current, "(deleted hotkey)"));
+        if (options.Count == 0)
+        {
+            ImGui.TextDisabled("Add a hotkey in Flick Wheel first.");
+            return false;
+        }
+
+        var uid = rule.WheelHotkey ?? string.Empty;
+        if (!widgets.Combo("##wheel", ref uid, options, width: 200f))
+            return false;
+        rule.WheelHotkey = uid;
+        return true;
     }
 
     private void StartKeyRecording(Rule rule)

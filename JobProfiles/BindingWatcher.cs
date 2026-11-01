@@ -23,8 +23,11 @@ internal sealed class BindingWatcher : IDisposable
     private readonly JobGroups groups;
     private readonly Duties duties;
     private readonly MacroRunner runner;
+    private readonly FlickWheelLink flickWheel;
 
     private (Binding Binding, Rule Rule)? holding;
+    // Kept apart from the rule, which can be edited while it's held.
+    private string? heldWheel;
 
     private GamepadButtons lastHeld;
 
@@ -33,8 +36,10 @@ internal sealed class BindingWatcher : IDisposable
     private static readonly VirtualKey[] Modifiers = [VirtualKey.CONTROL, VirtualKey.SHIFT, VirtualKey.MENU];
 
     public BindingWatcher(IFramework framework, IGamepadState gamepad, IKeyState keys, IPlayerState player,
-                          Configuration config, JobGroups groups, Duties duties, MacroRunner runner)
+                          Configuration config, JobGroups groups, Duties duties, MacroRunner runner,
+                          FlickWheelLink flickWheel)
     {
+        this.flickWheel = flickWheel;
         this.framework = framework;
         this.gamepad = gamepad;
         this.keys = keys;
@@ -171,6 +176,12 @@ internal sealed class BindingWatcher : IDisposable
     {
         switch (Match(binding))
         {
+            case { OpensWheel: true } rule:
+                Release();
+                flickWheel.Hold(rule.WheelHotkey!, true);
+                holding = (binding, rule);
+                heldWheel = rule.WheelHotkey;
+                break;
             case { ActsAsKey: true } rule:
                 Release();
                 KeyPresser.Down(rule);
@@ -190,7 +201,11 @@ internal sealed class BindingWatcher : IDisposable
         if (holding is not var (_, rule))
             return;
         holding = null;
-        KeyPresser.Up(rule);
+        if (heldWheel != null)
+            flickWheel.Hold(heldWheel, false);
+        else
+            KeyPresser.Up(rule);
+        heldWheel = null;
     }
 
     private static unsafe bool Typing()

@@ -21,18 +21,14 @@ internal sealed class JobsModule : IWheelModule
         this.switcher = switcher;
         settings = new JobsSettings(config, catalog, icons, overlay);
         Wheels = Kinds.Select(kind => (IWheel)new JobsWheel(this, kind)).ToArray();
-        SettingsTabs = [new("Job layout", settings.DrawLayout), new("Gear sets", settings.DrawGearsets)];
     }
 
-    public string Id => "jobs";
-    public string Name => "Jobs";
     public IReadOnlyList<IWheel> Wheels { get; }
-    public IReadOnlyList<SettingsTab> SettingsTabs { get; }
 
     public static string WheelId(WheelKind kind) => kind == WheelKind.Combat ? "combat" : "crafting";
 
     public static string Title(WheelKind kind) =>
-        kind == WheelKind.Combat ? "Combat wheel" : "Crafting & gathering wheel";
+        kind == WheelKind.Combat ? "Combat jobs" : "Crafting & gathering";
 
     public void OnSettingsOpen() => settings.Refresh();
 
@@ -48,5 +44,6 @@ internal sealed class JobsModule : IWheelModule
         public string Title => JobsModule.Title(kind);
         public WheelRing Layout() => JobLayout.Build(kind, module.config);
         public List<WheelEntry> Entries(WheelRing ring) => module.catalog.Build(ring).Select(module.ToEntry).ToList();
+        public bool DrawSettings() => module.settings.Draw(kind);
     }
 }

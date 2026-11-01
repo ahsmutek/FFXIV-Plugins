@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.Linq;
-using System.Numerics;
 using Dalamud.Bindings.ImGui;
 
 using Shortcuts;
@@ -31,49 +30,38 @@ internal sealed class JobsSettings(Configuration config, JobCatalog catalog, Ico
         jobs = JobsModule.Kinds.SelectMany(kind => catalog.Build(JobLayout.Build(kind, config))).ToList();
     }
 
-    private bool IsOn(WheelKind kind) => !config.WheelsOn.TryGetValue(JobsModule.WheelId(kind), out var on) || on;
-
-    public bool DrawLayout()
+    public bool Draw(WheelKind kind)
     {
         var changed = false;
-        ImGui.TextWrapped("Groups are listed clockwise; use the arrows to move a group. Drag a job sideways to move it within its group (left to right is clockwise). Use Pin to top to choose the group centered at the top. With tanks pinned, healers are also kept at the bottom unless they sit right next to tanks.");
+        ImGui.TextWrapped("Groups are listed clockwise. Drag a job sideways to move it; right-click it to choose the gear set it equips.");
         ImGui.Spacing();
         changed |= DrawColors();
 
-        foreach (var kind in JobsModule.Kinds.Where(IsOn))
+        ImGui.Spacing();
+        ImGui.Separator();
+        if (config.GroupOrder.ContainsKey(kind) || config.NorthGroup.ContainsKey(kind))
         {
-            ImGui.Spacing();
-            ImGui.Separator();
-            ImGui.TextDisabled(JobsModule.Title(kind));
-            if (config.GroupOrder.ContainsKey(kind) || config.NorthGroup.ContainsKey(kind))
+            if (ImGui.SmallButton("Reset group order"))
             {
-                ImGui.SameLine();
-                if (ImGui.SmallButton($"Reset groups##{kind}"))
-                {
-                    config.GroupOrder.Remove(kind);
-                    config.NorthGroup.Remove(kind);
-                    changed = true;
-                }
-            }
-
-            var groups = JobLayout.GroupOrderOf(kind, config);
-            for (var g = 0; g < groups.Count; g++)
-            {
-                if (DrawGroupLayout(kind, groups, g))
-                {
-                    changed = true;
-                    overlay.PreviewWheel = JobsModule.WheelId(kind);
-                }
+                config.GroupOrder.Remove(kind);
+                config.NorthGroup.Remove(kind);
+                changed = true;
             }
         }
 
+        var groups = JobLayout.GroupOrderOf(kind, config);
+        for (var g = 0; g < groups.Count; g++)
+            changed |= DrawGroupLayout(kind, groups, g);
+
+        if (changed)
+            overlay.PreviewWheel = JobsModule.WheelId(kind);
         return changed;
     }
 
     private bool DrawColors()
     {
         var changed = false;
-        ImGui.TextDisabled("Colors");
+        ImGui.TextDisabled("Colors (both job wheels)");
         var style = config.RoleStyle;
         if (GroupEditor.StyleButtons(ref style))
         {
@@ -144,6 +132,8 @@ internal sealed class JobsSettings(Configuration config, JobCatalog catalog, Ico
             config.NorthGroup[kind] = group;
             changed = true;
         }
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip("Center this group at the top. With tanks pinned, healers stay at the bottom\nunless they sit right next to tanks.");
 
         var customized = config.RoleColors.ContainsKey(group) || config.RoleHues.ContainsKey(group) ||
                          config.JobOrder.ContainsKey(group);
@@ -170,7 +160,7 @@ internal sealed class JobsSettings(Configuration config, JobCatalog catalog, Ico
                 ? icons.Get(found.IconId, JobLayout.Commands.ContainsKey(abbreviation))
                 : (GameIcon?)null;
             return new RowIcon(abbreviation, texture, abbreviation, unlocked ? name : $"{name} (locked)", !unlocked);
-        });
+        }, group == JobGroup.Logs ? null : i => changed |= DrawGearsetMenu(order[i]));
 
         if (move is var (from, to))
         {
@@ -222,71 +212,48 @@ internal sealed class JobsSettings(Configuration config, JobCatalog catalog, Ico
 
     private static string Label(JobGroup group) => GroupLabels.First(g => g.Group == group).Label;
 
-    private string ShortName(WheelJob job) =>
-        catalog.Abbreviation(job.RowId) is { Length: > 0 } name ? name : job.Abbreviation;
+    private static string Describe(GearsetInfo set) => $"#{set.Index + 1} {set.Name}";
 
-    public bool DrawGearsets()
+    private bool DrawGearsetMenu(string abbreviation)
+    {
+        var job = jobs.FirstOrDefault(j => j.Abbreviation == abbreviation);
+        config.GearsetOverrides.TryGetValue(abbreviation, out var number);
+        var chosen = gearsets.FirstOrDefault(g => g.Index == number - 1);
+        var label = number > 0 && chosen.Name != null ? Describe(chosen) : "Auto";
+        if (!ImGui.BeginMenu($"Gear set: {label}", job != null))
+            return false;
+
+        var changed = false;
+        if (ImGui.MenuItem("Auto (this job's first set)", number <= 0))
+        {
+            config.GearsetOverrides.Remove(abbreviation);
+            changed = true;
+        }
+
+        var own = gearsets.Where(g => g.ClassJobId == job!.RowId).ToList();
+        changed |= GearsetItems(abbreviation, own, number);
+        var others = gearsets.Except(own).ToList();
+        if (others.Count > 0 && ImGui.BeginMenu("Other jobs' sets"))
+        {
+            changed |= GearsetItems(abbreviation, others, number);
+            ImGui.EndMenu();
+        }
+
+        ImGui.EndMenu();
+        return changed;
+    }
+
+    private bool GearsetItems(string abbreviation, List<GearsetInfo> sets, int number)
     {
         var changed = false;
-        ImGui.TextDisabled("Gear set per job");
-        ImGui.TextWrapped("Auto uses the first gear set for that job.");
-
-        if (jobs.Count == 0)
+        foreach (var set in sets)
         {
-            ImGui.TextColored(new Vector4(.7f, .7f, .74f, 1f), "Log in to see your jobs.");
-            return false;
-        }
-
-        var options = new string[gearsets.Count + 1];
-        options[0] = "Auto";
-        for (var i = 0; i < gearsets.Count; i++)
-            options[i + 1] = $"#{gearsets[i].Index + 1} {gearsets[i].Name}";
-
-        var spacing = ImGui.GetStyle().ItemSpacing.X;
-        var widestName = jobs.Where(j => j.CommandId == 0)
-                             .Select(j => ImGui.CalcTextSize(ShortName(j)).X)
-                             .DefaultIfEmpty(0f)
-                             .Max();
-        var dropdownX = ImGui.GetCursorPosX() + ImGui.GetFrameHeight() + spacing + widestName + spacing;
-
-        var groupsOn = JobsModule.Kinds.Where(IsOn).SelectMany(JobLayout.GroupsOf).ToHashSet();
-        foreach (var (group, label) in GroupLabels.Where(g => groupsOn.Contains(g.Group)))
-        {
-            var inGroup = jobs.Where(j => j.Group == group && j.CommandId == 0).ToList();
-            if (inGroup.Count == 0)
-                continue;
-
-            ImGui.Spacing();
-            ImGui.TextUnformatted(label);
-            foreach (var job in inGroup)
+            if (ImGui.MenuItem($"{Describe(set)}##{set.Index}", set.Index == number - 1))
             {
-                ImGui.PushID(job.Abbreviation);
-                var size = new Vector2(ImGui.GetFrameHeight());
-                var min = ImGui.GetCursorScreenPos();
-                ImGui.GetWindowDrawList().AddRectFilled(min, min + size, ImGui.GetColorU32(JobLayout.ColorOf(job.Group, config)), 3f);
-                icons.Get(job.IconId, false).Image(size);
-                ImGui.SameLine();
-                ImGui.AlignTextToFramePadding();
-                ImGui.TextUnformatted(ShortName(job));
-                if (ImGui.IsItemHovered())
-                    ImGui.SetTooltip(job.Name);
-                ImGui.SameLine(dropdownX);
-
-                config.GearsetOverrides.TryGetValue(job.Abbreviation, out var number);
-                var selected = gearsets.FindIndex(g => g.Index == number - 1) + 1;
-                ImGui.SetNextItemWidth(-1);
-                if (ImGui.Combo("##gearset", ref selected, options, options.Length))
-                {
-                    if (selected == 0)
-                        config.GearsetOverrides.Remove(job.Abbreviation);
-                    else
-                        config.GearsetOverrides[job.Abbreviation] = gearsets[selected - 1].Index + 1;
-                    changed = true;
-                }
-                ImGui.PopID();
+                config.GearsetOverrides[abbreviation] = set.Index + 1;
+                changed = true;
             }
         }
-
         return changed;
     }
 }

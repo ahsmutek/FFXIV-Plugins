@@ -79,7 +79,7 @@ internal sealed unsafe class PadBlocker : IDisposable
             if (single)
             {
                 // Hidden even when not pressed, so the game never sees it go down.
-                if (watcher.Match(binding) is { } rule && (rule.ActsAsKey || rule.Steps.Count > 0))
+                if (watcher.Match(binding) is { } rule && (rule.OpensWheel || rule.ActsAsKey || rule.Steps.Count > 0))
                     hidden |= binding.Buttons;
             }
             else if ((held & binding.Buttons) == binding.Buttons && watcher.Match(binding) is not null)

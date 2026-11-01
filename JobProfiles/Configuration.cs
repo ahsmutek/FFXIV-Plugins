@@ -55,6 +55,8 @@ public enum DutyScope
 public sealed class Rule
 {
     public string Uid { get; set; } = Guid.NewGuid().ToString("N");
+    // Creation time, so a page lists its lines in a fixed order whichever button they're on.
+    public long Created { get; set; }
     // When set, Group is ignored.
     public string? Job { get; set; }
     // Both null = anyone.
@@ -68,6 +70,10 @@ public sealed class Rule
     public bool HoldAlt { get; set; }
 
     public bool ActsAsKey => HoldKey != 0;
+
+    // A Flick Wheel hotkey's Uid; empty while one is still to be chosen.
+    public string? WheelHotkey { get; set; }
+    public bool OpensWheel => !string.IsNullOrEmpty(WheelHotkey);
     public List<Step> Steps { get; set; } = new();
 }
 

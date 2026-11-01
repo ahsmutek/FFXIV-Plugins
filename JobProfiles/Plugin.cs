@@ -77,11 +77,12 @@ public sealed class Plugin : IDalamudPlugin
         icons = new IconCache(Data, Textures);
         runner = new MacroRunner(Framework, Condition, catalog);
         watcher = new ProfileWatcher(Framework, PlayerState, config, groups, runner);
-        bindings = new BindingWatcher(Framework, Gamepad, KeyState, PlayerState, config, groups, duties, runner);
+        var flickWheel = new FlickWheelLink(PluginInterface);
+        bindings = new BindingWatcher(Framework, Gamepad, KeyState, PlayerState, config, groups, duties, runner, flickWheel);
         blocker = new PadBlocker(Interop, config, bindings, Log);
 
         var widgets = new Widgets(catalog, new ShortcutPicker(catalog, icons), icons);
-        buttonsTab = new ButtonsTab(config, duties, bindings, widgets, KeyState);
+        buttonsTab = new ButtonsTab(config, duties, bindings, widgets, flickWheel, KeyState);
         configWindow = new ConfigWindow(config, Save, groups, PlayerState, Textures, watcher.ApplyNow, widgets, buttonsTab);
         windows.AddWindow(configWindow);
         padNav = new PadNav(Interop, Gamepad, Log, windows);

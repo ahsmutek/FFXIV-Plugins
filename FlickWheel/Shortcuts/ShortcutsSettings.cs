@@ -14,21 +14,24 @@ internal sealed class ShortcutsSettings(Configuration config, ShortcutsModule mo
 {
     // Far-apart hues first.
     private static readonly int[] HueOrder = [11, 6, 0, 2, 14, 8, 3, 16, 12, 5, 9, 15, 1, 4, 7, 10, 13, 17];
+    public static int FirstHue => HueOrder[0];
 
-    private string? selectedUid;
     // An icon chosen in Icon Atlas arrives between frames; the next Draw reports it so it's saved.
     private bool iconPicked;
 
-    private ShortcutWheel Wheel =>
-        module.AllWheels().FirstOrDefault(w => w.Uid == selectedUid) ?? config.Shortcuts!;
+    private ShortcutWheel Wheel = null!;
 
-    public bool Draw()
+    public bool Draw(ShortcutWheel wheel)
     {
+        Wheel = wheel;
         var changed = iconPicked;
         iconPicked = false;
-        changed |= DrawWheelChoice();
+        var (headerChanged, deleted) = DrawHeader();
+        if (deleted)
+            return true;
+        changed |= headerChanged;
         ImGui.Spacing();
-        ImGui.TextWrapped("Groups are listed clockwise. Drag a shortcut sideways to move it within its group; right-click it to rename, change its icon, move it to another group or remove it. Press + to add a shortcut.");
+        ImGui.TextWrapped("Groups are listed clockwise. Drag a shortcut sideways to move it; right-click it to rename, change its icon, move or remove it. Press + to add one.");
         var groups = Wheel.Groups;
         ImGui.Spacing();
         changed |= DrawColorStyle(groups);
@@ -66,78 +69,39 @@ internal sealed class ShortcutsSettings(Configuration config, ShortcutsModule mo
         return changed;
     }
 
-    private bool DrawWheelChoice()
+    private (bool Changed, bool Deleted) DrawHeader()
     {
         var changed = false;
-        var all = module.AllWheels().ToList();
         var wheel = Wheel;
 
+        var name = wheel.Name;
         ImGui.SetNextItemWidth(200f);
-        if (ImGui.BeginCombo("##wheel", ShortcutsModule.TitleOf(wheel)))
+        if (ImGui.InputTextWithHint("Name", wheel == config.Shortcuts ? "Shortcuts" : "e.g. Emotes", ref name, 32))
         {
-            foreach (var other in all)
-            {
-                if (ImGui.Selectable($"{ShortcutsModule.TitleOf(other)}##{other.Uid}", other == wheel))
-                {
-                    selectedUid = other.Uid;
-                    overlay.PreviewWheel = module.IdOf(other);
-                }
-            }
-            ImGui.EndCombo();
-        }
-
-        ImGui.SameLine();
-        if (ImGui.SmallButton("Add wheel"))
-        {
-            var added = new ShortcutWheel
-            {
-                Name = $"Wheel {all.Count + 1}",
-                InCycle = false,
-                Groups = [new ShortcutGroup { Name = "Group 1", Hue = HueOrder[0] }],
-            };
-            config.MoreShortcutWheels.Add(added);
-            selectedUid = added.Uid;
-            return true;
-        }
-
-        if (wheel != config.Shortcuts)
-        {
-            ImGui.SameLine();
-            var canDelete = wheel.Groups.All(g => g.Entries.Count == 0) || ImGui.GetIO().KeyCtrl;
-            ImGui.BeginDisabled(!canDelete);
-            if (ImGui.SmallButton("Delete wheel"))
-            {
-                var id = module.IdOf(wheel);
-                config.MoreShortcutWheels.Remove(wheel);
-                config.DirectHotkeys.Remove(id);
-                config.WheelsOn.Remove(id);
-                selectedUid = null;
-                ImGui.EndDisabled();
-                return true;
-            }
-            ImGui.EndDisabled();
-            if (!canDelete && ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
-                ImGui.SetTooltip("Hold Ctrl to delete a wheel that has shortcuts on it.");
-
-            var name = wheel.Name;
-            ImGui.SetNextItemWidth(200f);
-            if (ImGui.InputTextWithHint("Name", "e.g. Emotes", ref name, 32))
-            {
-                wheel.Name = name;
-                changed = true;
-            }
-        }
-
-        var inCycle = wheel.InCycle;
-        if (ImGui.Checkbox("Opens with the shared hotkey and RB", ref inCycle))
-        {
-            wheel.InCycle = inCycle;
+            wheel.Name = name;
             changed = true;
         }
-        if (ImGui.IsItemHovered())
-            ImGui.SetTooltip("Off: only this wheel's own hotkey (General tab) opens it, e.g. one you press through\nJob Profiles' Buttons tab (L3 acting as that hotkey).");
 
-        return changed;
+        if (wheel == config.Shortcuts)
+            return (changed, false);
+
+        ImGui.SameLine();
+        var canDelete = wheel.Groups.All(g => g.Entries.Count == 0) || ImGui.GetIO().KeyCtrl;
+        ImGui.BeginDisabled(!canDelete);
+        var deleted = ImGui.SmallButton("Delete wheel");
+        ImGui.EndDisabled();
+        if (!canDelete && ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+            ImGui.SetTooltip("Hold Ctrl to delete a wheel that has shortcuts on it.");
+
+        if (deleted)
+        {
+            var id = module.IdOf(wheel);
+            config.MoreShortcutWheels.Remove(wheel);
+            foreach (var set in config.WheelCycles)
+                set.Wheels.Remove(id);
+        }
+
+        return (changed, deleted);
     }
 
     private static int NextHue(List<ShortcutGroup> groups) =>

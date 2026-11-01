@@ -24,6 +24,8 @@ internal sealed class ShortcutPicker(ShortcutCatalog catalog, IconCache icons)
     private List<ShortcutChoice> macros = [];
     private List<ShortcutChoice> favoriteEmotes = [];
     private List<ShortcutChoice> allEmotes = [];
+    // In the order ticked, across tabs.
+    private readonly List<(ShortcutKind Kind, uint RowId)> selected = [];
     private readonly PadTabs tabs = new();
 
     // Call at the same ImGui ID level as Draw, or the popup won't find its opener.
@@ -32,6 +34,7 @@ internal sealed class ShortcutPicker(ShortcutCatalog catalog, IconCache icons)
         targetName = name;
         add = onPick;
         search = string.Empty;
+        selected.Clear();
         items = catalog.Items();
         macros = catalog.Macros();
         favoriteEmotes = catalog.FavoriteEmotes();
@@ -107,8 +110,7 @@ internal sealed class ShortcutPicker(ShortcutCatalog catalog, IconCache icons)
 
     private bool DrawChoices(List<ShortcutChoice> choices, string empty)
     {
-        var changed = false;
-        ImGui.BeginChild("choices", new Vector2(0, 0));
+        ImGui.BeginChild("choices", new Vector2(0, -ImGui.GetFrameHeightWithSpacing()));
 
         var category = (string?)null;
         var any = false;
@@ -125,22 +127,48 @@ internal sealed class ShortcutPicker(ShortcutCatalog catalog, IconCache icons)
                 ImGui.TextDisabled(category);
             }
 
+            ImGui.PushID($"{choice.Kind}-{choice.RowId}");
+            var key = (choice.Kind, choice.RowId);
+            var on = selected.Contains(key);
+            var toggled = ImGui.Checkbox("##pick", ref on);
+            ImGui.SameLine();
             icons.Get(choice.IconId, false).Image(new Vector2(ImGui.GetFrameHeight()));
             ImGui.SameLine();
             ImGui.AlignTextToFramePadding();
-            if (ImGui.Selectable($"{choice.Name}##{choice.Kind}-{choice.RowId}"))
-            {
-                add!(new PickedShortcut(choice.Kind, choice.RowId));
-                changed = true;
-                ImGui.CloseCurrentPopup();
-            }
+            toggled |= ImGui.Selectable(choice.Name, selected.Contains(key), ImGuiSelectableFlags.DontClosePopups);
+            if (toggled && !selected.Remove(key))
+                selected.Add(key);
+            ImGui.PopID();
         }
 
         if (!any)
             ImGui.TextDisabled(empty);
 
         ImGui.EndChild();
-        return changed;
+        return DrawAddSelected();
+    }
+
+    private bool DrawAddSelected()
+    {
+        ImGui.BeginDisabled(selected.Count == 0);
+        var confirmed = ImGui.Button(selected.Count > 1 ? $"Add {selected.Count}" : "Add");
+        ImGui.EndDisabled();
+        if (selected.Count > 0)
+        {
+            ImGui.SameLine();
+            if (ImGui.SmallButton("Clear"))
+                selected.Clear();
+        }
+        ImGui.SameLine();
+        ImGui.TextDisabled(selected.Count == 0 ? "Click entries to tick them, on any tab." : "Added in the order you ticked them.");
+
+        if (!confirmed)
+            return false;
+        foreach (var (kind, rowId) in selected)
+            add!(new PickedShortcut(kind, rowId));
+        selected.Clear();
+        ImGui.CloseCurrentPopup();
+        return true;
     }
 
     private bool DrawCommandForm()

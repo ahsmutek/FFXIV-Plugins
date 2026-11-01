@@ -26,23 +26,30 @@ internal sealed class ShortcutsModule : IWheelModule
             save();
         }
 
-        var settings = new ShortcutsSettings(config, this, catalog, icons, overlay, new ShortcutPicker(catalog, icons), iconPicker);
-        SettingsTabs = [new("Shortcuts", settings.Draw)];
+        settings = new ShortcutsSettings(config, this, catalog, icons, overlay, new ShortcutPicker(catalog, icons), iconPicker);
     }
 
-    public string Id => "shortcuts";
-    public string Name => "Shortcuts";
     public IReadOnlyList<IWheel> Wheels => AllWheels().Select(Wrap).ToList();
-    public IReadOnlyList<SettingsTab> SettingsTabs { get; }
 
+    private readonly ShortcutsSettings settings;
     private readonly Dictionary<string, ShortcutsWheel> wrappers = new();
 
     public IEnumerable<ShortcutWheel> AllWheels() => config.MoreShortcutWheels.Prepend(config.Shortcuts!);
 
     public string IdOf(ShortcutWheel wheel) => wheel == config.Shortcuts ? WheelId : $"{WheelId}-{wheel.Uid}";
 
-    public static string TitleOf(ShortcutWheel wheel) =>
-        $"{(wheel.Name.Length > 0 ? wheel.Name : "Shortcuts")} wheel";
+    public static string TitleOf(ShortcutWheel wheel) => wheel.Name.Length > 0 ? wheel.Name : "Shortcuts";
+
+    public string NewWheel()
+    {
+        var wheel = new ShortcutWheel
+        {
+            Name = $"Wheel {config.MoreShortcutWheels.Count + 2}",
+            Groups = [new ShortcutGroup { Name = "Group 1", Hue = ShortcutsSettings.FirstHue }],
+        };
+        config.MoreShortcutWheels.Add(wheel);
+        return IdOf(wheel);
+    }
 
     private ShortcutsWheel Wrap(ShortcutWheel wheel)
     {
@@ -101,7 +108,7 @@ internal sealed class ShortcutsModule : IWheelModule
         public ShortcutWheel Data => data;
         public string Id => id;
         public string Title => TitleOf(data);
-        public bool InCycle => data.InCycle;
+        public bool DrawSettings() => module.settings.Draw(data);
 
         public WheelRing Layout()
         {

@@ -47,9 +47,10 @@ a copy of its role's. Classes use their job's settings.
 any duty, or one duty type), and **what**:
 
 - **Do something**: a list of steps.
-- **Hold a key**: holds a key for as long as the button is held, e.g. to open a Flick Wheel
-  wheel by its hotkey. Use unmodified keys (F13–F24) so they never clash with a Ctrl or
-  Shift you're holding.
+- **Hold a key**: holds a key for as long as the button is held. Use unmodified keys
+  (F13–F24) so they never clash with a Ctrl or Shift you're holding.
+- **Open Flick Wheel**: holds one of [Flick Wheel](../FlickWheel/)'s hotkeys open, chosen by
+  name, while the button is held: hold, flick, let go. The hotkey doesn't need a key.
 
 The most specific line wins: job over role over Combat jobs over Everyone, and one duty type
 over any duty or outside duties, over Anywhere.

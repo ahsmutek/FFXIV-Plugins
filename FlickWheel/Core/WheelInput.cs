@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Numerics;
 using System.Runtime.InteropServices;
 using Dalamud.Game.ClientState.Conditions;
@@ -45,8 +46,12 @@ internal sealed class WheelInput : IDisposable
 
     private HotkeyModifier heldModifier;
     private VirtualKey heldKey;
-    private bool openedDirect;
+    private WheelCycle? openedSet;
+    private bool openedByIpc;
+    private string? ipcHeld;
 
+    // Set while settings record a hotkey.
+    public bool Paused { get; set; }
     public bool IsOpen { get; private set; }
     public IWheel? Wheel { get; private set; }
     public WheelRing Ring { get; private set; } = null!;
@@ -81,6 +86,13 @@ internal sealed class WheelInput : IDisposable
     {
         if (!IsOpen)
         {
+            // The just-recorded key is still down when recording ends; wait for its release.
+            if (Paused)
+            {
+                waitForRelease = true;
+                return;
+            }
+
             var pressed = PressedShortcut();
             if (pressed == null)
             {
@@ -92,8 +104,8 @@ internal sealed class WheelInput : IDisposable
                 return;
 
             waitForRelease = true;
-            if (GameFocused() && CanOpen())
-                Open(pressed.Value);
+            if ((pressed.Value.ByIpc || GameFocused()) && CanOpen())
+                Open(pressed.Value.Set, pressed.Value.ByIpc);
             return;
         }
 
@@ -104,7 +116,7 @@ internal sealed class WheelInput : IDisposable
             return;
         }
 
-        if (keys.IsVirtualKeyValid(heldKey))
+        if (!openedByIpc && keys.IsVirtualKeyValid(heldKey))
             keys[heldKey] = false;
 
         if (gamepad.Raw(GamepadButtons.East) > 0)
@@ -120,7 +132,7 @@ internal sealed class WheelInput : IDisposable
             ShowNext();
         swapWasDown = swapDown;
 
-        if (!IsHeld(heldModifier, heldKey))
+        if (!StillHeld())
         {
             Commit();
             return;
@@ -142,43 +154,46 @@ internal sealed class WheelInput : IDisposable
             Target = Pick(Target);
     }
 
-    private (string? WheelId, HotkeyModifier Modifier, VirtualKey Key)? PressedShortcut()
+    // Held through IPC, e.g. by a Job Profiles button.
+    public void Hold(string uid, bool held)
     {
-        foreach (var (id, hotkey) in config.DirectHotkeys)
-        {
-            if (hotkey.Key != 0 && IsHeld(hotkey.Modifier, hotkey.Key) && wheels.Find(id) != null)
-                return (id, hotkey.Modifier, hotkey.Key);
-        }
-
-        return IsHeld(config.Modifier, config.Key) ? (null, config.Modifier, config.Key) : null;
+        if (held)
+            ipcHeld = uid;
+        else if (ipcHeld == uid)
+            ipcHeld = null;
     }
 
-    private void Open((string? WheelId, HotkeyModifier Modifier, VirtualKey Key) pressed)
+    private (WheelCycle Set, bool ByIpc)? PressedShortcut()
     {
-        if (pressed.WheelId is { } id)
+        if (ipcHeld != null && config.WheelCycles.FirstOrDefault(h => h.Uid == ipcHeld) is { } held &&
+            wheels.CycleOf(held).Count > 0)
+            return (held, true);
+
+        var set = config.WheelCycles.FirstOrDefault(h => h.Key != 0 && IsHeld(h.Modifier, h.Key) &&
+                                                         wheels.CycleOf(h).Count > 0);
+        return set != null ? (set, false) : null;
+    }
+
+    private bool StillHeld() => openedByIpc ? ipcHeld == openedSet?.Uid : IsHeld(heldModifier, heldKey);
+
+    private void Open(WheelCycle set, bool byIpc)
+    {
+        openedSet = set;
+        openedByIpc = byIpc;
+        var all = wheels.CycleOf(set);
+        var start = Math.Max(0, all.FindIndex(w => w.Id == set.LastWheel));
+        for (var i = 0; i < all.Count; i++)
         {
-            Show(wheels.Find(id)!);
-        }
-        else
-        {
-            var all = wheels.CycleWheels;
-            if (all.Count == 0)
-                return;
-            var start = Math.Max(0, all.FindIndex(w => w.Id == config.LastWheel));
-            for (var i = 0; i < all.Count; i++)
-            {
-                Show(all[(start + i) % all.Count]);
-                if (Entries.Count > 0)
-                    break;
-            }
+            Show(all[(start + i) % all.Count]);
+            if (Entries.Count > 0)
+                break;
         }
 
         if (Entries.Count == 0)
             return;
 
-        heldModifier = pressed.Modifier;
-        heldKey = pressed.Key;
-        openedDirect = pressed.WheelId != null;
+        heldModifier = set.Modifier;
+        heldKey = set.Key;
 
         // A swap button already held while opening isn't a tap.
         swapWasDown = gamepad.Raw(config.SwapButton) > 0;
@@ -195,7 +210,7 @@ internal sealed class WheelInput : IDisposable
 
     private void ShowNext()
     {
-        var all = wheels.CycleWheels;
+        var all = wheels.CycleOf(openedSet!);
         var index = all.FindIndex(w => w.Id == Wheel?.Id);
         var (wheel, ring, entries) = (Wheel, Ring, Entries);
         var steps = index < 0 ? all.Count : all.Count - 1;
@@ -230,9 +245,9 @@ internal sealed class WheelInput : IDisposable
         StickTilt = 0;
         blocker.Active = false;
 
-        if (!openedDirect && Wheel != null && config.LastWheel != Wheel.Id)
+        if (openedSet != null && Wheel != null && openedSet.LastWheel != Wheel.Id)
         {
-            config.LastWheel = Wheel.Id;
+            openedSet.LastWheel = Wheel.Id;
             save();
         }
     }
@@ -302,7 +317,7 @@ internal sealed class WheelInput : IDisposable
         _ => true,
     };
 
-    private static bool IsDown(VirtualKey key) => (GetAsyncKeyState((int)key) & 0x8000) != 0;
+    public static bool IsDown(VirtualKey key) => (GetAsyncKeyState((int)key) & 0x8000) != 0;
 
     // The key checks read the physical keyboard.
     private static bool GameFocused()

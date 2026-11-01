@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Dalamud.Configuration;
 using Dalamud.Game.ClientState.GamePad;
 using Dalamud.Game.ClientState.Keys;
@@ -52,10 +53,21 @@ public sealed class ShortcutWheel
 {
     public string Uid { get; set; } = Guid.NewGuid().ToString("N");
     public string Name { get; set; } = string.Empty;
+    // Before version 2.
     public bool InCycle { get; set; } = true;
     public List<ShortcutGroup> Groups { get; set; } = new();
     public int PinnedGroup { get; set; }
     public int Style { get; set; }
+}
+
+public sealed class WheelCycle
+{
+    public string Uid { get; set; } = Guid.NewGuid().ToString("N");
+    public string Name { get; set; } = string.Empty;
+    public HotkeyModifier Modifier { get; set; }
+    public VirtualKey Key { get; set; }
+    public List<string> Wheels { get; set; } = new();
+    public string? LastWheel { get; set; }
 }
 
 public sealed class Configuration : IPluginConfiguration
@@ -76,15 +88,14 @@ public sealed class Configuration : IPluginConfiguration
 
     public GamepadButtons SwapButton { get; set; } = GamepadButtons.R1;
 
-    public string LastWheel { get; set; } = "combat";
+    public List<WheelCycle> WheelCycles { get; set; } = new();
 
-    public HotkeyModifier Modifier { get; set; } = HotkeyModifier.Ctrl;
-    public VirtualKey Key { get; set; } = VirtualKey.OEM_COMMA;
-
-    public Dictionary<string, Hotkey> DirectHotkeys { get; set; } = new();
-
+    // Before version 2; read once to seed WheelCycles.
+    public string? LastWheel { get; set; }
+    public HotkeyModifier? Modifier { get; set; }
+    public VirtualKey? Key { get; set; }
+    public Dictionary<string, Hotkey>? DirectHotkeys { get; set; }
     public Dictionary<string, bool> Modules { get; set; } = new();
-
     public Dictionary<string, bool> WheelsOn { get; set; } = new();
 
     // 1-based; 0 or missing = first matching set.
@@ -112,17 +123,43 @@ public sealed class Configuration : IPluginConfiguration
 
     public bool Migrate()
     {
-        // LastWheel used to be the WheelKind number.
-        var lastWheel = LastWheel switch
-        {
-            "0" => "combat",
-            "1" => "crafting",
-            _ => LastWheel,
-        };
-        if (lastWheel == LastWheel)
+        if (Version >= 2)
             return false;
 
-        LastWheel = lastWheel;
+        // The shared hotkey opened every turned-on wheel left in the RB rotation.
+        bool On(string module, string id) =>
+            (!Modules.TryGetValue(module, out var m) || m) && (!WheelsOn.TryGetValue(id, out var w) || w);
+        List<string> main = ["combat", "crafting"];
+        if (Shortcuts?.InCycle ?? true)
+            main.Add("shortcuts");
+        main.AddRange(MoreShortcutWheels.Where(w => w.InCycle).Select(w => $"shortcuts-{w.Uid}"));
+        main = main.Where(id => On(id is "combat" or "crafting" ? "jobs" : "shortcuts", id)).ToList();
+        WheelCycles.Insert(0, new WheelCycle
+        {
+            Name = "Main",
+            Modifier = Modifier ?? HotkeyModifier.Ctrl,
+            Key = Key ?? VirtualKey.OEM_COMMA,
+            Wheels = main,
+            // LastWheel used to be the WheelKind number.
+            LastWheel = LastWheel switch { "0" => "combat", "1" => "crafting", _ => LastWheel },
+        });
+
+        foreach (var (id, hotkey) in DirectHotkeys ?? [])
+        {
+            if (hotkey.Key == 0)
+                continue;
+            var name = id switch
+            {
+                "combat" => "Combat",
+                "crafting" => "Crafting & gathering",
+                "shortcuts" => "Shortcuts",
+                _ => MoreShortcutWheels.FirstOrDefault(w => $"shortcuts-{w.Uid}" == id)?.Name ?? "Wheel",
+            };
+            WheelCycles.Add(new WheelCycle { Name = name, Modifier = hotkey.Modifier, Key = hotkey.Key, Wheels = [id] });
+        }
+
+        (LastWheel, Modifier, Key, DirectHotkeys) = (null, null, null, null);
+        Version = 2;
         return true;
     }
 }

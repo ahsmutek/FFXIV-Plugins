@@ -5,8 +5,9 @@ hotkey, flick the right stick toward an entry, and let go of the hotkey.
 
 ## Usage
 
-1. Hold **Ctrl + ,** (map a pad button to it with reWASD or Steam Input). The last wheel
-   you used opens; tap **RB** (or LB, LT, RT) to move to the next one.
+1. Hold a hotkey, **Ctrl + ,** to start with (map a pad button to it with reWASD or Steam
+   Input). The last wheel you used with it opens; tap **RB** (or LB, LT, RT) to move to
+   its next wheel.
 2. Tilt the right stick toward an entry. It stays targeted when the stick springs back,
    until you flick toward another.
 3. Let go of the hotkey to use it. Or set **Pick when** to **The stick returns to center**
@@ -15,6 +16,28 @@ hotkey, flick the right stick toward an entry, and let go of the hotkey.
 **B**, or letting go with nothing targeted, closes the wheel without doing anything.
 
 `/flick` opens settings; `/flick chat` hides or shows the chat log.
+
+## Settings
+
+- **Wheels**: every wheel in a list; pick one to edit it, or **+ New wheel**. Each wheel
+  shows which hotkeys open it.
+- **Hotkeys**: what each hotkey opens, and the next wheel button.
+- **Look & feel**: wheel scale, icon size, position (drag the preview or type an offset),
+  the stick threshold and **Pick when**.
+
+## Hotkeys
+
+Each hotkey opens its own list of wheels, any mix of job wheels and your own, and RB
+moves through them in that order. You start with **Main** (Ctrl + ,, every wheel); there's
+always at least one.
+
+**Edit** a hotkey to rename it, set its key (click the key button and press it, or
+**Choose from list**), and add, remove or reorder its wheels. Warnings show a hotkey with
+no wheels, or the same key as another.
+
+With [Job Profiles](../JobProfiles/), a button like L3 can **Open Flick Wheel** with a
+different hotkey on each job or duty, e.g. Tank on tanks and Healer on healers. Hotkeys
+used only that way don't need a key (**Clear** removes one).
 
 ## Job wheels
 
@@ -40,18 +63,18 @@ their spot empty; a class you have without its job (e.g. Gladiator) takes the jo
 | Land | MIN BTN FSH |
 | Logs | Crafting, Gathering and Fishing Log; optionally the Fish Guide |
 
-Picking a job equips its first gear set, or the one you choose on the **Gear sets** tab.
-Jobs without a gear set are dimmed. If the switch isn't possible (combat, a duty, casting,
-crafting), an error toast appears.
+Picking a job equips its first gear set, or the one you choose under **Gear set** in the
+job's right-click menu. Jobs without a gear set are dimmed. If the switch isn't possible
+(combat, a duty, casting, crafting), an error toast appears.
 
-On the **Job layout** tab you can move groups and pin one to the top, drag jobs to
-reorder them (or right-click one to move it), choose which logs to show, and set colors: a style (**Muted, Vivid, Soft,
-Dark**), one of 18 palette colors or a custom one per group, or **Use job colors** to
-color by role like the game.
+In a job wheel's editor you can move groups and pin one to the top, drag jobs to reorder
+them (or right-click one to move it), choose which logs to show, and set colors for both
+job wheels: a style (**Muted, Vivid, Soft, Dark**), one of 18 palette colors or a custom
+one per group, or **Use job colors** to color by role like the game.
 
-## Shortcuts wheel
+## Your wheels
 
-Starts with three groups you can change:
+**Shortcuts** starts with three groups you can change:
 
 | Group | Shortcuts |
 |---|---|
@@ -59,7 +82,8 @@ Starts with three groups you can change:
 | Windows | Duty Finder, Timers, Journal |
 | Chocobo | Gysahl Greens, `/cbarding job` (Chocobo Barding plugin) |
 
-On the **Shortcuts** tab, **+** adds a shortcut to a group:
+**+ New wheel** adds another (Emotes, Raid…); add it to a hotkey to open it. In a wheel's
+editor, **+** adds shortcuts to a group: tick as many as you like, on any tab, then **Add**.
 
 - **Menus** – any main-menu window.
 - **Actions** – general actions (Teleport, Sprint, Mount Roulette…), the Aether Compass,
@@ -73,19 +97,8 @@ On the **Shortcuts** tab, **+** adds a shortcut to a group:
 
 Drag a shortcut to reorder it (or **Move left/right** in its right-click menu); right-click it to relabel, change its icon (chosen in [Icon Atlas](../IconAtlas/) when
 it's loaded, otherwise by ID), move or remove it. Groups can be renamed, recolored, moved, pinned to the top and deleted (Ctrl if not
-empty). Entries you can't use yet leave their spot empty.
-
-### More shortcut wheels
-
-**Add wheel** makes another wheel (Emotes, Raid…) with its own groups and an optional
-hotkey on the General tab. Added wheels start outside the RB rotation, so only their own
-hotkey opens them. Combined with Job Profiles, a button like L3 can open a different wheel
-per job or duty: give the wheel a hotkey such as F13 and make L3 act as F13.
-
-## Settings
-
-The General tab also has wheel scale, icon size, position (drag the preview or type an
-offset), the stick threshold, the hotkeys, and which wheels are turned on.
+empty). Wheels can be renamed, and deleted except Shortcuts (Ctrl if not empty). Entries
+you can't use yet leave their spot empty.
 
 ## Notes
 
