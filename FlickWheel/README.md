@@ -97,7 +97,7 @@ editor, **+** adds shortcuts to a group: tick as many as you like, on any tab, t
   plugin can supply one (CatProof shows your chosen cat icon, lit while locked).
 
 Drag a shortcut to reorder it (or **Move left/right** in its right-click menu); right-click it to relabel, change its icon (chosen in [Icon Atlas](../IconAtlas/) when
-it's loaded, otherwise by ID), move or remove it. Groups can be renamed, recolored, moved, pinned to the top and deleted (Ctrl if not
+it's loaded, otherwise by ID), move or remove it. Groups can be renamed, recolored, moved or copied to another wheel, pinned to the top and deleted (Ctrl if not
 empty). Wheels can be renamed, and deleted except Shortcuts (Ctrl if not empty). Entries
 you can't use yet leave their spot empty.
 

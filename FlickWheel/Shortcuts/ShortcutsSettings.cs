@@ -170,8 +170,14 @@ internal sealed class ShortcutsSettings(Configuration config, ShortcutsModule mo
         ImGui.SameLine();
         if (ImGui.Button("..."))
             ImGui.OpenPopup("##group");
-        var (menuChanged, removed, moveTo) = DrawGroupMenu(group, index);
+        var (menuChanged, removed, moveTo, copyTo) = DrawGroupMenu(group, index);
         changed |= menuChanged;
+
+        if (copyTo != null)
+        {
+            copyTo.Groups.Add(group.Copy());
+            changed = true;
+        }
 
         if (removed || moveTo != null)
         {
@@ -211,10 +217,10 @@ internal sealed class ShortcutsSettings(Configuration config, ShortcutsModule mo
         return (changed, add ? group : null, false);
     }
 
-    private (bool Changed, bool Removed, ShortcutWheel? MoveTo) DrawGroupMenu(ShortcutGroup group, int index)
+    private (bool Changed, bool Removed, ShortcutWheel? MoveTo, ShortcutWheel? CopyTo) DrawGroupMenu(ShortcutGroup group, int index)
     {
         if (!ImGui.BeginPopup("##group"))
-            return (false, false, null);
+            return (false, false, null, null);
 
         var changed = false;
         var name = group.Name;
@@ -245,13 +251,24 @@ internal sealed class ShortcutsSettings(Configuration config, ShortcutsModule mo
             ImGui.EndMenu();
         }
 
+        ShortcutWheel? copyTo = null;
+        if (others.Count > 0 && ImGui.BeginMenu("Copy to wheel"))
+        {
+            foreach (var other in others)
+            {
+                if (ImGui.MenuItem($"{ShortcutsModule.TitleOf(other)}##{other.Uid}"))
+                    copyTo = other;
+            }
+            ImGui.EndMenu();
+        }
+
         var canDelete = group.Entries.Count == 0 || ImGui.GetIO().KeyCtrl;
         var removed = ImGui.MenuItem("Delete", false, canDelete);
         if (!canDelete && ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
             ImGui.SetTooltip("Hold Ctrl to delete a group that has shortcuts in it.");
 
         ImGui.EndPopup();
-        return (changed, removed, moveTo);
+        return (changed, removed, moveTo, copyTo);
     }
 
     private RowIcon RowIconOf(ShortcutEntry entry)

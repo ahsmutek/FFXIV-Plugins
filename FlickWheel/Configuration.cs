@@ -36,6 +36,8 @@ public sealed class ShortcutEntry : IShortcut
     public string? Command { get; set; }
     public string? Label { get; set; }
     public uint IconId { get; set; }
+
+    public ShortcutEntry Copy() => new() { Kind = Kind, RowId = RowId, Command = Command, Label = Label, IconId = IconId };
 }
 
 public sealed class ShortcutGroup
@@ -47,6 +49,11 @@ public sealed class ShortcutGroup
     // ABGR.
     public uint Color { get; set; }
     public List<ShortcutEntry> Entries { get; set; } = new();
+
+    public ShortcutGroup Copy() => new()
+    {
+        Name = Name, Hue = Hue, Color = Color, Entries = Entries.Select(e => e.Copy()).ToList(),
+    };
 }
 
 public sealed class ShortcutWheel
