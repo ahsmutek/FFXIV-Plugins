@@ -126,7 +126,6 @@ internal sealed class SettingsWindow : Window
         ImGui.Unindent();
     }
 
-    // Label before the slider and units after, with the sliders lined up under each other.
     private static bool LevelSlider(string before, string after, ref int value)
     {
         var start = ImGui.GetCursorPosX();

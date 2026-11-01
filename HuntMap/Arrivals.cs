@@ -5,7 +5,6 @@ using Dalamud.Plugin.Services;
 
 namespace HuntMap;
 
-// Checks off a spot once you're standing at it, for the marks the map shows spots of.
 internal sealed class Arrivals : IDisposable
 {
     private const float Radius = 20f;

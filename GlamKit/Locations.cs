@@ -9,8 +9,7 @@ using FFXIVClientStructs.FFXIV.Client.Game;
 
 namespace GlamKit;
 
-// Where each kept item is now, for the list. Your own containers are read directly; the saddlebag and retainers
-// come from Allagan Tools, which remembers them from when they were last opened.
+// The saddlebag and retainers come from Allagan Tools, which remembers them from when they were last opened.
 internal sealed class Locations : IDisposable
 {
     private static readonly TimeSpan CheckEvery = TimeSpan.FromSeconds(2);

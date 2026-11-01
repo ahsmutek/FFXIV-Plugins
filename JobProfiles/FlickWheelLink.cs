@@ -5,7 +5,6 @@ using Dalamud.Plugin.Ipc.Exceptions;
 
 namespace JobProfiles;
 
-// Flick Wheel's hotkeys, over its FlickWheel.Hotkeys and FlickWheel.Hold IPC.
 internal sealed class FlickWheelLink(IDalamudPluginInterface pluginInterface)
 {
     private readonly ICallGateSubscriber<(string Uid, string Name)[]> hotkeys =

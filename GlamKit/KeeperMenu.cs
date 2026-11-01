@@ -6,7 +6,6 @@ using Lumina.Excel.Sheets;
 
 namespace GlamKit;
 
-// "Keep for Glam" and "Keep for Later" (or "Stop Keeping for …") in the item menu of gear.
 internal sealed class KeeperMenu : IDisposable
 {
     private const uint SoulCrystal = 62;

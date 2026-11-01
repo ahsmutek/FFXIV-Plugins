@@ -5,7 +5,6 @@ using Dalamud.Plugin.Ipc;
 
 namespace IconAtlasClient;
 
-// Lets the user choose an icon in the Icon Atlas plugin, over its IconAtlas.Pick and IconAtlas.Picked IPC.
 internal sealed class IconPicker : IDisposable
 {
     private readonly string owner;
@@ -34,7 +33,6 @@ internal sealed class IconPicker : IDisposable
         pick.InvokeAction(token, purpose, current);
     }
 
-    // A "Choose icon" button, disabled with a hint when Icon Atlas isn't loaded.
     public bool Button(string label, string purpose, uint current, Action<uint> picked)
     {
         var available = Available;

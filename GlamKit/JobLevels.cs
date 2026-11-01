@@ -9,7 +9,6 @@ using Lumina.Excel.Sheets;
 
 namespace GlamKit;
 
-// Turns an item's class/job line into each eligible job's level, coloured against the item's equip level.
 internal sealed unsafe class JobLevels
 {
     private const int MostListed = 10;

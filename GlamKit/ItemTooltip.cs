@@ -13,9 +13,7 @@ using Lumina.Excel.Sheets;
 
 namespace GlamKit;
 
-// Adds a line to the game's item tooltip of gear kept for glam or later, under the description, and turns the class/job line into
-// job levels. The game fills the tooltip's strings during ItemDetail's update, so they're changed just before it
-// lays them out, as Simple Tweaks does.
+// The game fills the tooltip's strings during ItemDetail's update, so they're changed just before it lays them out, as Simple Tweaks does.
 internal sealed unsafe class ItemTooltip : IDisposable
 {
     private const string GenerateSignature =

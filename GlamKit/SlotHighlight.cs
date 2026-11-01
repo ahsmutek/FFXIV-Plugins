@@ -16,8 +16,6 @@ using Lumina.Excel.Sheets;
 
 namespace GlamKit;
 
-// Borders the bag, saddlebag, retainer and Armoury Chest slots holding gear kept for glam, as Keep in Mind does,
-// and in teal those holding gear kept for later.
 internal sealed unsafe class SlotHighlight
 {
     private const float Thickness = 2f;
@@ -82,8 +80,6 @@ internal sealed unsafe class SlotHighlight
         }
     }
 
-    // A row of a window listing gear by name is marked when it shows a kept item's name: a hanger after it for
-    // glam, a bookmark for later.
     private void DrawItemList(string addonName)
     {
         var addon = slots.Addon<AtkUnitBase>(addonName);
@@ -150,7 +146,6 @@ internal sealed unsafe class SlotHighlight
         }
     }
 
-    // A hanger, then a bookmark, in a row from min.
     private void DrawMarks(ImDrawListPtr drawList, AtkUnitBase* owner, Vector2 min, float size, float gap, bool glam,
                            bool later)
     {
@@ -256,7 +251,6 @@ internal sealed unsafe class SlotHighlight
         return null;
     }
 
-    // The plain text of every text node, nested components included.
     private static List<string> Texts(AtkUldManager* uld, List<string>? texts = null)
     {
         texts ??= [];

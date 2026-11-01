@@ -9,8 +9,7 @@ using Lumina.Excel.Sheets;
 
 namespace KeepInMind;
 
-// Adds how many you need to the game's item tooltip, under the description. The game fills the tooltip's
-// strings during ItemDetail's update, so they're changed just before it lays them out, as Simple Tweaks does.
+// The game fills the tooltip's strings during ItemDetail's update, so they're changed just before it lays them out, as Simple Tweaks does.
 internal sealed unsafe class ItemTooltip : IDisposable
 {
     private const string GenerateSignature =

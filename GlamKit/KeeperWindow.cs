@@ -12,7 +12,6 @@ using Item = Lumina.Excel.Sheets.Item;
 
 namespace GlamKit;
 
-// Everything kept for glam or for later, a tab each, with where it is now.
 internal sealed class KeeperWindow : Window
 {
     private readonly Configuration config;

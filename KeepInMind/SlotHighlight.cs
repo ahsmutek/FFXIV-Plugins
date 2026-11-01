@@ -5,7 +5,6 @@ using Inventory;
 
 namespace KeepInMind;
 
-// Borders the bag, saddlebag and retainer slots holding items still needed, in the moneybag's colours.
 internal sealed class SlotHighlight
 {
     private const float Thickness = 2f;
@@ -36,7 +35,6 @@ internal sealed class SlotHighlight
         }
     }
 
-    // For /keepinmind debug.
     public void Dump(IPluginLog log) => slots.Dump(log);
 
     private Vector4? Wanted(uint itemId)

@@ -12,7 +12,6 @@ using Lumina.Excel.Sheets;
 
 namespace Inventory;
 
-// The bag, saddlebag and retainer slots on screen, and the item each holds. Shared by Keep in Mind and GlamKit.
 // Each window's sorter lists its items in the order the window shows them, page after page, as VanillaPlus
 // reads them. A slot only counts if it also shows that item's icon, so a wrong guess at the page shown leaves
 // a slot out rather than pairing it with the wrong item (many items share an icon, so icons alone can't say

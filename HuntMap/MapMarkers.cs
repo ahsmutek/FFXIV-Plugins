@@ -7,9 +7,8 @@ using FFXIVClientStructs.FFXIV.Component.GUI;
 
 namespace HuntMap;
 
-// Adds a mark's spawn points to the game map's and minimap's own markers. They're appended after the game's,
-// rather than replacing them, so aetherytes and the rest stay; the game rebuilds the lists when the map opens or
-// changes, so they're put back whenever they're gone.
+// Spawn points are appended after the game's markers so aetherytes and the rest stay; the game rebuilds the lists
+// when the map opens or changes, so they're put back whenever they're gone.
 internal sealed unsafe class MapMarkers : IDisposable
 {
     public const uint UncheckedIcon = 60442;
@@ -70,7 +69,6 @@ internal sealed unsafe class MapMarkers : IDisposable
         Redraw();
     }
 
-    // After a spot is checked or unchecked.
     public void Redraw() => map.Redraw = minimap.Redraw = true;
 
     private void OnUpdate(IFramework _)

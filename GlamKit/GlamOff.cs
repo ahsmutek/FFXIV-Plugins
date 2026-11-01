@@ -8,7 +8,6 @@ using FFXIVClientStructs.FFXIV.Component.GUI;
 
 namespace GlamKit;
 
-// "Glam Off" in the item menu of glamoured gear: the Fitting Room with the item's own look.
 internal sealed class GlamOff : IDisposable
 {
     private readonly IContextMenu contextMenu;

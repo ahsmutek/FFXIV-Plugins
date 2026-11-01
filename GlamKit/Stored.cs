@@ -9,8 +9,8 @@ using Item = Lumina.Excel.Sheets.Item;
 
 namespace GlamKit;
 
-// Stops keeping gear once it's in the glamour dresser or the armoire. The game only knows what's in them once
-// they've been opened this session, so until then nothing is removed.
+// The game only knows what's in the dresser and armoire once they've been opened this session, so until then
+// nothing is removed.
 internal sealed unsafe class Stored : IDisposable
 {
     private static readonly TimeSpan CheckEvery = TimeSpan.FromSeconds(2);
