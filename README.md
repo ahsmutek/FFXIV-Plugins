@@ -4,8 +4,7 @@ My [Dalamud](https://github.com/goatcorp/Dalamud) plugins for Final Fantasy XIV.
 has its own folder; `shared/` holds code compiled into more than one (the shortcut picker
 used by Flick Wheel and Job Profiles, the Icon Atlas link used by Flick Wheel and Retainer Cooldown, and the controller navigation most windows use).
 
-Made for my own use and shared as-is, without support or guarantees. Not published to any
-plugin repository.
+Made for my own use and shared as-is, without support or guarantees.
 
 Third-party tools are against the FINAL FANTASY XIV Terms of Service; use at your own risk.
 These read game data that can change with any patch, so they may break without notice.
@@ -70,6 +69,17 @@ Bills. Shows the spots on the game's own map and lets you tick them off with the
 Every game icon ID range, from job actions to map markers and plate frames, with the icons
 drawn from your game files. Search ranges or jump to an ID, then inspect and copy an icon's
 ID or path. Flick Wheel and Retainer Cooldown open it to choose icons. `/iconatlas`
+
+## Installing
+
+In `/xlsettings` → Experimental → Custom Plugin Repositories, add
+
+```
+https://github.com/ahsmutek/FFXIV-Plugins/releases/download/plugins/repo.json
+```
+
+and save. Every plugin then shows up in `/xlplugins` and updates like any other. Each push to
+`main` rebuilds them all.
 
 ## Building
 

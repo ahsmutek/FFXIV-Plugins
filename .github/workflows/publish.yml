@@ -1,0 +1,72 @@
+name: Publish plugins
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish
+  cancel-in-progress: true
+
+env:
+  RELEASE_TAG: plugins
+
+jobs:
+  publish:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.x
+
+      - name: Download Dalamud
+        run: |
+          $dev = "$env:APPDATA\XIVLauncher\addon\Hooks\dev"
+          New-Item -ItemType Directory -Force $dev | Out-Null
+          Invoke-WebRequest https://goatcorp.github.io/dalamud-distrib/latest.zip -OutFile dalamud.zip
+          Expand-Archive dalamud.zip -DestinationPath $dev -Force
+
+      - name: Build
+        run: |
+          $base = "https://github.com/${{ github.repository }}/releases/download/$env:RELEASE_TAG"
+          $now = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+          New-Item -ItemType Directory -Force dist | Out-Null
+          $repo = @()
+          foreach ($proj in Get-ChildItem -Path */*.csproj) {
+            $name = $proj.BaseName
+            # Dalamud only offers an update when the version goes up, so the run number becomes the revision.
+            $parts = (dotnet msbuild $proj -getProperty:Version).Trim().Split('.')
+            $version = "$($parts[0]).$($parts[1]).$($parts[2]).${{ github.run_number }}"
+            dotnet build $proj -c Release -p:Version=$version
+            if ($LASTEXITCODE) { exit $LASTEXITCODE }
+
+            $out = Join-Path $proj.DirectoryName "bin/Release/$name"
+            Copy-Item "$out/latest.zip" "dist/$name.zip"
+            $manifest = Get-Content "$out/$name.json" -Raw | ConvertFrom-Json
+            $link = "$base/$name.zip"
+            $manifest | Add-Member DownloadLinkInstall $link
+            $manifest | Add-Member DownloadLinkUpdate $link
+            $manifest | Add-Member DownloadLinkTesting $link
+            $manifest | Add-Member LastUpdate $now
+            $repo += $manifest
+          }
+          ConvertTo-Json -InputObject $repo -Depth 5 | Set-Content dist/repo.json -Encoding utf8NoBOM
+
+      - name: Upload to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view $env:RELEASE_TAG 2>$null
+          if ($LASTEXITCODE) {
+            gh release create $env:RELEASE_TAG --title "Plugins" --notes "Built automatically from main. Add the repo.json link to Dalamud's custom plugin repositories."
+          }
+          gh release upload $env:RELEASE_TAG (Get-ChildItem dist).FullName --clobber
