@@ -10,7 +10,8 @@ using Shortcuts;
 namespace FlickWheel;
 
 internal sealed class ShortcutsSettings(Configuration config, ShortcutsModule module, ShortcutCatalog catalog, IconCache icons,
-                                        WheelOverlay overlay, ShortcutPicker picker, IconPicker iconPicker)
+                                        WheelOverlay overlay, ShortcutPicker picker, IconPicker iconPicker,
+                                        PluginIcons pluginIcons)
 {
     // Far-apart hues first.
     private static readonly int[] HueOrder = [11, 6, 0, 2, 14, 8, 3, 16, 12, 5, 9, 15, 1, 4, 7, 10, 13, 17];
@@ -232,6 +233,8 @@ internal sealed class ShortcutsSettings(Configuration config, ShortcutsModule mo
             ShortcutKind.BuddyAction => $"{info.Name} (your chocobo isn't out)",
             _ => $"{info.Name} (locked)",
         };
+        if (info.IconId == 0 && pluginIcons.Of(entry) is { } glyph)
+            return new RowIcon(entry.Uid, null, glyph.Glyph.ToString(), tooltip, !available, IconFont: true);
         var texture = info.IconId != 0 ? icons.Get(info.IconId, info.KeyOutIcon) : (GameIcon?)null;
         return new RowIcon(entry.Uid, texture, Short(info.Name), tooltip, !available);
     }

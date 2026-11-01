@@ -93,7 +93,8 @@ editor, **+** adds shortcuts to a group: tick as many as you like, on any tab, t
 - **Emotes** – your favourite emotes; search to add any other unlocked one.
 - **Macros** – your individual and shared macros, by slot.
 - **Commands** – any chat command with your own label and icon, e.g. `/gs change 3`. A
-  plugin's command only shows while that plugin is loaded.
+  plugin's command only shows while that plugin is loaded. Without an icon of your own, a
+  plugin can supply one (CatProof shows your chosen cat icon, lit while locked).
 
 Drag a shortcut to reorder it (or **Move left/right** in its right-click menu); right-click it to relabel, change its icon (chosen in [Icon Atlas](../IconAtlas/) when
 it's loaded, otherwise by ID), move or remove it. Groups can be renamed, recolored, moved, pinned to the top and deleted (Ctrl if not

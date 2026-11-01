@@ -12,7 +12,8 @@ internal sealed record WheelEntry(
     bool KeyOutIcon = false,
     bool Faded = false,
     bool IsCurrent = false,
-    int? Count = null);
+    int? Count = null,
+    PluginGlyph? Glyph = null);
 
 internal interface IWheel
 {

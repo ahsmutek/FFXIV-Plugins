@@ -3,12 +3,14 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
+using Dalamud.Interface.ManagedFontAtlas;
 
 using Shortcuts;
 
 namespace FlickWheel;
 
-internal sealed class WheelOverlay(WheelInput input, WheelSet wheels, IconCache icons, Configuration config, Action save)
+internal sealed class WheelOverlay(WheelInput input, WheelSet wheels, IconCache icons, IFontHandle glyphFont,
+                                   Configuration config, Action save)
 {
     private const float MinRadius = 140f;
     // Wheels with more icons shrink them rather than grow.
@@ -191,7 +193,10 @@ internal sealed class WheelOverlay(WheelInput input, WheelSet wheels, IconCache 
         var max = pos + new Vector2(size / 2);
 
         var alpha = entry.Faded ? .4f : 1f;
-        icons.Get(entry.IconId, entry.KeyOutIcon).Draw(dl, min, max, ImGui.GetColorU32(new Vector4(1f, 1f, 1f, alpha)));
+        if (entry.Glyph is { } pluginGlyph)
+            DrawGlyph(dl, pluginGlyph, pos, size, alpha);
+        else
+            icons.Get(entry.IconId, entry.KeyOutIcon).Draw(dl, min, max, ImGui.GetColorU32(new Vector4(1f, 1f, 1f, alpha)));
 
         if (entry.Count is { } count)
             DrawOutlinedText(dl, count.ToString(), max, size * 0.34f, Align.BottomRight);
@@ -200,6 +205,18 @@ internal sealed class WheelOverlay(WheelInput input, WheelSet wheels, IconCache 
         {
             var dot = center + dir * (radius + icon * BandWidth / 2 + Math.Max(4f, icon * 0.12f));
             dl.AddCircleFilled(dot, Math.Max(2.5f, icon * 0.08f), White);
+        }
+    }
+
+    private void DrawGlyph(ImDrawListPtr dl, PluginGlyph glyph, Vector2 at, float size, float alpha)
+    {
+        using (glyphFont.Push())
+        {
+            var text = glyph.Glyph.ToString();
+            var fontSize = size * 0.8f;
+            var textSize = ImGui.CalcTextSize(text) * (fontSize / ImGui.GetFontSize());
+            var color = (glyph.Color & 0x00FFFFFF) | ((uint)((glyph.Color >> 24) * alpha) << 24);
+            dl.AddText(ImGui.GetFont(), fontSize, at - textSize / 2, color, text);
         }
     }
 

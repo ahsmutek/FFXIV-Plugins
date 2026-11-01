@@ -5,6 +5,7 @@ using Dalamud.Game.Command;
 using Dalamud.Interface.Windowing;
 using Dalamud.IoC;
 using Dalamud.Plugin;
+using Dalamud.Interface.ManagedFontAtlas;
 using Dalamud.Plugin.Ipc;
 using Dalamud.Plugin.Services;
 
@@ -66,6 +67,7 @@ public sealed class Plugin : IDalamudPlugin
     private readonly WheelInput input;
     private readonly WheelOverlay overlay;
     private readonly IconCache icons;
+    private readonly IFontHandle glyphFont;
     private readonly ChatLogToggle chatLog;
     private readonly IconPicker iconPicker;
     private readonly PadNav padNav;
@@ -83,7 +85,9 @@ public sealed class Plugin : IDalamudPlugin
         blocker = new PadBlocker(Interop, Log);
         input = new WheelInput(Framework, KeyState, Gamepad, blocker, Condition, PlayerState, wheels, config, Save);
         icons = new IconCache(Data, Textures);
-        overlay = new WheelOverlay(input, wheels, icons, config, Save);
+        glyphFont = PluginInterface.UiBuilder.FontAtlas.NewDelegateFontHandle(e => e.OnPreBuild(
+            tk => tk.AddFontAwesomeIconFont(new SafeFontConfig { SizePx = 64 })));
+        overlay = new WheelOverlay(input, wheels, icons, glyphFont, config, Save);
 
         var catalog = new JobCatalog(Data, Unlocks, PlayerState, config);
         var switcher = new JobSwitcher(Condition, Toasts);
@@ -91,7 +95,7 @@ public sealed class Plugin : IDalamudPlugin
         chatLog = new ChatLogToggle(Framework);
         iconPicker = new IconPicker(PluginInterface, "FlickWheel");
         var shortcuts = new ShortcutsModule(config, Save, new ShortcutCatalog(Data, CommandManager, Buddies, chatLog), icons,
-                                            overlay, iconPicker);
+                                            overlay, iconPicker, new PluginIcons(PluginInterface));
         wheels.Add(shortcuts);
 
         configWindow = new ConfigWindow(config, Save, wheels, shortcuts, overlay, input, KeyState);
@@ -147,5 +151,6 @@ public sealed class Plugin : IDalamudPlugin
         windows.RemoveAllWindows();
         padNav.Dispose();
         icons.Dispose();
+        glyphFont.Dispose();
     }
 }

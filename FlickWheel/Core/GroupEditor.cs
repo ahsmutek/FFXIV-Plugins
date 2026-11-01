@@ -2,11 +2,14 @@ using System;
 using System.Numerics;
 using Controller;
 using Dalamud.Bindings.ImGui;
+using Dalamud.Interface;
 using Shortcuts;
 
 namespace FlickWheel;
 
-internal readonly record struct RowIcon(string Id, GameIcon? Texture, string Label, string Tooltip, bool Dim);
+// IconFont: Label is a FontAwesome glyph.
+internal readonly record struct RowIcon(string Id, GameIcon? Texture, string Label, string Tooltip, bool Dim,
+                                        bool IconFont = false);
 
 internal static class GroupEditor
 {
@@ -132,7 +135,11 @@ internal static class GroupEditor
             }
             else
             {
-                ImGui.Button(item.Label, new Vector2(Icon + 4f));
+                if (item.IconFont)
+                    ImGui.PushFont(UiBuilder.IconFont);
+                ImGui.Button($"{item.Label}##icon", new Vector2(Icon + 4f));
+                if (item.IconFont)
+                    ImGui.PopFont();
             }
             ImGui.PopStyleColor(3);
 
