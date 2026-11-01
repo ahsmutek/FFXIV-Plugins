@@ -30,7 +30,8 @@ internal sealed class LockIndicator : Window
     public LockIndicator(Configuration config, Action save, KeyLock keyLock)
         : base("CatProof indicator###CatProofIndicator",
             ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoCollapse |
-            ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoFocusOnAppearing | ImGuiWindowFlags.NoSavedSettings)
+            ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoFocusOnAppearing | ImGuiWindowFlags.NoSavedSettings |
+            ImGuiWindowFlags.NoNav)
     {
         this.config = config;
         this.save = save;
@@ -69,7 +70,8 @@ internal sealed class LockIndicator : Window
     public override void PreDraw()
     {
         Flags = ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoCollapse |
-                ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoFocusOnAppearing | ImGuiWindowFlags.NoSavedSettings;
+                ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoFocusOnAppearing | ImGuiWindowFlags.NoSavedSettings |
+                ImGuiWindowFlags.NoNav;
         if (config.IconOnly)
             Flags |= ImGuiWindowFlags.NoBackground;
 

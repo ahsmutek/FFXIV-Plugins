@@ -118,6 +118,10 @@ internal sealed unsafe class PadNav : IDisposable
             {
                 focused.IsOpen = false;
             }
+            else
+            {
+                ImGuiP.FocusWindow(default);
+            }
         }
     }
 
