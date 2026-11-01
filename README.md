@@ -84,7 +84,7 @@ Plugin Locations).
 
 ## License
 
-Copyright © 2026 anna-wro. Licensed under the
+Copyright © 2026 ahsmutek. Licensed under the
 [GNU Affero General Public License v3.0 or later](LICENSE), the same license as Dalamud.
 Anything you distribute that's based on these must also be released under the AGPL with
 its source. Provided as-is, without warranty.
