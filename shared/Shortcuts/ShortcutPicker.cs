@@ -5,12 +5,16 @@ using System.Numerics;
 using Controller;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Utility;
+using IconAtlasClient;
 
 namespace Shortcuts;
 
-internal sealed class ShortcutPicker(ShortcutCatalog catalog, IconCache icons)
+internal sealed class ShortcutPicker(ShortcutCatalog catalog, IconCache icons, IconPicker? iconPicker = null)
 {
     private const string Popup = "##addShortcut";
+
+    // Clicking in the Icon Atlas window closes this popup; the picked icon brings it back.
+    private bool reopen;
 
     private string? targetName;
     private Action<PickedShortcut>? add;
@@ -44,6 +48,10 @@ internal sealed class ShortcutPicker(ShortcutCatalog catalog, IconCache icons)
 
     public bool Draw()
     {
+        if (reopen && !ImGui.IsPopupOpen(Popup))
+            ImGui.OpenPopup(Popup);
+        reopen = false;
+
         if (!ImGui.BeginPopup(Popup))
             return false;
 
@@ -179,9 +187,29 @@ internal sealed class ShortcutPicker(ShortcutCatalog catalog, IconCache icons)
         ImGui.InputTextWithHint("Command", "/command arguments", ref newCommand, 128);
         ImGui.SetNextItemWidth(-90f);
         ImGui.InputTextWithHint("Label", "Name to show instead of the command", ref newLabel, 64);
-        ImGui.SetNextItemWidth(-90f);
-        ImGui.InputInt("Icon ID", ref newIcon);
-        newIcon = Math.Max(0, newIcon);
+        if (iconPicker is { Available: true })
+        {
+            var purpose = newLabel.Trim().Length > 0 ? newLabel.Trim() : newCommand.Trim().Length > 0 ? newCommand.Trim() : "a new shortcut";
+            iconPicker.Button("Choose icon…", purpose, (uint)newIcon, picked =>
+            {
+                newIcon = (int)picked;
+                reopen = true;
+            });
+            if (newIcon > 0)
+            {
+                ImGui.SameLine();
+                if (ImGui.Button("Default icon"))
+                    newIcon = 0;
+            }
+        }
+        else
+        {
+            ImGui.SetNextItemWidth(-90f);
+            ImGui.InputInt("Icon ID", ref newIcon);
+            newIcon = Math.Max(0, newIcon);
+            if (iconPicker != null)
+                ImGui.TextDisabled("Load Icon Atlas to choose from every icon.");
+        }
         if (newIcon > 0)
         {
             icons.Get((uint)newIcon, false).Image(new Vector2(40f));

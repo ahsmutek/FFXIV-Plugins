@@ -12,6 +12,11 @@
     <Compile Include="../shared/Shortcuts/*.cs" LinkBase="shared/Shortcuts" />
   </ItemGroup>
 
+  <!-- The shortcut picker takes an optional Icon Atlas picker; Job Profiles doesn't pass one. -->
+  <ItemGroup>
+    <Compile Include="../shared/IconAtlas/*.cs" LinkBase="shared/IconAtlas" />
+  </ItemGroup>
+
   <!-- Tabler Icons and their MIT notice, shared with Keep in Mind. -->
   <ItemGroup>
     <Compile Include="../shared/Icons/*.cs" LinkBase="shared/Icons" />

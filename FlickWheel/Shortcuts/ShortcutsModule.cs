@@ -28,7 +28,7 @@ internal sealed class ShortcutsModule : IWheelModule
             save();
         }
 
-        settings = new ShortcutsSettings(config, this, catalog, icons, overlay, new ShortcutPicker(catalog, icons), iconPicker,
+        settings = new ShortcutsSettings(config, this, catalog, icons, overlay, new ShortcutPicker(catalog, icons, iconPicker), iconPicker,
                                          pluginIcons);
     }
 
