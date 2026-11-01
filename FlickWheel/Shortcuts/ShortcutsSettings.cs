@@ -159,33 +159,26 @@ internal sealed class ShortcutsSettings(Configuration config, ShortcutsModule mo
         }
         var color = ShortcutsModule.ColorOf(group, Wheel.Style);
         ImGui.SameLine();
-        var name = group.Name;
-        ImGui.SetNextItemWidth(140f);
-        if (ImGui.InputText("##name", ref name, 32))
+        ImGui.AlignTextToFramePadding();
+        ImGui.TextUnformatted(group.Name.Length > 0 ? group.Name : "(unnamed)");
+        if (Wheel.PinnedGroup == index)
         {
-            group.Name = name;
-            changed = true;
-        }
-        ImGui.SameLine();
-        if (ImGui.RadioButton("Pin to top", Wheel.PinnedGroup == index))
-        {
-            Wheel.PinnedGroup = index;
-            changed = true;
+            ImGui.SameLine();
+            ImGui.TextDisabled("(pinned to top)");
         }
 
         ImGui.SameLine();
-        var canDelete = group.Entries.Count == 0 || ImGui.GetIO().KeyCtrl;
-        ImGui.BeginDisabled(!canDelete);
-        var removed = ImGui.SmallButton("Delete");
-        ImGui.EndDisabled();
-        if (!canDelete && ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
-            ImGui.SetTooltip("Hold Ctrl to delete a group that has shortcuts in it.");
+        if (ImGui.Button("..."))
+            ImGui.OpenPopup("##group");
+        var (menuChanged, removed, moveTo) = DrawGroupMenu(group, index);
+        changed |= menuChanged;
 
-        if (removed)
+        if (removed || moveTo != null)
         {
             groups.RemoveAt(index);
             if (Wheel.PinnedGroup > index || Wheel.PinnedGroup >= groups.Count)
                 Wheel.PinnedGroup = Math.Max(0, Wheel.PinnedGroup - 1);
+            moveTo?.Groups.Add(group);
             ImGui.PopID();
             return (true, null, true);
         }
@@ -216,6 +209,49 @@ internal sealed class ShortcutsSettings(Configuration config, ShortcutsModule mo
 
         ImGui.PopID();
         return (changed, add ? group : null, false);
+    }
+
+    private (bool Changed, bool Removed, ShortcutWheel? MoveTo) DrawGroupMenu(ShortcutGroup group, int index)
+    {
+        if (!ImGui.BeginPopup("##group"))
+            return (false, false, null);
+
+        var changed = false;
+        var name = group.Name;
+        ImGui.SetNextItemWidth(200f);
+        if (ImGui.InputTextWithHint("##rename", "Group name", ref name, 32))
+        {
+            group.Name = name;
+            changed = true;
+        }
+
+        ImGui.Separator();
+        var pinned = Wheel.PinnedGroup == index;
+        if (ImGui.MenuItem("Pin to top", pinned, !pinned))
+        {
+            Wheel.PinnedGroup = index;
+            changed = true;
+        }
+
+        ShortcutWheel? moveTo = null;
+        var others = module.AllWheels().Where(w => w != Wheel).ToList();
+        if (others.Count > 0 && ImGui.BeginMenu("Move to wheel"))
+        {
+            foreach (var other in others)
+            {
+                if (ImGui.MenuItem($"{ShortcutsModule.TitleOf(other)}##{other.Uid}"))
+                    moveTo = other;
+            }
+            ImGui.EndMenu();
+        }
+
+        var canDelete = group.Entries.Count == 0 || ImGui.GetIO().KeyCtrl;
+        var removed = ImGui.MenuItem("Delete", false, canDelete);
+        if (!canDelete && ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+            ImGui.SetTooltip("Hold Ctrl to delete a group that has shortcuts in it.");
+
+        ImGui.EndPopup();
+        return (changed, removed, moveTo);
     }
 
     private RowIcon RowIconOf(ShortcutEntry entry)
