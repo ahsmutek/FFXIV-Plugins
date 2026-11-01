@@ -56,6 +56,11 @@ dresser. `/glamkit`
 Stops pad freezes when unrelated hardware (a USB stick, a virtual drive) comes and goes,
 and keeps the game on the controller you picked. `/controllerkeeper`
 
+### [CatProof](CatProof/)
+Locks the keyboard so cats can't type in chat or press hotkeys while you play on a controller. The
+controller, mouse and keys sent by software keep working, and a small box with an Unlock button shows
+while locked. `/catproof`, also from a macro or Flick Wheel
+
 ### [PlaceFinder](PlaceFinder/)
 Finds small named places like The Slow Wash without a web search. List your current zone's
 places, browse by region or A–Z, or search, all with the D-pad and a map preview. Press A to

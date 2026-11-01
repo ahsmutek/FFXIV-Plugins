@@ -1,0 +1,13 @@
+{
+  "Author": "Kotanna",
+  "Name": "CatProof",
+  "Punchline": "Locks the keyboard in FFXIV so cats can't type or press hotkeys while you play on a controller.",
+  "Description": "While locked, FFXIV, Dalamud and plugin windows ignore key presses from physical keyboards: no typing in chat, no movement, no hotkeys. Controller, mouse and keys sent by software (Steam Input, Job Profiles) keep working. /catproof toggles the lock, also from a macro or Flick Wheel; /catproof on, /catproof off, /catproof config. A small movable indicator with an Unlock button shows while locked.",
+  "ApplicableVersion": "any",
+  "Tags": [
+    "keyboard",
+    "input",
+    "controller",
+    "cat"
+  ]
+}
