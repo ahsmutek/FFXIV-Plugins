@@ -31,6 +31,8 @@ public sealed class Configuration : IPluginConfiguration
 
     public bool UncolourUnwearableLevel { get; set; } = true;
 
+    public bool GearsetsEnabled { get; set; } = true;
+
     public List<KeptItem> Items { get; set; } = [];
 
     public List<KeptItem> LaterItems { get; set; } = [];

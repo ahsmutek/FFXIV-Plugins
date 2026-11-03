@@ -56,6 +56,11 @@ Gear that more than 10 jobs can wear keeps the game's text and adds up to 5 gree
 The game colours the equip level against your current job even when that job can't wear the item; GlamKit
 colours it only when your job can wear it (optional). It all works on any job and in every item tooltip, Market Board included.
 
+## Gear Sets
+
+A gear tooltip says which jobs' gear sets use the item, e.g. "Equipped - NIN, MNK".
+Sets are matched by item, so any copy of it counts.
+
 ## How it works
 
 Glam Off calls the Fitting Room the same way the menu's **Try On** does, with the glamour left out.

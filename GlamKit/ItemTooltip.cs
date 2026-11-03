@@ -23,6 +23,7 @@ internal sealed unsafe class ItemTooltip : IDisposable
     private const string LaterLine = "Kept for later: worth keeping for its stats";
     private const int Description = 13;
     private const int ClassJobCategory = 22;
+    private const int Level = 23;
 
     // The number holding which parts of the tooltip show, and the description's bit in it.
     private const int Visibility = 5;
@@ -34,9 +35,11 @@ internal sealed unsafe class ItemTooltip : IDisposable
     // The UIColor row nearest this, as the game colours text by row.
     private const uint Purple = 0xC78CFF;
     private const uint Teal = 0x59D9BF;
+    private const uint White = 0xFFFFFF;
 
     private delegate void GenerateDelegate(AddonItemDetail* addon, NumberArrayData* numbers, StringArrayData* strings);
 
+    private readonly IDataManager data;
     private readonly IGameGui gameGui;
     private readonly IAddonLifecycle lifecycle;
     private readonly IPluginLog log;
@@ -45,18 +48,21 @@ internal sealed unsafe class ItemTooltip : IDisposable
     private readonly Hook<GenerateDelegate>? hook;
     private readonly ushort purple;
     private readonly ushort teal;
+    private readonly ushort white;
     private byte[] lastJobLine = [];
 
     public ItemTooltip(IGameInteropProvider interop, IAddonLifecycle lifecycle, IDataManager data, IGameGui gameGui,
                        IPluginLog log, Configuration config)
     {
         this.lifecycle = lifecycle;
+        this.data = data;
         this.gameGui = gameGui;
         this.log = log;
         this.config = config;
         jobLevels = new JobLevels(data, config);
         purple = Nearest(data, Purple);
         teal = Nearest(data, Teal);
+        white = Nearest(data, White);
         try
         {
             hook = interop.HookFromSignature<GenerateDelegate>(GenerateSignature, Generate);
@@ -81,6 +87,7 @@ internal sealed unsafe class ItemTooltip : IDisposable
         {
             AddLine(numbers, strings);
             AddJobLevels(strings);
+            AddGearsets(strings);
         }
         catch (Exception e)
         {
@@ -114,6 +121,30 @@ internal sealed unsafe class ItemTooltip : IDisposable
         lastJobLine = bytes[..^1];
         fixed (byte* text = bytes)
             strings->SetValue(ClassJobCategory, text, false, true, false);
+    }
+
+    private void AddGearsets(StringArrayData* strings)
+    {
+        if (!config.GearsetsEnabled || strings == null || strings->Size <= Level)
+            return;
+        var current = strings->StringArray[Level].Value;
+        if (current == null)
+            return;
+        var gearsets = Gearsets.Line(data, HoveredItem());
+        var level = SeString.Parse(current);
+        if (gearsets == null || level.TextValue.Contains(gearsets))
+            return;
+
+        // Inserted after the level's own line, as other plugins hooking this may append to it before or after us.
+        var split = level.Payloads.FindIndex(p => p is NewLinePayload);
+        if (split < 0)
+            split = level.Payloads.Count;
+        var builder = new SeStringBuilder().Append(new SeString(level.Payloads[..split]))
+            .Add(NewLinePayload.Payload).AddUiForeground(gearsets, white);
+        builder.Append(new SeString(level.Payloads[split..]));
+        var bytes = builder.Build().EncodeWithNullTerminator();
+        fixed (byte* text = bytes)
+            strings->SetValue(Level, text, false, true, false);
     }
 
     // The game colours the equip level against the current job even when that job can't wear the item. It sets the

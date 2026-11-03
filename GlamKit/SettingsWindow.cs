@@ -124,6 +124,15 @@ internal sealed class SettingsWindow : Window
             save();
         }
         ImGui.Unindent();
+
+        ImGui.Spacing();
+        var gearsets = config.GearsetsEnabled;
+        if (ImGui.Checkbox("Gear Sets", ref gearsets))
+        {
+            config.GearsetsEnabled = gearsets;
+            save();
+        }
+        Describe("Gear tooltips say which jobs' gear sets use the item, e.g. \"Equipped - NIN\".");
     }
 
     private static bool LevelSlider(string before, string after, ref int value)
