@@ -5,8 +5,11 @@ using System.Numerics;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Game.ClientState.GamePad;
 using Dalamud.Interface;
+using Dalamud.Interface.Textures;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin.Services;
+using FFXIVClientStructs.FFXIV.Client.UI.Agent;
+using IconAtlasClient;
 
 namespace HuntMap;
 
@@ -37,6 +40,7 @@ internal sealed class HuntWindow : Window
     private readonly IGameGui gameGui;
     private readonly IGamepadState gamepad;
     private readonly ITextureProvider textures;
+    private readonly IconPicker iconPicker;
 
     private Tab tab = Tab.Bills;
     private bool selectTab = true;
@@ -85,7 +89,8 @@ internal sealed class HuntWindow : Window
     public bool Focused { get; private set; }
 
     public HuntWindow(Marks marks, Bills bills, Checks checks, Configuration config, Action save, MapMarkers markers,
-                      IClientState client, IObjectTable objects, IGameGui gameGui, IGamepadState gamepad, ITextureProvider textures)
+                      IClientState client, IObjectTable objects, IGameGui gameGui, IGamepadState gamepad, ITextureProvider textures,
+                      IconPicker iconPicker)
         : base("Hunt Map###HuntMap")
     {
         this.marks = marks;
@@ -99,6 +104,7 @@ internal sealed class HuntWindow : Window
         this.gameGui = gameGui;
         this.gamepad = gamepad;
         this.textures = textures;
+        this.iconPicker = iconPicker;
         Size = new Vector2(760, 480);
         SizeCondition = ImGuiCond.FirstUseEver;
         RefreshZones();
@@ -246,6 +252,27 @@ internal sealed class HuntWindow : Window
             save();
         }
 
+        var endOnKill = config.EndHuntOnKill;
+        if (ImGui.Checkbox("Stop hunting once the mark is killed", ref endOnKill))
+        {
+            config.EndHuntOnKill = endOnKill;
+            save();
+        }
+
+        ImGui.Spacing();
+        ImGui.TextUnformatted("Spot icons on the game's map");
+        DrawIconSetting("Unchecked", config.UncheckedIcon, MapMarkers.DefaultUncheckedIcon, id => config.UncheckedIcon = id);
+        var hide = config.HideCheckedOnMap;
+        ImGui.BeginDisabled(hide);
+        DrawIconSetting("Checked", config.CheckedIcon, MapMarkers.DefaultCheckedIcon, id => config.CheckedIcon = id);
+        ImGui.EndDisabled();
+        if (ImGui.Checkbox("Hide checked spots on the game's map", ref hide))
+        {
+            config.HideCheckedOnMap = hide;
+            save();
+            markers.Redraw();
+        }
+
         ImGui.Spacing();
         ImGui.TextUnformatted("Ranks shown in Here, Browse and Search");
         foreach (var rank in Marks.Ranks)
@@ -273,6 +300,40 @@ internal sealed class HuntWindow : Window
                 config.HiddenExpansions.Add(id);
             SettingsChanged();
         }
+    }
+
+    private void DrawIconSetting(string label, uint icon, uint fallback, Action<uint> set)
+    {
+        ImGui.PushID(label);
+        void Set(uint id)
+        {
+            set(id);
+            save();
+            markers.Redraw();
+        }
+
+        var size = new Vector2(ImGui.GetFrameHeight());
+        if (textures.TryGetFromGameIcon(new GameIconLookup(icon), out var texture))
+            ImGui.Image(texture.GetWrapOrEmpty().Handle, size);
+        else
+            ImGui.Dummy(size);
+        ImGui.SameLine();
+
+        var id = (int)icon;
+        ImGui.SetNextItemWidth(110f);
+        if (ImGui.InputInt("##id", ref id, 0, 0) && id > 0)
+            Set((uint)id);
+        ImGui.SameLine();
+        iconPicker.Button("Choose…", $"Hunt Map, {label.ToLowerInvariant()} spots", icon, Set);
+        if (icon != fallback)
+        {
+            ImGui.SameLine();
+            if (ImGui.Button("Reset"))
+                Set(fallback);
+        }
+        ImGui.SameLine();
+        ImGui.TextUnformatted(label);
+        ImGui.PopID();
     }
 
     private void SettingsChanged()
@@ -840,6 +901,14 @@ internal sealed class HuntWindow : Window
         huntTab = spotsTab;
         markers.Hunt(mark);
         IsOpen = false;
+        OpenMap(mark.Map);
+    }
+
+    private static unsafe void OpenMap(MapInfo map)
+    {
+        var agent = AgentMap.Instance();
+        if (agent != null)
+            agent->OpenMapByMapId(map.MapId, territoryId: map.TerritoryId);
     }
 
     private void ToggleChecked(Mark mark, int spot)

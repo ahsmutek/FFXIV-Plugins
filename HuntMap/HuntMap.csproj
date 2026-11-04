@@ -11,4 +11,8 @@
     <EmbeddedResource Include="data/marks.json" LogicalName="marks.json" />
     <None Include="data/LICENSE-ffxiv-huntmaps-maker.txt" Link="LICENSE-ffxiv-huntmaps-maker.txt" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
+  <!-- Choosing icons in the Icon Atlas plugin. -->
+  <ItemGroup>
+    <Compile Include="../shared/IconAtlas/*.cs" LinkBase="shared/IconAtlas" />
+  </ItemGroup>
 </Project>

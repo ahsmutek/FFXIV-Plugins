@@ -11,8 +11,8 @@ namespace HuntMap;
 // when the map opens or changes, so they're put back whenever they're gone.
 internal sealed unsafe class MapMarkers : IDisposable
 {
-    public const uint UncheckedIcon = 60442;
-    public const uint CheckedIcon = 60408;
+    public const uint DefaultUncheckedIcon = 60442;
+    public const uint DefaultCheckedIcon = 60408;
     private const string AreaMap = "AreaMap";
 
     private readonly IFramework framework;
@@ -63,6 +63,10 @@ internal sealed unsafe class MapMarkers : IDisposable
             if (mark != null)
                 checks.Clear(mark);
         }
+        if (mark == null && Target != null)
+            config.StoppedMarks.Add(Target.Key);
+        if (mark != null)
+            config.StoppedMarks.Remove(mark.Key);
         Target = mark;
         config.Target = mark?.Key;
         save();
@@ -88,7 +92,7 @@ internal sealed unsafe class MapMarkers : IDisposable
     private Mark? MarkOn(Func<Mark, bool> here) =>
         Target != null && here(Target)
             ? Target
-            : bills.Held().FirstOrDefault(t => here(t.Mark) && !Bills.Done(t))?.Mark;
+            : bills.Held().FirstOrDefault(t => here(t.Mark) && !Bills.Done(t) && !config.StoppedMarks.Contains(t.Mark.Key))?.Mark;
 
     private void Update(AgentMap* agent, Drawn drawn, Mark? mark, bool mini)
     {
@@ -103,11 +107,16 @@ internal sealed unsafe class MapMarkers : IDisposable
         drawn.Redraw = false;
         Remove(agent, drawn, mini);
         drawn.Mark = mark;
+        drawn.Unchecked = config.UncheckedIcon;
+        drawn.Checked = config.CheckedIcon;
         drawn.Start = mini ? agent->MiniMapMarkerCount : agent->MapMarkerCount;
         var checkedSpots = checks.Of(mark);
         foreach (var spot in mark.Spots)
         {
-            var icon = checkedSpots?.Contains(spot.Index) == true ? CheckedIcon : UncheckedIcon;
+            var done = checkedSpots?.Contains(spot.Index) == true;
+            if (done && config.HideCheckedOnMap)
+                continue;
+            var icon = done ? drawn.Checked : drawn.Unchecked;
             var at = new Vector3(spot.World.X, 0, spot.World.Y);
             // The lists are shared with the game's markers and are fixed-size, so a long list can be cut short.
             if (!(mini ? agent->AddMiniMapMarker(at, icon) : agent->AddMapMarker(at, icon)))
@@ -125,7 +134,7 @@ internal sealed unsafe class MapMarkers : IDisposable
         for (var i = drawn.Start; i < drawn.Start + drawn.Count; i++)
         {
             var icon = mini ? agent->MiniMapMarkers[i].MapMarker.IconId : agent->MapMarkers[i].MapMarker.IconId;
-            if (icon is not (UncheckedIcon or CheckedIcon))
+            if (icon != drawn.Unchecked && icon != drawn.Checked)
                 return false;
         }
         return true;
@@ -141,7 +150,7 @@ internal sealed unsafe class MapMarkers : IDisposable
             for (var i = 0; i < total; i++)
             {
                 var icon = mini ? agent->MiniMapMarkers[i].MapMarker.IconId : agent->MapMarkers[i].MapMarker.IconId;
-                if (i >= drawn.Start && icon is UncheckedIcon or CheckedIcon)
+                if (i >= drawn.Start && (icon == drawn.Unchecked || icon == drawn.Checked))
                     continue;
                 if (kept != i)
                 {
@@ -167,6 +176,8 @@ internal sealed unsafe class MapMarkers : IDisposable
         public Mark? Mark;
         public int Start = -1;
         public int Count;
+        public uint Unchecked;
+        public uint Checked;
         public bool Redraw = true;
     }
 }

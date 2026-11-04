@@ -12,11 +12,11 @@ Shows where any hunt mark can spawn, B to SS rank, on the game's own map, and le
 | **Here** | The marks in your current zone. |
 | **Browse** | By region (region → zone → mark), or A–Z: every mark under collapsible letters. |
 | **Search** | Every mark whose name or zone contains what you type. A rank on its own, like `s`, also matches. |
-| **Settings** | Close after opening the map (off by default), and which ranks and expansions are shown. |
+| **Settings** | Close after opening the map (off by default), the map icons for unchecked and checked spots or hiding checked ones, and which ranks and expansions are shown. |
 
 Opening a mark lists its spawn spots, nearest first when you're in its zone. The map next to the list shows the spots: red for unchecked, grey for checked. Widen the window if it's hidden. If a bill's target is in your zone and isn't done yet, the window opens straight on its spots.
 
-**Hunt** (or Start on the pad) makes the mark your target and closes the window. The target's spots, and those of any unfinished bill target, show on the game's map and minimap as red dots, green once checked. Flagging a spot also makes its mark the target; **Stop hunting** clears it. While you're hunting, the window opens on the target's spots, in the tab you started from. Starting or ending a hunt unchecks all of that mark's spots. Spots check themselves off when you get within 20 yalms of one (turn this off in Settings).
+**Hunt** (or Start on the pad) makes the mark your target, closes the window and opens the game's map on its zone. The target's spots, and those of any unfinished bill target, show on the game's map and minimap as red dots, green once checked (choose your own icons in Settings, from Icon Atlas if it's loaded). Flagging a spot also makes its mark the target; **Stop hunting** clears it and takes its spots off the map, even for a bill target, until you hunt it again or take a new bill. While you're hunting, the window opens on the target's spots, in the tab you started from. Starting or ending a hunt unchecks all of that mark's spots. Spots check themselves off when you get within 20 yalms of one (turn this off in Settings). The hunt stops by itself once the mark is killed nearby (also optional).
 
 | Button | In a list | In a mark's spots |
 |---|---|---|

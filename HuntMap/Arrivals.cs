@@ -41,7 +41,7 @@ internal sealed class Arrivals : IDisposable
         nextAt = DateTime.UtcNow + Every;
 
         var at = new Vector2(player.Position.X, player.Position.Z);
-        var marks = bills.Held().Where(t => !Bills.Done(t)).Select(t => t.Mark).Append(markers.Target)
+        var marks = bills.Held().Where(t => !Bills.Done(t) && !config.StoppedMarks.Contains(t.Mark.Key)).Select(t => t.Mark).Append(markers.Target)
                          .Where(m => m != null && m.Map.TerritoryId == client.TerritoryType).Distinct();
         var changed = false;
         foreach (var mark in marks)

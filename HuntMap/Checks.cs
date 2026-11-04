@@ -50,6 +50,7 @@ internal sealed class Checks
             return;
         config.BillOrders[target.Bill] = target.Order;
         config.CheckedSpots.Remove(target.Mark.Key);
+        config.StoppedMarks.Remove(target.Mark.Key);
         save();
     }
 }

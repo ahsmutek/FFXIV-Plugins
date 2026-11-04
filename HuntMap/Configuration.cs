@@ -11,6 +11,14 @@ public sealed class Configuration : IPluginConfiguration
 
     public bool CheckOnArrival { get; set; } = true;
 
+    public bool EndHuntOnKill { get; set; } = true;
+
+    public uint UncheckedIcon { get; set; } = MapMarkers.DefaultUncheckedIcon;
+
+    public uint CheckedIcon { get; set; } = MapMarkers.DefaultCheckedIcon;
+
+    public bool HideCheckedOnMap { get; set; }
+
     // Key of the mark being hunted.
     public string? Target { get; set; }
 
@@ -28,4 +36,7 @@ public sealed class Configuration : IPluginConfiguration
 
     // MobHuntOrder row last seen per mark bill index; a different one means a new bill.
     public Dictionary<int, uint> BillOrders { get; set; } = new();
+
+    // Bill targets whose hunt was stopped, so their spots stay off the map until hunted again or a new bill.
+    public HashSet<string> StoppedMarks { get; set; } = new();
 }

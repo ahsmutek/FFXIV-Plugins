@@ -4,6 +4,7 @@ using Dalamud.Interface.Windowing;
 using Dalamud.IoC;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
+using IconAtlasClient;
 
 namespace HuntMap;
 
@@ -52,17 +53,22 @@ public sealed class Plugin : IDalamudPlugin
     private readonly MapMarkers markers;
     private readonly PadBlocker blocker;
     private readonly Arrivals arrivals;
+    private readonly Kills kills;
+    private readonly IconPicker iconPicker;
 
     public Plugin()
     {
         config = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
 
+        iconPicker = new IconPicker(PluginInterface, "HuntMap");
         var marks = new Marks(Data);
         var checks = new Checks(config, Save);
         var bills = new Bills(Data, marks, checks);
         markers = new MapMarkers(Framework, GameGui, ClientState, config, Save, marks, bills, checks);
         arrivals = new Arrivals(Framework, ClientState, Objects, config, bills, checks, markers);
-        window = new HuntWindow(marks, bills, checks, config, Save, markers, ClientState, Objects, GameGui, Gamepad, Textures);
+        kills = new Kills(Framework, ClientState, Objects, config, markers);
+        window = new HuntWindow(marks, bills, checks, config, Save, markers, ClientState, Objects, GameGui, Gamepad, Textures,
+                                iconPicker);
         windows.AddWindow(window);
         blocker = new PadBlocker(Interop, Log);
 
@@ -98,6 +104,8 @@ public sealed class Plugin : IDalamudPlugin
         PluginInterface.UiBuilder.OpenMainUi -= window.Toggle;
         PluginInterface.UiBuilder.OpenConfigUi -= window.OpenSettings;
         blocker.Dispose();
+        iconPicker.Dispose();
+        kills.Dispose();
         arrivals.Dispose();
         markers.Dispose();
         windows.RemoveAllWindows();
