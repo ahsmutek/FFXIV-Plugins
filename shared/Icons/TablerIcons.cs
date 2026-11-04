@@ -13,6 +13,7 @@ internal enum TablerIcon
     ArrowBackUp,
     Bookmark,
     Hanger,
+    Heart,
     MoneybagMinus,
     MoneybagPlus,
     Settings,

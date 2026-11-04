@@ -11,6 +11,8 @@ public sealed class Configuration : IPluginConfiguration
 
     public static readonly Vector4 DefaultLaterColor = new(0.35f, 0.85f, 0.75f, 1f);
 
+    public static readonly Vector4 DefaultWishColor = new(1f, 0.55f, 0.7f, 1f);
+
     public int Version { get; set; } = 1;
 
     public bool GlamOffEnabled { get; set; } = true;
@@ -33,13 +35,21 @@ public sealed class Configuration : IPluginConfiguration
 
     public bool GearsetsEnabled { get; set; } = true;
 
+    public bool WishlistEnabled { get; set; } = true;
+
+    public Vector4 WishColor { get; set; } = DefaultWishColor;
+
     public List<KeptItem> Items { get; set; } = [];
 
     public List<KeptItem> LaterItems { get; set; } = [];
 
+    public List<KeptItem> WishItems { get; set; } = [];
+
     public bool IsKept(uint itemId) => itemId != 0 && Items.Exists(i => i.ItemId == itemId);
 
     public bool IsKeptForLater(uint itemId) => itemId != 0 && LaterItems.Exists(i => i.ItemId == itemId);
+
+    public bool IsWished(uint itemId) => itemId != 0 && WishItems.Exists(i => i.ItemId == itemId);
 }
 
 public sealed class KeptItem

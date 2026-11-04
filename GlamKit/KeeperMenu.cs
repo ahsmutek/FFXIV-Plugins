@@ -16,9 +16,11 @@ internal sealed class KeeperMenu : IDisposable
     private readonly Configuration config;
     private readonly Action<uint, bool> setKept;
     private readonly Action<uint, bool> setLater;
+    private readonly Action<uint, bool> setWished;
+    private readonly ushort pink;
 
     public KeeperMenu(IContextMenu contextMenu, IGameGui gameGui, IDataManager data, Configuration config,
-                      Action<uint, bool> setKept, Action<uint, bool> setLater)
+                      Action<uint, bool> setKept, Action<uint, bool> setLater, Action<uint, bool> setWished)
     {
         this.contextMenu = contextMenu;
         this.gameGui = gameGui;
@@ -26,6 +28,8 @@ internal sealed class KeeperMenu : IDisposable
         this.config = config;
         this.setKept = setKept;
         this.setLater = setLater;
+        this.setWished = setWished;
+        pink = ItemTooltip.Nearest(data, ItemTooltip.Pink);
         contextMenu.OnMenuOpened += OnMenuOpened;
     }
 
@@ -33,16 +37,27 @@ internal sealed class KeeperMenu : IDisposable
 
     private void OnMenuOpened(IMenuOpenedArgs args)
     {
-        if (!config.GlamKeeperEnabled && !config.KeepForLaterEnabled)
-            return;
+        if (ItemLists.IsShop(args.AddonName))
+            AddWish(args, ItemLists.MenuItemId(args, gameGui), true);
+        else if (ItemLists.ChatLinkItemId(args) is var linked and not 0)
+            AddWish(args, linked, true);
+        else
+            AddKeep(args);
+    }
 
+    private void AddKeep(IMenuOpenedArgs args)
+    {
         uint itemId;
+        var owned = false;
         if (ItemLists.Lists(args.AddonName))
             itemId = ItemLists.MenuItemId(args, gameGui);
         else if (ItemLists.IsVentureReport(args, gameGui))
             itemId = ItemLists.VentureReward(args, gameGui);
         else if (args.MenuType == ContextMenuType.Inventory && args.Target is MenuTargetInventory { TargetItem: { } item })
+        {
             itemId = item.BaseItemId;
+            owned = true;
+        }
         else
             return;
         if (!IsGear(data, itemId))
@@ -70,6 +85,25 @@ internal sealed class KeeperMenu : IDisposable
                 OnClicked = _ => setLater(itemId, !later),
             });
         }
+        AddWish(args, itemId, !owned);
+    }
+
+    // Gear you already hold only offers removing it.
+    private void AddWish(IMenuOpenedArgs args, uint itemId, bool canAdd)
+    {
+        if (!config.WishlistEnabled || itemId == 0 || data.GetExcelSheet<Item>().GetRowOrDefault(itemId) is not { } row ||
+            row.Name.IsEmpty)
+            return;
+        var wished = config.IsWished(itemId);
+        if (!wished && !canAdd)
+            return;
+        args.AddMenuItem(new MenuItem
+        {
+            Name = wished ? "Remove from Wishlist" : "Add to Wishlist",
+            Prefix = SeIconChar.BoxedLetterW,
+            PrefixColor = pink,
+            OnClicked = _ => setWished(itemId, !wished),
+        });
     }
 
     public static bool IsGear(IDataManager data, uint itemId) =>

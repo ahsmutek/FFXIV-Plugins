@@ -93,6 +93,36 @@ internal sealed class SettingsWindow : Window
         ImGui.Unindent();
 
         ImGui.Spacing();
+        var wishlist = config.WishlistEnabled;
+        if (ImGui.Checkbox("Wishlist", ref wishlist))
+        {
+            config.WishlistEnabled = wishlist;
+            save();
+        }
+        Describe("Open the item menu in a shop, the Market Board or on an item link and choose \"Add to Wishlist\",",
+                 "or search in /glamkit. Wished items have a heart in shop and Market Board lists until you get them.");
+
+        ImGui.Indent();
+        var wishColor = config.WishColor;
+        if (ImGui.ColorEdit4("Heart colour", ref wishColor, ColorFlags))
+        {
+            config.WishColor = wishColor;
+            save();
+        }
+        if (config.WishColor != Configuration.DefaultWishColor)
+        {
+            ImGui.SameLine();
+            if (TablerIcons.Button(TablerIcon.ArrowBackUp, "wish"))
+            {
+                config.WishColor = Configuration.DefaultWishColor;
+                save();
+            }
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip("Reset");
+        }
+        ImGui.Unindent();
+
+        ImGui.Spacing();
         var jobLevels = config.JobLevelsEnabled;
         if (ImGui.Checkbox("Job Levels", ref jobLevels))
         {

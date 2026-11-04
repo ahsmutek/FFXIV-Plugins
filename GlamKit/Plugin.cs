@@ -70,7 +70,7 @@ public sealed class Plugin : IDalamudPlugin
         config = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
 
         glamOff = new GlamOff(ContextMenu, GameGui, config);
-        menu = new KeeperMenu(ContextMenu, GameGui, DataManager, config, SetKept, SetLater);
+        menu = new KeeperMenu(ContextMenu, GameGui, DataManager, config, SetKept, SetLater, SetWished);
         tooltip = new NativeTooltip(AddonLifecycle);
         highlight = new SlotHighlight(GameGui, DataManager, config);
         itemTooltip = new ItemTooltip(GameInterop, AddonLifecycle, DataManager, GameGui, Log, config);
@@ -88,7 +88,7 @@ public sealed class Plugin : IDalamudPlugin
 
         CommandManager.AddHandler(CommandName, new CommandInfo(OnCommand)
         {
-            HelpMessage = "Show or hide the gear you're keeping for glam or for later.",
+            HelpMessage = "Show or hide the gear you're keeping for glam or for later, and your wishlist.",
         });
     }
 
@@ -113,6 +113,14 @@ public sealed class Plugin : IDalamudPlugin
         config.LaterItems.RemoveAll(i => i.ItemId == itemId);
         if (kept)
             config.LaterItems.Add(new KeptItem { ItemId = itemId });
+        Save();
+    }
+
+    private void SetWished(uint itemId, bool wished)
+    {
+        config.WishItems.RemoveAll(i => i.ItemId == itemId);
+        if (wished)
+            config.WishItems.Add(new KeptItem { ItemId = itemId });
         Save();
     }
 

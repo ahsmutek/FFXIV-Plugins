@@ -2,7 +2,7 @@
   "Author": "Kotanna",
   "Name": "GlamKit",
   "Punchline": "Small glamour helpers: try on gear without its glamour, and keep gear you mean to glamour later.",
-  "Description": "Glam Off: \"Glam Off\" in the item menu of glamoured gear opens the Fitting Room with the item's own look.\nGlam Keeper: mark gear \"Keep for Glam\" from its item menu. Kept gear is bordered in your bags and Armoury Chest and says so in its tooltip. Once it's in the glamour dresser or armoire it stops being kept. /glamkit lists it all.\nEach can be turned off in settings.",
+  "Description": "Glam Off: \"Glam Off\" in the item menu of glamoured gear opens the Fitting Room with the item's own look.\nGlam Keeper: mark gear \"Keep for Glam\" from its item menu. Kept gear is bordered in your bags and Armoury Chest and says so in its tooltip. Once it's in the glamour dresser or armoire it stops being kept. /glamkit lists it all.\nWishlist: \"Add to Wishlist\" in a shop, Market Board or item link menu puts a heart by the item in shop and Market Board lists until you get it.\nEach can be turned off in settings.",
   "ApplicableVersion": "any",
   "Tags": [
     "glamour",

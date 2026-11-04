@@ -24,6 +24,8 @@ internal sealed class KeeperWindow : Window
 
     private Vector2 windowMin;
     private Vector2 windowMax;
+    private string search = "";
+    private List<(uint Id, string Name)>? allItems;
 
     public KeeperWindow(Configuration config, Action save, Locations locations, IDataManager data,
                         ITextureProvider textures, NativeTooltip tooltip, Action openSettings)
@@ -52,12 +54,17 @@ internal sealed class KeeperWindow : Window
         {
             if (tabs)
             {
-                if (DrawTab("For Glam", config.Items, "Keep for Glam", "Stop keeping for glam", footer) &&
+                if (DrawTab("For Glam", config.Items, Hint("Keep for Glam"), "Stop keeping for glam", footer, Where) &&
                     !config.GlamKeeperEnabled)
                     off = "Glam Keeper is off in settings.";
-                if (DrawTab("For Later", config.LaterItems, "Keep for Later", "Stop keeping for later", footer) &&
+                if (DrawTab("For Later", config.LaterItems, Hint("Keep for Later"), "Stop keeping for later", footer, Where) &&
                     !config.KeepForLaterEnabled)
                     off = "Keep for Later is off in settings.";
+                if (DrawTab("Wishlist", config.WishItems,
+                            "Nothing wished for. Search above, or open the item menu in a shop, the Market Board or on an item link and choose Add to Wishlist.",
+                            "Remove from wishlist", footer, Added, DrawSearch) &&
+                    !config.WishlistEnabled)
+                    off = "Wishlist is off in settings.";
             }
         }
 
@@ -76,23 +83,25 @@ internal sealed class KeeperWindow : Window
     }
 
     // Returns whether the tab is the one shown.
-    private bool DrawTab(string label, List<KeptItem> items, string menuEntry, string removeTip, float footer)
+    private bool DrawTab(string label, List<KeptItem> items, string empty, string removeTip, float footer,
+                         Func<KeptItem, string> detail, Action? header = null)
     {
         using var tab = ImRaii.TabItem($"{label} ({items.Count})###{label}");
         if (!tab)
             return false;
+        header?.Invoke();
         using var list = ImRaii.Child("##list", new Vector2(0, -footer));
         if (list)
-            DrawList(items, menuEntry, removeTip);
+            DrawList(items, empty, removeTip, detail);
         return true;
     }
 
-    private void DrawList(List<KeptItem> items, string menuEntry, string removeTip)
+    private void DrawList(List<KeptItem> items, string empty, string removeTip, Func<KeptItem, string> detail)
     {
         if (items.Count == 0)
         {
             ImGui.PushTextWrapPos();
-            ImGui.TextDisabled($"Nothing kept. Open the item menu on gear and choose {menuEntry}.");
+            ImGui.TextDisabled(empty);
             ImGui.PopTextWrapPos();
             return;
         }
@@ -100,7 +109,7 @@ internal sealed class KeeperWindow : Window
         KeptItem? remove = null;
         foreach (var kept in items.OrderBy(i => Name(i.ItemId)))
         {
-            if (DrawRow(kept, removeTip))
+            if (DrawRow(kept, removeTip, detail))
                 remove = kept;
         }
         if (remove != null)
@@ -110,7 +119,7 @@ internal sealed class KeeperWindow : Window
         }
     }
 
-    private bool DrawRow(KeptItem kept, string removeTip)
+    private bool DrawRow(KeptItem kept, string removeTip, Func<KeptItem, string> detail)
     {
         using var id = ImRaii.PushId((int)kept.ItemId);
         var iconSize = new Vector2(ImGui.GetFrameHeight() * 1.6f);
@@ -127,7 +136,7 @@ internal sealed class KeeperWindow : Window
             ImGui.TextUnformatted(Name(kept.ItemId));
             if (ImGui.IsItemHovered())
                 tooltip.Hover(kept.ItemId, windowMin, windowMax);
-            ImGui.TextDisabled(locations.Of(kept.ItemId));
+            ImGui.TextDisabled(detail(kept));
         }
 
         ImGui.SameLine(ImGui.GetContentRegionMax().X - removeWidth);
@@ -135,6 +144,39 @@ internal sealed class KeeperWindow : Window
         if (ImGui.IsItemHovered())
             ImGui.SetTooltip(removeTip);
         return removed;
+    }
+
+    private static string Hint(string menuEntry) => $"Nothing kept. Open the item menu on gear and choose {menuEntry}.";
+
+    private string Where(KeptItem kept) => locations.Of(kept.ItemId);
+
+    private static string Added(KeptItem kept) => $"Added {kept.Added.ToLocalTime():d MMM yyyy}";
+
+    private void DrawSearch()
+    {
+        ImGui.SetNextItemWidth(-1);
+        ImGui.InputTextWithHint("##search", "Add an item by name", ref search, 100);
+        var query = search.Trim();
+        if (query.Length < 3)
+            return;
+
+        allItems ??= data.GetExcelSheet<Item>()
+                         .Where(r => !r.Name.IsEmpty)
+                         .Select(r => (r.RowId, r.Name.ExtractText()))
+                         .OrderBy(r => r.Item2)
+                         .ToList();
+        foreach (var (id, name) in allItems.Where(i => i.Name.Contains(query, StringComparison.OrdinalIgnoreCase)).Take(8))
+        {
+            var wished = config.IsWished(id);
+            if (ImGui.Selectable($"{name}{(wished ? "  (on your wishlist)" : "")}##{id}", false,
+                                 wished ? ImGuiSelectableFlags.Disabled : ImGuiSelectableFlags.None))
+            {
+                config.WishItems.Add(new KeptItem { ItemId = id });
+                save();
+                search = "";
+            }
+        }
+        ImGui.Separator();
     }
 
     private string Name(uint itemId) => data.GetExcelSheet<Item>().GetRowOrDefault(itemId)?.Name.ExtractText() ?? $"Item {itemId}";

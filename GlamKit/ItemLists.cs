@@ -28,7 +28,25 @@ internal static unsafe class ItemLists
         InventoryType.ArmoryNeck, InventoryType.ArmoryWrist, InventoryType.ArmoryRings,
     ];
 
+    // Shop and Market Board windows, where wishlist items are marked.
+    public static readonly string[] Shops =
+    [
+        "Shop", "InclusionShop", "ShopExchangeCurrency", "ShopExchangeItem", "ShopExchangeCoin", "FreeShop",
+        "GrandCompanyExchange", "ItemSearch",
+    ];
+
     public static bool Lists(string? addonName) => Addons.Contains(addonName);
+
+    public static bool IsShop(string? addonName) => Shops.Contains(addonName);
+
+    // An item link's menu; a player's menu in chat has a target name, and the link's item stays set after.
+    public static uint ChatLinkItemId(IMenuOpenedArgs args)
+    {
+        if (args.AddonName != "ChatLog" || args.Target is not MenuTargetDefault { TargetName.Length: 0 })
+            return 0;
+        var agent = AgentChatLog.Instance();
+        return agent == null ? 0 : agent->ContextItemId % ItemIdModifier;
+    }
 
     // Their item menus don't say which item they're for, so it's the one whose tooltip was last shown.
     public static uint MenuItemId(IMenuOpenedArgs args, IGameGui gameGui)

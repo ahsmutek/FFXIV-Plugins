@@ -1,6 +1,6 @@
 # Renders Tabler Icons (outline) to white PNGs that the plugins tint when drawing.
 # Run with Windows PowerShell; pass icon names to add more, e.g. .\render-icons.ps1 moneybag
-param([string[]]$Names = @('arrow-back-up', 'bookmark', 'hanger', 'moneybag-minus', 'moneybag-plus', 'settings', 'trash', 'x'))
+param([string[]]$Names = @('arrow-back-up', 'bookmark', 'hanger', 'heart', 'moneybag-minus', 'moneybag-plus', 'settings', 'trash', 'x'))
 
 Add-Type -AssemblyName PresentationCore, WindowsBase
 

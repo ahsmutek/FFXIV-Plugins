@@ -45,24 +45,44 @@ internal sealed unsafe class Stored : IDisposable
 
     private void OnUpdate(IFramework _)
     {
-        if (DateTime.UtcNow < nextCheck || !clientState.IsLoggedIn || !config.GlamKeeperEnabled || config.Items.Count == 0)
+        var glam = config.GlamKeeperEnabled && config.Items.Count > 0;
+        var wish = config.WishlistEnabled && config.WishItems.Count > 0;
+        if (DateTime.UtcNow < nextCheck || !clientState.IsLoggedIn || (!glam && !wish))
             return;
         nextCheck = DateTime.UtcNow + CheckEvery;
 
         var dresser = InDresser();
-        var removed = false;
-        foreach (var kept in config.Items.ToList())
-        {
-            var place = dresser.Contains(kept.ItemId) ? "glamour dresser" : InArmoire(kept.ItemId) ? "armoire" : null;
-            if (place == null)
-                continue;
-            config.Items.Remove(kept);
-            removed = true;
-            var name = data.GetExcelSheet<Item>().GetRowOrDefault(kept.ItemId)?.Name.ExtractText() ?? "Item";
-            chat.Print($"{name} is in your {place}, so it's no longer kept for glam.", "GlamKit");
-        }
+        var removed = glam && Remove(config.Items, id => Stash(dresser, id), "no longer kept for glam");
+        removed |= wish && Remove(config.WishItems, id => Held(id) ?? Stash(dresser, id), "off your wishlist");
         if (removed)
             save();
+    }
+
+    private bool Remove(List<KeptItem> items, Func<uint, string?> placeOf, string outcome)
+    {
+        var removed = false;
+        foreach (var kept in items.ToList())
+        {
+            if (placeOf(kept.ItemId) is not { } place)
+                continue;
+            items.Remove(kept);
+            removed = true;
+            var name = data.GetExcelSheet<Item>().GetRowOrDefault(kept.ItemId)?.Name.ExtractText() ?? "Item";
+            chat.Print($"{name} is in your {place}, so it's {outcome}.", "GlamKit");
+        }
+        return removed;
+    }
+
+    private string? Stash(HashSet<uint> dresser, uint itemId) =>
+        dresser.Contains(itemId) ? "glamour dresser" : InArmoire(itemId) ? "armoire" : null;
+
+    private static string? Held(uint itemId)
+    {
+        var inventory = InventoryManager.Instance();
+        return inventory != null &&
+               inventory->GetInventoryItemCount(itemId) + inventory->GetInventoryItemCount(itemId, true) > 0
+            ? "inventory"
+            : null;
     }
 
     private static HashSet<uint> InDresser()

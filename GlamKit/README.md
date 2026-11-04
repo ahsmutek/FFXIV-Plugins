@@ -44,6 +44,17 @@ Keep for Glam, and a piece can be both. Gear kept for later:
 - says "Kept for later" in its tooltip;
 - has its own tab in `/glamkit`, and stays kept until you stop keeping it, glamour dresser or not.
 
+## Wishlist
+
+For items you want but don't have yet.
+
+Open the item menu in a shop, on the Market Board, in the Fitting Room or on an item link in chat and choose
+**Add to Wishlist**, or search by name in `/glamkit`'s Wishlist tab. Wished items:
+
+- have a heart after their name in shop and Market Board lists, and in the glam lists above (colour in settings);
+- say "On your wishlist" in their tooltip;
+- come off the list once they're in your inventory, Armoury Chest, glamour dresser or armoire, with a line in chat.
+
 ## Job Levels
 
 A gear tooltip's job line (e.g. "PLD WAR DRK GNB") shows your level on each job instead:
@@ -68,7 +79,8 @@ Glam Off calls the Fitting Room the same way the menu's **Try On** does, with th
 Glam Keeper only reads your inventory and changes your own UI: menu entries, ImGui borders and tooltip
 text. It never presses anything or sends anything to the server. The tooltip
 line uses one hook, the same as Keep in Mind's; if a patch breaks it, only the tooltip line goes. Keep for
-Later works the same way.
+Later and the wishlist work the same way; the wishlist's hearts are drawn after matching names in shop and
+Market Board lists.
 
 Job Levels reads your levels from the client and rewrites the tooltip's job line through that same hook. The
 equip level is recoloured just before the tooltip draws.

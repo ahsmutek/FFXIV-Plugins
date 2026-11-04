@@ -42,7 +42,8 @@ internal sealed unsafe class SlotHighlight
     {
         var anyGlam = config.GlamKeeperEnabled && config.Items.Count > 0;
         var anyLater = config.KeepForLaterEnabled && config.LaterItems.Count > 0;
-        if (!anyGlam && !anyLater)
+        var anyWish = config.WishlistEnabled && config.WishItems.Count > 0;
+        if (!anyGlam && !anyLater && !anyWish)
             return;
 
         var found = slots.BagSlots();
@@ -53,7 +54,7 @@ internal sealed unsafe class SlotHighlight
         }
         DrawBorders(found);
 
-        foreach (var name in ItemLists.Addons)
+        foreach (var name in ItemLists.Addons.Concat(ItemLists.Shops))
             DrawItemList(name);
         DrawVentureReport();
     }
@@ -88,9 +89,10 @@ internal sealed unsafe class SlotHighlight
             return;
         var glamNames = config.GlamKeeperEnabled ? Names(config.Items) : [];
         var laterNames = config.KeepForLaterEnabled ? Names(config.LaterItems) : [];
-        if (glamNames.Count == 0 && laterNames.Count == 0)
+        var wishNames = config.WishlistEnabled ? Names(config.WishItems) : [];
+        if (glamNames.Count == 0 && laterNames.Count == 0 && wishNames.Count == 0)
             return;
-        var kept = glamNames.Union(laterNames).ToHashSet();
+        var kept = glamNames.Union(laterNames).Union(wishNames).ToHashSet();
 
         var offset = ImGui.GetMainViewport().Pos;
         var drawList = ImGui.GetBackgroundDrawList();
@@ -111,7 +113,8 @@ internal sealed unsafe class SlotHighlight
             var min = offset + new Vector2(name->AtkResNode.ScreenX + (width + IconGap) * scale,
                                            name->AtkResNode.ScreenY + (name->AtkResNode.Height * scale - size) / 2);
             var text = ItemLists.Plain(name);
-            DrawMarks(drawList, addon, min, size, IconGap * scale, glamNames.Contains(text), laterNames.Contains(text));
+            DrawMarks(drawList, addon, min, size, IconGap * scale, glamNames.Contains(text), laterNames.Contains(text),
+                      wishNames.Contains(text));
         }
         drawList.PopClipRect();
     }
@@ -131,7 +134,8 @@ internal sealed unsafe class SlotHighlight
             var itemId = reward % 1_000_000;
             var glam = KeptForGlam(itemId);
             var later = KeptForLater(itemId);
-            if (!glam && !later)
+            var wished = Wished(itemId);
+            if (!glam && !later && !wished)
                 continue;
             var icon = IconNode(&addon->UldManager, slots.Icon(itemId));
             if (icon == null || icon->OwnerNode == null || !InventorySlots.Shown(&icon->OwnerNode->AtkResNode))
@@ -142,14 +146,14 @@ internal sealed unsafe class SlotHighlight
             var size = node->Height * scale / 2;
             var min = offset + new Vector2(node->ScreenX + (node->Width + IconGap) * scale,
                                            node->ScreenY + (node->Height * scale - size) / 2);
-            DrawMarks(drawList, addon, min, size, IconGap * scale, glam, later);
+            DrawMarks(drawList, addon, min, size, IconGap * scale, glam, later, wished);
         }
     }
 
     private void DrawMarks(ImDrawListPtr drawList, AtkUnitBase* owner, Vector2 min, float size, float gap, bool glam,
-                           bool later)
+                           bool later, bool wished)
     {
-        var count = (glam ? 1 : 0) + (later ? 1 : 0);
+        var count = (glam ? 1 : 0) + (later ? 1 : 0) + (wished ? 1 : 0);
         var width = count * size + (count - 1) * gap;
         if (count == 0 || InventorySlots.Covered(owner, min, min + new Vector2(width, size)))
             return;
@@ -159,12 +163,19 @@ internal sealed unsafe class SlotHighlight
             min.X += size + gap;
         }
         if (later)
+        {
             TablerIcons.DrawAt(drawList, TablerIcon.Bookmark, min, size, ImGui.GetColorU32(config.LaterColor));
+            min.X += size + gap;
+        }
+        if (wished)
+            TablerIcons.DrawAt(drawList, TablerIcon.Heart, min, size, ImGui.GetColorU32(config.WishColor));
     }
 
     private bool KeptForGlam(uint itemId) => config.GlamKeeperEnabled && config.IsKept(itemId);
 
     private bool KeptForLater(uint itemId) => config.KeepForLaterEnabled && config.IsKeptForLater(itemId);
+
+    private bool Wished(uint itemId) => config.WishlistEnabled && config.IsWished(itemId);
 
     // HQ icons are 1,000,000 on.
     private static AtkComponentIcon* IconNode(AtkUldManager* uld, uint iconId)
@@ -316,8 +327,8 @@ internal sealed unsafe class SlotHighlight
                             $"{(sorter == null ? "none" : sorter->InventoryType.ToString())}, first icons {string.Join(" ", shown)}");
         }
 
-        var kept = Names(config.Items.Concat(config.LaterItems));
-        foreach (var name in ItemLists.Addons)
+        var kept = Names(config.Items.Concat(config.LaterItems).Concat(config.WishItems));
+        foreach (var name in ItemLists.Addons.Concat(ItemLists.Shops))
         {
             var addon = (AtkUnitBase*)gameGui.GetAddonByName(name).Address;
             if (addon == null)

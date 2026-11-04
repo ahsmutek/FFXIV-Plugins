@@ -21,6 +21,7 @@ internal sealed unsafe class ItemTooltip : IDisposable
 
     private const string Line = "Kept for glam: move it to the glamour dresser";
     private const string LaterLine = "Kept for later: worth keeping for its stats";
+    private const string WishLine = "On your wishlist";
     private const int Description = 13;
     private const int ClassJobCategory = 22;
     private const int Level = 23;
@@ -35,6 +36,7 @@ internal sealed unsafe class ItemTooltip : IDisposable
     // The UIColor row nearest this, as the game colours text by row.
     private const uint Purple = 0xC78CFF;
     private const uint Teal = 0x59D9BF;
+    internal const uint Pink = 0xFF8CB3;
     private const uint White = 0xFFFFFF;
 
     private delegate void GenerateDelegate(AddonItemDetail* addon, NumberArrayData* numbers, StringArrayData* strings);
@@ -48,6 +50,7 @@ internal sealed unsafe class ItemTooltip : IDisposable
     private readonly Hook<GenerateDelegate>? hook;
     private readonly ushort purple;
     private readonly ushort teal;
+    private readonly ushort pink;
     private readonly ushort white;
     private byte[] lastJobLine = [];
 
@@ -62,6 +65,7 @@ internal sealed unsafe class ItemTooltip : IDisposable
         jobLevels = new JobLevels(data, config);
         purple = Nearest(data, Purple);
         teal = Nearest(data, Teal);
+        pink = Nearest(data, Pink);
         white = Nearest(data, White);
         try
         {
@@ -167,7 +171,8 @@ internal sealed unsafe class ItemTooltip : IDisposable
         var itemId = HoveredItem();
         var glam = config.GlamKeeperEnabled && config.IsKept(itemId);
         var later = config.KeepForLaterEnabled && config.IsKeptForLater(itemId);
-        if (!glam && !later)
+        var wished = config.WishlistEnabled && config.IsWished(itemId);
+        if (!glam && !later && !wished)
             return;
 
         // Items without a description of their own have it hidden, so it's shown, as Allagan Tools does.
@@ -176,18 +181,23 @@ internal sealed unsafe class ItemTooltip : IDisposable
 
         var current = strings->StringArray[Description].Value;
         var description = current == null ? new SeString() : SeString.Parse(current);
-        if (description.TextValue.Contains(Line) || description.TextValue.Contains(LaterLine))
+        if (description.TextValue.Contains(Line) || description.TextValue.Contains(LaterLine) ||
+            description.TextValue.Contains(WishLine))
             return;
 
         var builder = new SeStringBuilder().Append(description);
         if (description.Payloads.Count > 0)
             builder.Add(NewLinePayload.Payload).Add(NewLinePayload.Payload);
-        if (glam)
-            builder.AddUiForeground(Line, purple);
-        if (glam && later)
-            builder.Add(NewLinePayload.Payload);
-        if (later)
-            builder.AddUiForeground(LaterLine, teal);
+        var first = true;
+        foreach (var (line, colour, shown) in new[] { (Line, purple, glam), (LaterLine, teal, later), (WishLine, pink, wished) })
+        {
+            if (!shown)
+                continue;
+            if (!first)
+                builder.Add(NewLinePayload.Payload);
+            builder.AddUiForeground(line, colour);
+            first = false;
+        }
 
         var bytes = builder.Build().EncodeWithNullTerminator();
         fixed (byte* text = bytes)
