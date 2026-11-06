@@ -8,6 +8,7 @@ using Dalamud.Interface.Windowing;
 using Dalamud.IoC;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
+using Icons;
 
 namespace Sundries;
 
@@ -45,6 +46,9 @@ public sealed class Plugin : IDalamudPlugin
     [PluginService]
     private static IGameInteropProvider Interop { get; set; } = null!;
 
+    [PluginService]
+    private static ITextureProvider Textures { get; set; } = null!;
+
     private readonly Configuration config;
     private readonly List<IModule> modules;
     private readonly WindowSystem windows = new("Sundries");
@@ -64,6 +68,7 @@ public sealed class Plugin : IDalamudPlugin
             Save();
         }
 
+        TablerIcons.Init(Textures);
         modules =
         [
             new GuideHighlight(GameGui, Objects, config, Save),
