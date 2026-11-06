@@ -4,6 +4,7 @@
   "Punchline": "Put barding on your chocobo with one command.",
   "Description": "Use /cbarding \"Sophic\" to equip a full barding set, or /cbarding \"Suzaku\" \"Windswept\" \"Ice\" for a different piece per slot, e.g. from a job macro. Pick a barding per job and put it on with /cbarding job; /cbarding greens uses Gysahl Greens to summon your chocobo. Only barding you own can be equipped. /cbarding on its own opens a window that builds the macro line for you.",
   "ApplicableVersion": "any",
+  "IconUrl": "https://raw.githubusercontent.com/ahsmutek/FFXIV-Plugins/main/ChocoboBarding/images/icon.png",
   "Tags": [
     "chocobo",
     "barding",

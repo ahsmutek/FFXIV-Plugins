@@ -4,6 +4,7 @@
   "Punchline": "Browse every game icon by what it's for.",
   "Description": "Every icon ID range, from job actions to map markers and plate frames, with the icons drawn straight from your game files. Search ranges, inspect an icon's ID and path, and copy them.",
   "ApplicableVersion": "any",
+  "IconUrl": "https://raw.githubusercontent.com/ahsmutek/FFXIV-Plugins/main/IconAtlas/images/icon.png",
   "Tags": [
     "icons",
     "developer",

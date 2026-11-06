@@ -4,6 +4,7 @@
   "Punchline": "Find named places like The Slow Wash on the map with a controller.",
   "Description": "Lists the named places on each zone's map, starting with the zone you're in. Browse or search them with the D-pad, then press A to open the map with a flag on the spot.",
   "ApplicableVersion": "any",
+  "IconUrl": "https://raw.githubusercontent.com/ahsmutek/FFXIV-Plugins/main/PlaceFinder/images/icon.png",
   "Tags": [
     "map",
     "location",

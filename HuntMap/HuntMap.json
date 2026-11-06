@@ -4,6 +4,7 @@
   "Punchline": "See where any hunt mark can spawn.",
   "Description": "Find any hunt mark, B to SS rank, by bill, zone, region or name, and see every possible spawn point on the game's own map. Go through them with the controller and tick off the ones you've checked.",
   "ApplicableVersion": "any",
+  "IconUrl": "https://raw.githubusercontent.com/ahsmutek/FFXIV-Plugins/main/HuntMap/images/icon.png",
   "Tags": [
     "hunt",
     "elite mark",

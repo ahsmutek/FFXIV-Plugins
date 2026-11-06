@@ -1,0 +1,6 @@
+<Project>
+  <!-- Dalamud shows a dev plugin's thumbnail from images/icon.png next to its DLL. -->
+  <ItemGroup Condition="Exists('$(MSBuildProjectDirectory)/images/icon.png')">
+    <None Include="$(MSBuildProjectDirectory)/images/icon.png" Link="images/icon.png" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

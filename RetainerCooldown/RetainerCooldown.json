@@ -4,5 +4,6 @@
   "Punchline": "A tiny venture cooldown icon for your retainers.",
   "Description": "Shows the next retainer venture completion as a cooldown-style HUD icon. Uses only Dalamud and FFXIVClientStructs RetainerManager.",
   "ApplicableVersion": "any",
+  "IconUrl": "https://raw.githubusercontent.com/ahsmutek/FFXIV-Plugins/main/RetainerCooldown/images/icon.png",
   "Tags": ["retainer", "venture", "hud", "timer"]
 }

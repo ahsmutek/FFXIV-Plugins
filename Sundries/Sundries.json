@@ -4,6 +4,7 @@
   "Punchline": "Small quality-of-life helpers, each with its own on/off switch.",
   "Description": "A collection of small helpers, each turned on and set up in /sundries. Guide Highlight borders the mount you're riding in the Mount Guide and the minion you have out in the Minion Guide. Minimap Zoom lets the minimap zoom out past the game's 1.25 limit and keeps your zoom across job changes, zoning and logins. Replaces the Minimap Zoom plugin.",
   "ApplicableVersion": "any",
+  "IconUrl": "https://raw.githubusercontent.com/ahsmutek/FFXIV-Plugins/main/Sundries/images/icon.png",
   "Tags": [
     "qol",
     "minimap",

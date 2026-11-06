@@ -4,6 +4,7 @@
   "Punchline": "Switch HUD layout and run actions when you change job, and give controller buttons job-specific actions.",
   "Description": "For each role (or a single job), pick a HUD layout and what to do when you switch to it: macros, game menus, items, emotes or any chat command. It happens however you change job. Controller buttons, button combos and keys can also do different things depending on your job and the duty you're in, or hold a key, e.g. to open a Flick Wheel wheel. /jobprofiles opens settings; /jobprofiles apply runs your current job's settings again.",
   "ApplicableVersion": "any",
+  "IconUrl": "https://raw.githubusercontent.com/ahsmutek/FFXIV-Plugins/main/JobProfiles/images/icon.png",
   "Tags": [
     "job",
     "hud",
