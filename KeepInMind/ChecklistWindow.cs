@@ -66,9 +66,20 @@ internal sealed class ChecklistWindow : Window
         this.textures = textures;
         this.tooltip = tooltip;
         this.openSettings = openSettings;
+        // B hands the controller back to the game instead of closing the list.
+        RespectCloseHotkey = false;
         Size = new Vector2(300, 320);
         SizeCondition = ImGuiCond.FirstUseEver;
         SizeConstraints = new WindowSizeConstraints { MinimumSize = new Vector2(220, 140) };
+    }
+
+    // A focused window takes the controller, which should stay with the log the item was added from.
+    public void OpenWithoutFocus()
+    {
+        if (IsOpen)
+            return;
+        Flags |= ImGuiWindowFlags.NoFocusOnAppearing;
+        IsOpen = true;
     }
 
     public void Highlight(uint itemId)
@@ -80,6 +91,8 @@ internal sealed class ChecklistWindow : Window
 
     public override void Draw()
     {
+        Flags &= ~ImGuiWindowFlags.NoFocusOnAppearing;
+
         // Once A is let go, so the game doesn't take the held press as its own.
         if (leaveGamepadMode && gamepad.Raw(GamepadButtons.South) == 0)
         {

@@ -79,14 +79,14 @@ public sealed class Plugin : IDalamudPlugin
         windows.AddWindow(settings);
         padNav = new PadNav(GameInterop, GamepadState, Log, windows);
         PluginInterface.UiBuilder.Draw += Draw;
-        PluginInterface.UiBuilder.OpenMainUi += window.Toggle;
+        PluginInterface.UiBuilder.OpenMainUi += Cycle;
         PluginInterface.UiBuilder.OpenConfigUi += settings.Toggle;
 
         menu = new LogMenu(ContextMenu, DataManager, sources, Add);
 
         CommandManager.AddHandler(CommandName, new CommandInfo(OnCommand)
         {
-            HelpMessage = "Show or hide your Keep in Mind list.",
+            HelpMessage = "Show your Keep in Mind list, or bring it to the front; hides it if it's already in use.",
         });
     }
 
@@ -95,7 +95,18 @@ public sealed class Plugin : IDalamudPlugin
         if (args.Trim() == "debug")
             highlight.Dump(Log);
         else
-            window.Toggle();
+            Cycle();
+    }
+
+    // Brings an open list back to the controller instead of closing it, since B only hands the controller back to the game.
+    private void Cycle()
+    {
+        if (!window.IsOpen)
+            window.IsOpen = true;
+        else if (!window.IsFocused)
+            window.BringToFront();
+        else
+            window.IsOpen = false;
     }
 
     private void Add(uint itemId, int amount)
@@ -111,7 +122,7 @@ public sealed class Plugin : IDalamudPlugin
         }
         Save();
 
-        window.IsOpen = true;
+        window.OpenWithoutFocus();
         window.Highlight(itemId);
     }
 
@@ -132,7 +143,7 @@ public sealed class Plugin : IDalamudPlugin
         itemTooltip.Dispose();
         stock.Dispose();
         PluginInterface.UiBuilder.Draw -= Draw;
-        PluginInterface.UiBuilder.OpenMainUi -= window.Toggle;
+        PluginInterface.UiBuilder.OpenMainUi -= Cycle;
         PluginInterface.UiBuilder.OpenConfigUi -= settings.Toggle;
         windows.RemoveAllWindows();
         padNav.Dispose();

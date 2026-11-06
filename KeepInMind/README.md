@@ -16,8 +16,8 @@ A checklist of ingredients to gather or buy by hand while you craft.
   [Item Vendor Location](https://github.com/electr0sheep/ItemVendorLocation), and to give it its
   own **Colour** or move it to a **Group** of your own.
 - **Clear completed** removes ticked items; **Clear all** empties the list.
-- With a controller: **A** opens an item's log, **Y** its menu.
-- `/keepinmind` shows or hides the list; the cog opens the settings.
+- With a controller: **A** opens an item's log, **Y** its menu, **B** goes back to the game and leaves the list open.
+- `/keepinmind` shows the list or brings it back from the game; run it while you're using the list to hide it. The cog opens the settings.
 
 Nothing is crafted, gathered or bought for you, and recipes aren't expanded into
 sub-ingredients.
