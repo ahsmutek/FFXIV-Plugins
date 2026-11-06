@@ -2,7 +2,7 @@ using System;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 
-namespace MinimapZoom;
+namespace Sundries;
 
 // ClientStructs doesn't map the zoom: it's read at a fixed offset and verified against the map image's scale, so a moved offset touches nothing.
 internal static unsafe class NaviMap

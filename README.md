@@ -37,10 +37,6 @@ Switches HUD layout and runs macros or commands whenever your job changes, set p
 with per-job overrides. Also gives pad buttons, combos and keys different actions by job
 and duty type. `/jobprofiles`
 
-### [Minimap Zoom](MinimapZoom/)
-Lets the minimap zoom out past the game's 1.25 limit, down to 0.25, and keeps your zoom
-across job changes, zoning and logins. `/minimapzoom`
-
 ### [Keep in Mind](KeepInMind/)
 A checklist of ingredients to gather or buy by hand. Right-click an item in the
 Crafting or Gathering Log and choose **Keep in mind**; the list groups and colours items by
@@ -69,6 +65,12 @@ open the map with the place flagged. `/place`
 ### [Hunt Map](HuntMap/)
 Finds where any hunt mark can spawn, B to SS rank, starting with the targets of your Elite Mark
 Bills. Shows the spots on the game's own map and lets you tick them off with the D-pad. `/huntmap`
+
+### [Sundries](Sundries/)
+Small quality-of-life helpers, each turned on and set up in one settings window. **Guide Highlight**
+borders the mount you're riding in the Mount Guide and the minion you have out in the Minion Guide.
+**Minimap Zoom** lets the minimap zoom out past the game's 1.25 limit, down to 0.25, and keeps your zoom
+across job changes, zoning and logins. `/sundries`
 
 ### [Icon Atlas](IconAtlas/)
 Every game icon ID range, from job actions to map markers and plate frames, with the icons

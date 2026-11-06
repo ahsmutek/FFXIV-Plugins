@@ -1,16 +1,20 @@
 using System;
+using System.Globalization;
+using Dalamud.Bindings.ImGui;
 using Dalamud.Game.Addon.Events;
 using Dalamud.Game.Addon.Lifecycle;
 using Dalamud.Game.Addon.Lifecycle.AddonArgTypes;
 using Dalamud.Plugin.Services;
 
-namespace MinimapZoom;
+namespace Sundries;
 
 // The game's click handler stops at its own limit, so below it the zoom is written after the game handles the click.
-internal sealed class ZoomExtender : IDisposable
+internal sealed class MinimapZoom : IModule
 {
     // A different zoom within this window counts as the game's reset, not the player's.
     private const long RestoreWindowMs = 5000;
+
+    private static readonly float[] Minimums = [0.25f, 0.5f, 0.75f, 1f];
 
     private readonly IFramework framework;
     private readonly IAddonLifecycle lifecycle;
@@ -22,7 +26,7 @@ internal sealed class ZoomExtender : IDisposable
     private float? beforeClick;
     private long restoreUntil;
 
-    public ZoomExtender(IFramework framework, IAddonLifecycle lifecycle, IClientState clientState, Configuration config,
+    public MinimapZoom(IFramework framework, IAddonLifecycle lifecycle, IClientState clientState, Configuration config,
                         Action save, IPluginLog log)
     {
         this.framework = framework;
@@ -52,12 +56,61 @@ internal sealed class ZoomExtender : IDisposable
         ShowGameZoom();
     }
 
+    public string Name => "Minimap Zoom";
+
+    public string[] Description =>
+    [
+        "Lets the minimap's − button zoom out past the game's 1.25, 0.25 a click. Your zoom is kept",
+        "when you change job, zone or log in.",
+    ];
+
+    public bool Enabled
+    {
+        get => config.MinimapZoomEnabled;
+        set
+        {
+            config.MinimapZoomEnabled = value;
+            if (!value)
+                ResetToGame();
+        }
+    }
+
+    public void DrawSettings()
+    {
+        var index = Math.Max(0, Array.FindIndex(Minimums, m => MathF.Abs(m - config.MinimapMinimum) < NaviMap.Epsilon));
+        ImGui.SetNextItemWidth(160f);
+        if (ImGui.SliderInt("Furthest zoom", ref index, 0, Minimums.Length - 1,
+                            Minimums[index].ToString("0.##", CultureInfo.InvariantCulture)))
+        {
+            config.MinimapMinimum = Minimums[index];
+            if (config.MinimapZoom is { } kept && kept < config.MinimapMinimum)
+            {
+                config.MinimapZoom = config.MinimapMinimum;
+                NaviMap.SetZoom(config.MinimapMinimum);
+            }
+            save();
+        }
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip("The game stops at 1.25. Smaller shows more of the map.");
+
+        var current = NaviMap.Zoom();
+        ImGui.TextDisabled(current is { } zoom
+            ? $"Minimap zoom now: {zoom.ToString("0.##", CultureInfo.InvariantCulture)}"
+            : "Minimap zoom now: unknown (minimap hidden, or a game update moved it)");
+        if (config.MinimapZoom != null)
+        {
+            ImGui.SameLine();
+            if (ImGui.SmallButton("Back to 1.25"))
+                ResetToGame();
+        }
+    }
+
     public void ResetToGame()
     {
         ShowGameZoom();
-        if (config.Zoom != null)
+        if (config.MinimapZoom != null)
         {
-            config.Zoom = null;
+            config.MinimapZoom = null;
             save();
         }
     }
@@ -81,7 +134,7 @@ internal sealed class ZoomExtender : IDisposable
 
     private void OnPreEvent(AddonEvent type, AddonArgs args)
     {
-        beforeClick = config.Enabled && ZoomClick(args) != null ? NaviMap.Zoom() : null;
+        beforeClick = config.MinimapZoomEnabled && ZoomClick(args) != null ? NaviMap.Zoom() : null;
     }
 
     private void OnPostEvent(AddonEvent type, AddonArgs args)
@@ -95,21 +148,21 @@ internal sealed class ZoomExtender : IDisposable
             return;
 
         var target = param == NaviMap.ZoomOutParam
-            ? MathF.Max(config.Minimum, before - NaviMap.Step)
+            ? MathF.Max(config.MinimapMinimum, before - NaviMap.Step)
             : before + NaviMap.Step;
         if (!NaviMap.SetZoom(target, checkedBefore: true))
             return;
 
-        config.Zoom = target < NaviMap.GameMinimum - NaviMap.Epsilon ? target : null;
+        config.MinimapZoom = target < NaviMap.GameMinimum - NaviMap.Epsilon ? target : null;
         save();
     }
 
     private void OnUpdate(IFramework _)
     {
-        if (!config.Enabled || NaviMap.Zoom() is not { } zoom)
+        if (!config.MinimapZoomEnabled || NaviMap.Zoom() is not { } zoom)
             return;
 
-        if (config.Zoom is { } wanted)
+        if (config.MinimapZoom is { } wanted)
         {
             if (MathF.Abs(zoom - wanted) > NaviMap.Epsilon)
             {
@@ -120,7 +173,7 @@ internal sealed class ZoomExtender : IDisposable
                 }
                 else
                 {
-                    config.Zoom = zoom < NaviMap.GameMinimum - NaviMap.Epsilon ? zoom : null;
+                    config.MinimapZoom = zoom < NaviMap.GameMinimum - NaviMap.Epsilon ? zoom : null;
                     save();
                     log.Information($"Keeping zoom {zoom:0.##}.");
                 }
@@ -132,6 +185,6 @@ internal sealed class ZoomExtender : IDisposable
         }
 
         if (zoom <= NaviMap.GameMinimum + NaviMap.Epsilon)
-            NaviMap.SetZoomOutEnabled(zoom > config.Minimum + NaviMap.Epsilon);
+            NaviMap.SetZoomOutEnabled(zoom > config.MinimapMinimum + NaviMap.Epsilon);
     }
 }
