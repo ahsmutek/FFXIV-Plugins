@@ -29,6 +29,8 @@ internal sealed unsafe class InventorySlots(IGameGui gameGui, IDataManager data)
     ];
 
     private const string Saddlebag = "InventoryBuddy";
+    private const float BorderThickness = 2f;
+    private const float BorderRounding = 6f;
 
     private readonly Dictionary<uint, uint> icons = [];
     private readonly List<Slot> slots = [];
@@ -68,7 +70,6 @@ internal sealed unsafe class InventorySlots(IGameGui gameGui, IDataManager data)
         if (sorter == null || inventory == null)
             return;
 
-        var offset = ImGui.GetMainViewport().Pos;
         for (var i = 0; i < window.Length; i++)
         {
             var slot = window[i].Value;
@@ -78,15 +79,29 @@ internal sealed unsafe class InventorySlots(IGameGui gameGui, IDataManager data)
             if (itemId == 0 || IconOf(slot) != Icon(itemId))
                 continue;
 
-            var node = &slot->OwnerNode->AtkResNode;
-            if (!Shown(node))
-                continue;
-            var scale = addon->Scale * node->ScaleX;
-            var min = offset + new Vector2(node->ScreenX, node->ScreenY);
-            var max = min + new Vector2(node->Width, node->Height) * scale;
-            if (!Covered(addon, min, max))
-                into.Add(new Slot(itemId, min, max, scale));
+            if (Bounds(addon, slot, itemId) is { } found)
+                into.Add(found);
         }
+    }
+
+    // Where a slot is on screen, or null while it's hidden or covered.
+    public static Slot? Bounds(AtkUnitBase* addon, AtkComponentDragDrop* slot, uint itemId)
+    {
+        var node = &slot->OwnerNode->AtkResNode;
+        if (!Shown(node))
+            return null;
+        var scale = addon->Scale * node->ScaleX;
+        var min = ImGui.GetMainViewport().Pos + new Vector2(node->ScreenX, node->ScreenY);
+        var max = min + new Vector2(node->Width, node->Height) * scale;
+        return Covered(addon, min, max) ? null : new Slot(itemId, min, max, scale);
+    }
+
+    // inset counts border widths, so a second border can sit inside the first.
+    public static void DrawBorder(ImDrawListPtr drawList, Slot slot, uint color, int inset = 0)
+    {
+        var offset = new Vector2(inset * BorderThickness * slot.Scale);
+        drawList.AddRect(slot.Min + offset, slot.Max - offset, color, BorderRounding * slot.Scale, ImDrawFlags.None,
+                         BorderThickness * slot.Scale);
     }
 
     // HQ icons are 1,000,000 on.

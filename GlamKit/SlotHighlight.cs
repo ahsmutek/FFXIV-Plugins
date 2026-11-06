@@ -18,8 +18,6 @@ namespace GlamKit;
 
 internal sealed unsafe class SlotHighlight
 {
-    private const float Thickness = 2f;
-    private const float Rounding = 6f;
     private const float IconGap = 8f;
 
     private const string Armoury = "ArmouryBoard";
@@ -68,16 +66,10 @@ internal sealed unsafe class SlotHighlight
         {
             var glam = KeptForGlam(slot.ItemId);
             var later = KeptForLater(slot.ItemId);
-            var scale = slot.Scale;
             if (glam)
-                drawList.AddRect(slot.Min, slot.Max, color, Rounding * scale, ImDrawFlags.None, Thickness * scale);
+                InventorySlots.DrawBorder(drawList, slot, color);
             if (later)
-            {
-                // Inside the glam border when the item has both.
-                var inset = new Vector2(glam ? Thickness * scale : 0);
-                drawList.AddRect(slot.Min + inset, slot.Max - inset, laterColor, Rounding * scale, ImDrawFlags.None,
-                                 Thickness * scale);
-            }
+                InventorySlots.DrawBorder(drawList, slot, laterColor, glam ? 1 : 0);
         }
     }
 

@@ -7,9 +7,6 @@ namespace KeepInMind;
 
 internal sealed class SlotHighlight
 {
-    private const float Thickness = 2f;
-    private const float Rounding = 6f;
-
     private readonly InventorySlots slots;
     private readonly Configuration config;
     private readonly Stock stock;
@@ -30,8 +27,7 @@ internal sealed class SlotHighlight
         foreach (var slot in slots.BagSlots())
         {
             if (Wanted(slot.ItemId) is { } color)
-                drawList.AddRect(slot.Min, slot.Max, ImGui.GetColorU32(color), Rounding * slot.Scale, ImDrawFlags.None,
-                                 Thickness * slot.Scale);
+                InventorySlots.DrawBorder(drawList, slot, ImGui.GetColorU32(color));
         }
     }
 
