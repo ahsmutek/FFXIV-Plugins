@@ -14,6 +14,8 @@ public enum ShortcutKind
     BuddyAction,
     Text,
     Emote,
+    Mount,
+    Minion,
 }
 
 public interface IShortcut

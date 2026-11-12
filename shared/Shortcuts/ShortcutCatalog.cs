@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.Game;
+using FFXIVClientStructs.FFXIV.Client.Game.Control;
 using FFXIVClientStructs.FFXIV.Client.Game.UI;
 using FFXIVClientStructs.FFXIV.Client.System.String;
 using FFXIVClientStructs.FFXIV.Client.UI;
@@ -72,6 +74,10 @@ internal sealed class ShortcutCatalog
                 ? (row.Name.ExtractText(), (uint)row.Icon) : null,
             ShortcutKind.Emote => data.GetExcelSheet<Emote>().TryGetRow(entry.RowId, out var row)
                 ? (row.Name.ExtractText(), (uint)row.Icon) : null,
+            ShortcutKind.Mount => data.GetExcelSheet<Mount>().TryGetRow(entry.RowId, out var row)
+                ? (TitleCase(row.Singular.ExtractText()), (uint)row.Icon) : null,
+            ShortcutKind.Minion => data.GetExcelSheet<Companion>().TryGetRow(entry.RowId, out var row)
+                ? (TitleCase(row.Singular.ExtractText()), (uint)row.Icon) : null,
             _ => null,
         };
 
@@ -105,6 +111,10 @@ internal sealed class ShortcutCatalog
             case ShortcutKind.Emote:
                 var state = UIState.Instance();
                 return state != null && state->IsEmoteUnlocked((ushort)entry.RowId);
+            case ShortcutKind.Mount:
+                return MountUnlocked(entry.RowId);
+            case ShortcutKind.Minion:
+                return MinionUnlocked(entry.RowId);
             default:
                 return true;
         }
@@ -156,6 +166,11 @@ internal sealed class ShortcutCatalog
                 var emotes = AgentEmote.Instance();
                 if (emotes != null && emotes->CanUseEmote((ushort)entry.RowId))
                     emotes->ExecuteEmote((ushort)entry.RowId, null, true, true);
+                break;
+            // Using the minion that's already out dismisses it. Where minions aren't allowed, nothing happens rather than an error.
+            case ShortcutKind.Minion when actions != null && CurrentMinion() != entry.RowId &&
+                                          actions->GetActionStatus(ActionType.Companion, entry.RowId) == 0:
+                actions->UseAction(ActionType.Companion, entry.RowId);
                 break;
             case ShortcutKind.Macro:
                 var macro = MacroOf(entry.RowId);
@@ -280,6 +295,44 @@ internal sealed class ShortcutCatalog
 
         return choices.OrderBy(choice => choice.Name).ToList();
     }
+
+    public List<ShortcutChoice> OwnedMounts() =>
+        data.GetExcelSheet<Mount>()
+            .Where(row => row.Icon > 0 && MountUnlocked(row.RowId))
+            .Select(row => new ShortcutChoice(ShortcutKind.Mount, row.RowId, TitleCase(row.Singular.ExtractText()), (uint)row.Icon, "Mounts"))
+            .Where(choice => choice.Name.Length > 0)
+            .OrderBy(choice => choice.Name)
+            .ToList();
+
+    public List<ShortcutChoice> OwnedMinions() =>
+        data.GetExcelSheet<Companion>()
+            .Where(row => row.Icon > 0 && MinionUnlocked(row.RowId))
+            .Select(row => new ShortcutChoice(ShortcutKind.Minion, row.RowId, TitleCase(row.Singular.ExtractText()), (uint)row.Icon, "Minions"))
+            .Where(choice => choice.Name.Length > 0)
+            .OrderBy(choice => choice.Name)
+            .ToList();
+
+    public unsafe uint? CurrentMinion()
+    {
+        var player = Control.GetLocalPlayer();
+        var minion = player == null ? null : player->CompanionData.CompanionObject;
+        return minion == null ? null : minion->BaseId;
+    }
+
+    private static unsafe bool MountUnlocked(uint id)
+    {
+        var player = PlayerState.Instance();
+        return player != null && player->IsMountUnlocked(id);
+    }
+
+    private static unsafe bool MinionUnlocked(uint id)
+    {
+        var state = UIState.Instance();
+        return state != null && state->IsCompanionUnlocked(id);
+    }
+
+    // English mount and minion names are lower case.
+    private static string TitleCase(string name) => CultureInfo.CurrentCulture.TextInfo.ToTitleCase(name);
 
     public unsafe List<ShortcutChoice> Macros()
     {
