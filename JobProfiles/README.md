@@ -45,6 +45,11 @@ the grid, **Tick all shown** and **Untick all shown** act on what's shown, and *
 another role's or job's list. Nothing changes until **Save** (or Y); **Cancel** or B leaves the
 list as it was.
 
+Right-clicking a mount in the Mount Guide or a minion in the Minion Guide offers **Job Profiles**:
+tick the roles and jobs that use it, then **Save** (or Y). A faint box follows the page above;
+changing it gives that page its own list, starting from what it inherited. Your current job is
+highlighted.
+
 At the top of a page, the copy button copies another page's HUD layout, mounts, minions and, if
 ticked, button lines into this one, as they are on that page now. On a job, the bin stops
 customising it after asking: it follows its role again and loses its own settings and lines.

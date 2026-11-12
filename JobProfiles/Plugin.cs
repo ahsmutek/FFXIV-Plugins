@@ -56,6 +56,9 @@ public sealed class Plugin : IDalamudPlugin
     [PluginService]
     private static IBuddyList Buddies { get; set; } = null!;
 
+    [PluginService]
+    private static IContextMenu ContextMenu { get; set; } = null!;
+
     private readonly Configuration config;
     private readonly WindowSystem windows = new("JobProfiles");
     private readonly ConfigWindow configWindow;
@@ -67,6 +70,7 @@ public sealed class Plugin : IDalamudPlugin
     private readonly PadBlocker blocker;
     private readonly ButtonsTab buttonsTab;
     private readonly PadNav padNav;
+    private readonly GuideMenu guideMenu;
 
     public Plugin()
     {
@@ -90,6 +94,9 @@ public sealed class Plugin : IDalamudPlugin
         buttonsTab = new ButtonsTab(config, duties, bindings, widgets, flickWheel, KeyState);
         configWindow = new ConfigWindow(config, Save, groups, PlayerState, Textures, watcher.ApplyNow, widgets, buttonsTab);
         windows.AddWindow(configWindow);
+        var guideWindow = new GuideWindow(config, Save, groups, PlayerState, catalog, icons);
+        windows.AddWindow(guideWindow);
+        guideMenu = new GuideMenu(ContextMenu, guideWindow.Open);
         padNav = new PadNav(Interop, Gamepad, Log, windows);
         PluginInterface.UiBuilder.Draw += Draw;
         PluginInterface.UiBuilder.OpenConfigUi += configWindow.Toggle;
@@ -126,6 +133,7 @@ public sealed class Plugin : IDalamudPlugin
         PluginInterface.UiBuilder.Draw -= Draw;
         PluginInterface.UiBuilder.OpenConfigUi -= configWindow.Toggle;
         PluginInterface.UiBuilder.OpenMainUi -= configWindow.Toggle;
+        guideMenu.Dispose();
         windows.RemoveAllWindows();
         padNav.Dispose();
         blocker.Dispose();

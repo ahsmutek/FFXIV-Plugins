@@ -42,6 +42,7 @@ internal sealed class JobsTab(Configuration config, JobGroups groups, IPlayerSta
         [JobGroup.PhysicalRanged] = 62586, [JobGroup.Caster] = 62587, [JobGroup.Hand] = 62588, [JobGroup.Land] = 62589,
     };
 
+    private readonly ProfilePages pages = new(config);
     private string page = $"g:{JobGroup.Tank}";
     private string customiseSearch = string.Empty;
     private readonly HashSet<string> collapsedCards = ["buttons"];
@@ -223,7 +224,7 @@ internal sealed class JobsTab(Configuration config, JobGroups groups, IPlayerSta
 
         var margin = new Vector2(0, style.ItemSpacing.Y * 2);
         ImGui.Dummy(margin);
-        if (ParentOf(page) is { } parent)
+        if (ProfilePages.ParentOf(page) is { } parent)
             DrawInheritance(parent);
         else if (page == All)
             ImGui.TextDisabled("Button behaviour here is for every job, unless another page sets the same button for itself.");
@@ -249,7 +250,7 @@ internal sealed class JobsTab(Configuration config, JobGroups groups, IPlayerSta
         if (ImGui.IsItemHovered())
             ImGui.SetTooltip($"Go to {TitleOf(parent)}");
 
-        var profile = ProfileOf(page);
+        var profile = pages.ProfileOf(page);
         var overrides = new List<string>();
         if (profile?.HudLayout != null)
             overrides.Add("HUD layout");
@@ -263,8 +264,8 @@ internal sealed class JobsTab(Configuration config, JobGroups groups, IPlayerSta
     private bool DrawHudCard()
     {
         var changed = false;
-        var profile = ProfileOf(page);
-        var parent = ParentOf(page);
+        var profile = pages.ProfileOf(page);
+        var parent = ProfilePages.ParentOf(page);
         var own = profile?.HudLayout;
         var inherited = parent != null ? Layout(parent) : null;
         var custom = parent == null || own != null;
@@ -281,7 +282,7 @@ internal sealed class JobsTab(Configuration config, JobGroups groups, IPlayerSta
             options.AddRange(Enumerable.Range(0, Actions.HudLayouts).Select(i => ((int?)i, LayoutLabel(i))));
             if (widgets.Combo("##hud", ref hud, options, width: 160f))
             {
-                Create(page).HudLayout = hud;
+                pages.Create(page).HudLayout = hud;
                 changed = true;
             }
         }
@@ -296,7 +297,7 @@ internal sealed class JobsTab(Configuration config, JobGroups groups, IPlayerSta
             ImGui.SetTooltip("Name layouts");
         changed |= DrawLayoutNames();
 
-        changed |= InheritSwitch(parent, custom, () => Create(page).HudLayout = inherited ?? Profile.NoHudLayout,
+        changed |= InheritSwitch(parent, custom, () => pages.Create(page).HudLayout = inherited ?? Profile.NoHudLayout,
                                  () => profile!.HudLayout = null);
         Cards.End();
         return changed;
@@ -328,8 +329,8 @@ internal sealed class JobsTab(Configuration config, JobGroups groups, IPlayerSta
     private bool DrawCollectionCard(Collection collection)
     {
         var changed = false;
-        var profile = ProfileOf(page);
-        var parent = ParentOf(page);
+        var profile = pages.ProfileOf(page);
+        var parent = ProfilePages.ParentOf(page);
         var own = profile == null ? null : collection.Get(profile);
         var inherited = parent != null ? Ids(parent, collection.Get) : null;
         var shown = own ?? inherited ?? [];
@@ -340,7 +341,7 @@ internal sealed class JobsTab(Configuration config, JobGroups groups, IPlayerSta
 
         var who = page;
         var choose = new ChooseRequest(collection.Kind, $"{collection.Label} for {TitleOf(who)}", own ?? [],
-                                       ids => collection.Set(Create(who), ids.Count > 0 ? ids : null),
+                                       ids => collection.Set(pages.Create(who), ids.Count > 0 ? ids : null),
                                        () => Sources(collection, profile));
         Cards.Inline();
         if (own != null || parent == null)
@@ -360,7 +361,7 @@ internal sealed class JobsTab(Configuration config, JobGroups groups, IPlayerSta
                                  () =>
                                  {
                                      if (inherited != null)
-                                         collection.Set(Create(page), [.. inherited]);
+                                         collection.Set(pages.Create(page), [.. inherited]);
                                      else
                                          widgets.Choose(choose);
                                  },
@@ -381,7 +382,7 @@ internal sealed class JobsTab(Configuration config, JobGroups groups, IPlayerSta
         var changed = false;
         var id = page == All ? "buttons-all" : "buttons";
         var lines = buttons.OwnLines(page);
-        var parent = ParentOf(page);
+        var parent = ProfilePages.ParentOf(page);
 
         var open = !collapsedCards.Contains(id);
         var tooltip = page == All ? "What your buttons do for every job"
@@ -479,11 +480,11 @@ internal sealed class JobsTab(Configuration config, JobGroups groups, IPlayerSta
         if (page != All && from != All)
         {
             if (copyHud)
-                Create(page).HudLayout = Layout(from) ?? Profile.NoHudLayout;
+                pages.Create(page).HudLayout = Layout(from) ?? Profile.NoHudLayout;
             foreach (var collection in Collections)
             {
                 if (collection.Kind == ShortcutKind.Mount ? copyMounts : copyMinions)
-                    collection.Set(Create(page), Ids(from, collection.Get) is { } ids ? [.. ids] : null);
+                    collection.Set(pages.Create(page), Ids(from, collection.Get) is { } ids ? [.. ids] : null);
             }
         }
         if (copyButtons)
@@ -496,7 +497,7 @@ internal sealed class JobsTab(Configuration config, JobGroups groups, IPlayerSta
             return false;
 
         var changed = false;
-        var group = GroupOf(abbreviation);
+        var group = ProfilePages.GroupOf(abbreviation);
         var profile = config.Jobs.GetValueOrDefault(abbreviation);
         var parts = new List<string>();
         if (profile?.HudLayout != null)
@@ -527,7 +528,7 @@ internal sealed class JobsTab(Configuration config, JobGroups groups, IPlayerSta
 
     // Other pages' own lists, to copy from in the mount and minion picker.
     private List<(string Label, List<uint> Ids)> Sources(Collection collection, Profile? current) =>
-        Pages().Select(who => (Who: who, Profile: ProfileOf(who)))
+        Pages().Select(who => (Who: who, Profile: pages.ProfileOf(who)))
                .Where(p => p.Profile != null && p.Profile != current && collection.Get(p.Profile) is { Count: > 0 })
                .Select(p => (TitleOf(p.Who), collection.Get(p.Profile!)!))
                .ToList();
@@ -545,42 +546,12 @@ internal sealed class JobsTab(Configuration config, JobGroups groups, IPlayerSta
             collapsedCards.Add(card);
     }
 
-    private Profile? ProfileOf(string who) => ButtonsTab.ParseWho(who) switch
-    {
-        (string job, _) => config.Jobs.GetValueOrDefault(job),
-        (_, JobGroup group) => config.Groups.GetValueOrDefault(group),
-        _ => null,
-    };
-
-    private Profile Create(string who)
-    {
-        var (job, group) = ButtonsTab.ParseWho(who);
-        if (job != null)
-        {
-            if (!config.Jobs.TryGetValue(job, out var jobProfile))
-                config.Jobs[job] = jobProfile = new Profile();
-            return jobProfile;
-        }
-        if (!config.Groups.TryGetValue(group!.Value, out var profile))
-            config.Groups[group.Value] = profile = new Profile();
-        return profile;
-    }
-
-    private static string? ParentOf(string who) => ButtonsTab.ParseWho(who) switch
-    {
-        (string job, _) => $"g:{GroupOf(job)}",
-        (_, JobGroup group) when JobGroups.Parent(group) is { } parent => $"g:{parent}",
-        _ => null,
-    };
-
-    private static JobGroup GroupOf(string abbreviation) => JobGroups.All.First(g => g.Jobs.Contains(abbreviation)).Group;
-
     // What a page does now, counting what it leaves to the pages above it.
     private int? Layout(string who) =>
-        ProfileOf(who)?.HudLayout ?? (ParentOf(who) is { } parent ? Layout(parent) : null);
+        pages.ProfileOf(who)?.HudLayout ?? (ProfilePages.ParentOf(who) is { } parent ? Layout(parent) : null);
 
     private List<uint>? Ids(string who, Func<Profile, List<uint>?> get) =>
-        (ProfileOf(who) is { } profile ? get(profile) : null) ?? (ParentOf(who) is { } parent ? Ids(parent, get) : null);
+        (pages.ProfileOf(who) is { } profile ? get(profile) : null) ?? (ProfilePages.ParentOf(who) is { } parent ? Ids(parent, get) : null);
 
     private string TitleOf(string who) => ButtonsTab.ParseWho(who) switch
     {
@@ -593,7 +564,7 @@ internal sealed class JobsTab(Configuration config, JobGroups groups, IPlayerSta
     {
         (_, JobGroup.Combat) => string.Join(" ", JobGroups.All.Where(g => JobGroups.Parent(g.Group) != null).SelectMany(g => g.Jobs).Select(JobShort)),
         (_, JobGroup group) => string.Join(" ", JobGroups.All.First(g => g.Group == group).Jobs.Select(JobShort)),
-        (string job, _) => $"Customised from {JobGroups.Label(GroupOf(job))}",
+        (string job, _) => $"Customised from {JobGroups.Label(ProfilePages.GroupOf(job))}",
         _ => "Every job",
     };
 
