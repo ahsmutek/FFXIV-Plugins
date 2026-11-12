@@ -10,8 +10,8 @@ internal sealed unsafe class PadBlocker : IDisposable
 {
     private const GamepadButtonsFlags Hidden =
         GamepadButtonsFlags.DPadUp | GamepadButtonsFlags.DPadDown | GamepadButtonsFlags.DPadLeft |
-        GamepadButtonsFlags.DPadRight | GamepadButtonsFlags.Cross | GamepadButtonsFlags.Circle |
-        GamepadButtonsFlags.Triangle | GamepadButtonsFlags.Square | GamepadButtonsFlags.L1 | GamepadButtonsFlags.R1 |
+        GamepadButtonsFlags.DPadRight | GamepadButtonsFlags.South | GamepadButtonsFlags.East |
+        GamepadButtonsFlags.North | GamepadButtonsFlags.West | GamepadButtonsFlags.L1 | GamepadButtonsFlags.R1 |
         GamepadButtonsFlags.Start;
 
     private readonly IPluginLog log;

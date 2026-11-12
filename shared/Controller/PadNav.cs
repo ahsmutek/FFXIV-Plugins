@@ -17,8 +17,8 @@ internal sealed unsafe class PadNav : IDisposable
 {
     private const GamepadButtonsFlags Hidden =
         GamepadButtonsFlags.DPadUp | GamepadButtonsFlags.DPadDown | GamepadButtonsFlags.DPadLeft |
-        GamepadButtonsFlags.DPadRight | GamepadButtonsFlags.Cross | GamepadButtonsFlags.Circle |
-        GamepadButtonsFlags.Triangle | GamepadButtonsFlags.Square | GamepadButtonsFlags.L1 | GamepadButtonsFlags.R1;
+        GamepadButtonsFlags.DPadRight | GamepadButtonsFlags.South | GamepadButtonsFlags.East |
+        GamepadButtonsFlags.North | GamepadButtonsFlags.West | GamepadButtonsFlags.L1 | GamepadButtonsFlags.R1;
     private const GamepadButtons Watched =
         GamepadButtons.DpadUp | GamepadButtons.DpadDown | GamepadButtons.DpadLeft | GamepadButtons.DpadRight |
         GamepadButtons.South | GamepadButtons.East | GamepadButtons.North | GamepadButtons.West | GamepadButtons.L1 |
