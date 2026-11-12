@@ -9,10 +9,11 @@ using Shortcuts;
 
 namespace JobProfiles;
 
-internal sealed class Widgets(ShortcutCatalog catalog, ShortcutPicker picker, IconCache icons)
+internal sealed class Widgets(ShortcutCatalog catalog, ShortcutPicker picker, CollectionPicker collectionPicker, IconCache icons)
 {
     private string search = string.Empty;
     private (string Name, Action<Step> Add)? pendingAdd;
+    private ChooseRequest? pendingChoose;
 
     // add stores the picked step in the saved list (the one drawn may be a copy).
     public bool StepList(List<Step> list, string name, Action<Step> add)
@@ -85,6 +86,31 @@ internal sealed class Widgets(ShortcutCatalog catalog, ShortcutPicker picker, Ic
         return changed;
     }
 
+    public void Choose(ChooseRequest request) => pendingChoose = request;
+
+    // Dimmed when they belong to the page this one follows, and so are changed there.
+    public void Collection(List<uint> ids, ShortcutKind kind, bool dimmed)
+    {
+        var size = new Vector2(CollectionPicker.Cell * ImGuiHelpers.GlobalScale);
+        var spacing = ImGui.GetStyle().ItemSpacing.X;
+        var right = ImGui.GetCursorScreenPos().X + ImGui.GetContentRegionAvail().X;
+        var faded = ImGui.GetColorU32(new Vector4(1f, 1f, 1f, 0.4f));
+        for (var i = 0; i < ids.Count; i++)
+        {
+            if (i > 0 && ImGui.GetItemRectMax().X + spacing + size.X <= right)
+                ImGui.SameLine();
+            var step = new Step { Kind = kind, RowId = ids[i] };
+            var info = catalog.Describe(step);
+            var unlocked = info != null && catalog.Available(step);
+            var min = ImGui.GetCursorScreenPos();
+            ImGui.Dummy(size);
+            icons.Get(info?.IconId ?? 0, false).Draw(ImGui.GetWindowDrawList(), min, min + size,
+                                                     unlocked && !dimmed ? uint.MaxValue : faded);
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip(info == null ? "(no longer in the game)" : unlocked ? info.Value.Name : $"{info.Value.Name} (locked)");
+        }
+    }
+
     public bool DrawPicker()
     {
         if (pendingAdd is var (name, add))
@@ -92,8 +118,13 @@ internal sealed class Widgets(ShortcutCatalog catalog, ShortcutPicker picker, Ic
             picker.Open(name, picked => add(Step.From(picked)));
             pendingAdd = null;
         }
+        if (pendingChoose is { } request)
+        {
+            collectionPicker.Open(request);
+            pendingChoose = null;
+        }
 
-        return picker.Draw();
+        return picker.Draw() | collectionPicker.Draw();
     }
 
     public string StepNames(List<Step>? list) =>

@@ -17,8 +17,6 @@ public sealed class Step : IShortcut
     public string? Label { get; set; }
     public uint IconId { get; set; }
 
-    public static Step OfMacro(uint slot) => new() { Kind = ShortcutKind.Macro, RowId = slot };
-
     public static Step From(PickedShortcut picked) => new()
     {
         Kind = picked.Kind, RowId = picked.RowId, Command = picked.Command, Label = picked.Label, IconId = picked.IconId,
@@ -35,13 +33,9 @@ public sealed class Profile
     // 0-based HUD layout (the game's Layout 1 is 0).
     public int? HudLayout { get; set; }
 
-    public List<Step>? Steps { get; set; }
-
-    // Legacy, read by Migrate only.
-    public uint? MacroId { get; set; }
-    public bool ShouldSerializeMacroId() => false;
-    public List<uint>? Macros { get; set; }
-    public bool ShouldSerializeMacros() => false;
+    // Mount and Companion sheet rows; null rather than empty when following the page above.
+    public List<uint>? Mounts { get; set; }
+    public List<uint>? Minions { get; set; }
 }
 
 public sealed class Rule
@@ -75,6 +69,12 @@ public sealed class Rule
     public string? WheelHotkey { get; set; }
     public bool OpensWheel => !string.IsNullOrEmpty(WheelHotkey);
     public List<Step> Steps { get; set; } = new();
+
+    public Rule CopyFor(string? job, JobGroup? group, long created) => new()
+    {
+        Created = created, Job = job, Group = group, Places = [.. Places], HoldKey = HoldKey, HoldCtrl = HoldCtrl,
+        HoldShift = HoldShift, HoldAlt = HoldAlt, WheelHotkey = WheelHotkey, Steps = Steps.Select(s => s.Copy()).ToList(),
+    };
 }
 
 public sealed class Binding
@@ -125,17 +125,14 @@ public sealed class Configuration : IPluginConfiguration
         var changed = false;
         foreach (var profile in Groups.Values.Concat(Jobs.Values))
         {
-            if (profile.MacroId is { } id)
+            if (profile.Mounts is { Count: 0 })
             {
-                profile.Steps = id == uint.MaxValue ? [] : [Step.OfMacro(id)];
-                profile.MacroId = null;
+                profile.Mounts = null;
                 changed = true;
             }
-
-            if (profile.Macros is { } macros)
+            if (profile.Minions is { Count: 0 })
             {
-                profile.Steps = macros.Select(Step.OfMacro).ToList();
-                profile.Macros = null;
+                profile.Minions = null;
                 changed = true;
             }
         }

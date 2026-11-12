@@ -33,9 +33,9 @@ toward an entry, let go. Wheels for combat jobs, crafting/gathering jobs, and yo
 shortcuts: windows, actions, items, emotes, macros and chat commands. `/flick`
 
 ### [Job Profiles](JobProfiles/)
-Switches HUD layout and runs macros or commands whenever your job changes, set per role
-with per-job overrides. Also gives pad buttons, combos and keys different actions by job
-and duty type. `/jobprofiles`
+Switches HUD layout, mount and minion whenever your job changes, set per role with per-job
+overrides. Also gives pad buttons, combos and keys different actions by job and duty type.
+`/jobprofiles`
 
 ### [Keep in Mind](KeepInMind/)
 A checklist of ingredients to gather or buy by hand. Right-click an item in the

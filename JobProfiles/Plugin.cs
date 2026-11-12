@@ -62,6 +62,7 @@ public sealed class Plugin : IDalamudPlugin
     private readonly IconCache icons;
     private readonly MacroRunner runner;
     private readonly ProfileWatcher watcher;
+    private readonly MountRoulette roulette;
     private readonly BindingWatcher bindings;
     private readonly PadBlocker blocker;
     private readonly ButtonsTab buttonsTab;
@@ -79,12 +80,13 @@ public sealed class Plugin : IDalamudPlugin
         var catalog = new ShortcutCatalog(Data, CommandManager, Buddies);
         icons = new IconCache(Data, Textures);
         runner = new MacroRunner(Framework, Condition, catalog);
-        watcher = new ProfileWatcher(Framework, PlayerState, config, groups, runner);
+        watcher = new ProfileWatcher(Framework, PlayerState, config, groups, runner, catalog);
+        roulette = new MountRoulette(Interop, Condition, Log, watcher.JobMount);
         var flickWheel = new FlickWheelLink(PluginInterface);
         bindings = new BindingWatcher(Framework, Gamepad, KeyState, PlayerState, Condition, PartyList, config, groups, duties, runner, flickWheel);
         blocker = new PadBlocker(Interop, config, bindings, Log);
 
-        var widgets = new Widgets(catalog, new ShortcutPicker(catalog, icons), icons);
+        var widgets = new Widgets(catalog, new ShortcutPicker(catalog, icons), new CollectionPicker(catalog, icons, Data), icons);
         buttonsTab = new ButtonsTab(config, duties, bindings, widgets, flickWheel, KeyState);
         configWindow = new ConfigWindow(config, Save, groups, PlayerState, Textures, watcher.ApplyNow, widgets, buttonsTab);
         windows.AddWindow(configWindow);
@@ -96,7 +98,7 @@ public sealed class Plugin : IDalamudPlugin
         CommandManager.AddHandler(CommandName, new CommandInfo(OnCommand)
         {
             HelpMessage = "Open Job Profiles settings.\n" +
-                          "/jobprofiles apply → Switch to your current job's HUD layout and run its actions again.",
+                          "/jobprofiles apply → Apply your current job's HUD layout, mount and minion again.",
         });
     }
 
@@ -128,6 +130,7 @@ public sealed class Plugin : IDalamudPlugin
         padNav.Dispose();
         blocker.Dispose();
         bindings.Dispose();
+        roulette.Dispose();
         watcher.Dispose();
         runner.Dispose();
         icons.Dispose();

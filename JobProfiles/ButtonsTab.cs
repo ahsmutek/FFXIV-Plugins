@@ -82,13 +82,6 @@ internal sealed class ButtonsTab
     {
         var changed = Record();
 
-        var enabled = config.BindingsEnabled;
-        if (ImGui.Checkbox("Use controller buttons and keys", ref enabled))
-        {
-            config.BindingsEnabled = enabled;
-            changed = true;
-        }
-
         ImGui.TextWrapped("Add the controller buttons, button combos and keyboard keys you want to use. What each one " +
                           "does is set per role or job on the Jobs tab.");
         ImGui.PushStyleColor(ImGuiCol.Text, ImGui.GetColorU32(ImGuiCol.TextDisabled));
@@ -257,19 +250,37 @@ internal sealed class ButtonsTab
             changed = true;
         }
 
-        if (ImGui.SmallButton("+ Button behaviour"))
-        {
-            var (job, group) = ParseWho(who);
-            var rule = new Rule { Job = job, Group = group, Created = DateTime.UtcNow.Ticks };
-            config.Bindings[0].Rules.Add(rule);
-            added = (rule.Uid, Environment.TickCount64, true);
-            changed = true;
-        }
-        if (ImGui.IsItemHovered())
-            ImGui.SetTooltip("Make one of your buttons do something for this page. If several pages set the same button,\n" +
-                             "the most specific wins: a job beats its role, a role beats Combat jobs, which beats Everyone,\n" +
-                             "and kinds of duty (In Raids) beat other places, which beat Anywhere.");
         return changed;
+    }
+
+    public const string AddRuleHelp =
+        "Make one of your buttons do something for this page. If several pages set the same button,\n" +
+        "the most specific wins: a job beats its role, a role beats Combat jobs, which beats All jobs,\n" +
+        "and kinds of duty (In Raids) beat other places, which beat Anywhere.";
+
+    public bool CanAddRule => config.Bindings.Count > 0;
+
+    public void AddRule(string who)
+    {
+        var (job, group) = ParseWho(who);
+        var rule = new Rule { Job = job, Group = group, Created = DateTime.UtcNow.Ticks };
+        config.Bindings[0].Rules.Add(rule);
+        added = (rule.Uid, Environment.TickCount64, true);
+    }
+
+    public int OwnLines(string who) => config.Bindings.Sum(b => b.Rules.Count(r => WhoKey(r) == who));
+
+    // Each copy goes on the same button as its original.
+    public void CopyLines(string from, string to)
+    {
+        var (job, group) = ParseWho(to);
+        var created = DateTime.UtcNow.Ticks;
+        foreach (var binding in config.Bindings)
+        {
+            var copies = binding.Rules.Where(r => WhoKey(r) == from).OrderBy(r => r.Created)
+                                .Select(r => r.CopyFor(job, group, created++)).ToList();
+            binding.Rules.AddRange(copies);
+        }
     }
 
     private bool DrawRule(Binding binding, Rule rule, ref (Binding, Rule)? remove, ref (Binding, Binding, Rule)? move)
@@ -469,7 +480,7 @@ internal sealed class ButtonsTab
     private string WhoLabel(Rule rule) =>
         rule.Job != null ? rule.Job :
         rule.Group is { } group ? JobGroups.Label(group) :
-        "Everyone";
+        "All jobs";
 
     private List<(string Value, string Label)> PlaceOptions()
     {
