@@ -33,6 +33,10 @@ public sealed class Configuration : IPluginConfiguration
 
     public bool UncolourUnwearableLevel { get; set; } = true;
 
+    public bool MarkUpgrades { get; set; } = true;
+
+    public HashSet<int> HiddenUpgradeSlots { get; set; } = [];
+
     public bool GearsetsEnabled { get; set; } = true;
 
     public bool WishlistEnabled { get; set; } = true;

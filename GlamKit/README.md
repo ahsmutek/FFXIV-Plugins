@@ -61,8 +61,16 @@ A gear tooltip's job line (e.g. "PLD WAR DRK GNB") shows your level on each job 
 "PLD 100  WAR 87  DRK 52  GNB –". For a level 50 item, 50–60 is green, 45–49 yellow and anything else grey
 (both ranges are in settings); – means you haven't started that job.
 
-Gear that more than 10 jobs can wear keeps the game's text and adds up to 5 green jobs, lowest first, e.g.
-"· WAR 52  BLM 55", or the job nearest its level if none are green. Level 1 gear like that is left as it is.
+A ▲ after a level, e.g. "PLD 100▲", means the item would be an upgrade for that job, judged the way Recommended Gear
+appears to: more of the job's main stat (HQ bonus included) than the job's gear sets have in that slot, or as much
+and a higher item level. Crafters and gatherers have no main stat, so they go by item level. Your current job is
+also compared with what you're wearing. The job has to be high enough to wear the item, rings are compared with the
+weaker ring, pieces a gear set is missing count as empty, and other jobs without a gear set aren't marked.
+Settings can turn the arrow off for some kinds of gear, e.g. earrings.
+
+Gear that more than 10 jobs can wear keeps the game's text and adds up to 5 jobs, the ones it's an upgrade for
+and then the green ones, lowest first, e.g. "· WAR 52  BLM 55", or the job nearest its level if there are none.
+Level 1 gear like that is left as it is.
 
 The game colours the equip level against your current job even when that job can't wear the item; GlamKit
 colours it only when your job can wear it (optional). It all works on any job and in every item tooltip, Market Board included.
@@ -82,8 +90,8 @@ line uses one hook, the same as Keep in Mind's; if a patch breaks it, only the t
 Later and the wishlist work the same way; the wishlist's hearts are drawn after matching names in shop and
 Market Board lists.
 
-Job Levels reads your levels from the client and rewrites the tooltip's job line through that same hook. The
-equip level is recoloured just before the tooltip draws.
+Job Levels reads your levels, gear sets and equipped gear from the client and rewrites the tooltip's job line
+through that same hook. The equip level is recoloured just before the tooltip draws.
 
 `/glamkit debug` writes what each inventory window shows to the Dalamud log, for when a border is
 missing or misplaced.

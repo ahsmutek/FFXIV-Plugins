@@ -32,6 +32,7 @@ internal sealed unsafe class ItemTooltip : IDisposable
 
     // Collectables add 500,000 to the item ID and HQ 1,000,000.
     private const uint ItemIdModifier = 500_000;
+    private const uint HqModifier = 1_000_000;
 
     // The UIColor row nearest this, as the game colours text by row.
     private const uint Purple = 0xC78CFF;
@@ -100,10 +101,15 @@ internal sealed unsafe class ItemTooltip : IDisposable
         hook!.Original(addon, numbers, strings);
     }
 
-    private uint HoveredItem()
+    internal static (uint Id, bool Hq) SplitItemId(ulong itemId) =>
+        ((uint)(itemId % ItemIdModifier), itemId / HqModifier == 1);
+
+    private uint HoveredItem() => HoveredItemAndQuality().Id;
+
+    private (uint Id, bool Hq) HoveredItemAndQuality()
     {
         var agent = AgentItemDetail.Instance();
-        return (uint)((agent != null && agent->ItemId != 0 ? agent->ItemId : gameGui.HoveredItem) % ItemIdModifier);
+        return SplitItemId(agent != null && agent->ItemId != 0 ? agent->ItemId : gameGui.HoveredItem);
     }
 
     private void AddJobLevels(StringArrayData* strings)
@@ -117,7 +123,8 @@ internal sealed unsafe class ItemTooltip : IDisposable
         if (currentBytes.Length == 0 || currentBytes.SequenceEqual(lastJobLine))
             return;
 
-        var line = jobLevels.Line(HoveredItem(), SeString.Parse(currentBytes));
+        var (itemId, hq) = HoveredItemAndQuality();
+        var line = jobLevels.Line(itemId, hq, SeString.Parse(currentBytes));
         if (line == null)
             return;
 

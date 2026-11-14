@@ -1,14 +1,30 @@
 using System;
+using System.Linq;
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Windowing;
 using Icons;
+using static FFXIVClientStructs.FFXIV.Client.UI.Misc.RaptureGearsetModule;
 
 namespace GlamKit;
 
 internal sealed class SettingsWindow : Window
 {
     private const ImGuiColorEditFlags ColorFlags = ImGuiColorEditFlags.NoInputs | ImGuiColorEditFlags.NoAlpha;
+
+    // Either ring slot hides rings, so only the first is listed.
+    private static readonly (string Name, GearsetItemIndex Slot)[][] UpgradeSlots =
+    [
+        [("Weapons", GearsetItemIndex.MainHand), ("Off hands", GearsetItemIndex.OffHand)],
+        [
+            ("Head", GearsetItemIndex.Head), ("Body", GearsetItemIndex.Body), ("Hands", GearsetItemIndex.Hands),
+            ("Legs", GearsetItemIndex.Legs), ("Feet", GearsetItemIndex.Feet),
+        ],
+        [
+            ("Earrings", GearsetItemIndex.Ears), ("Necklaces", GearsetItemIndex.Neck),
+            ("Bracelets", GearsetItemIndex.Wrists), ("Rings", GearsetItemIndex.RingRight),
+        ],
+    ];
 
     private readonly Configuration config;
     private readonly Action save;
@@ -153,6 +169,18 @@ internal sealed class SettingsWindow : Window
             config.UncolourUnwearableLevel = uncolour;
             save();
         }
+
+        var upgrades = config.MarkUpgrades;
+        if (ImGui.Checkbox("Mark jobs it's an upgrade for (more main stat than their gear set, then item level)", ref upgrades))
+        {
+            config.MarkUpgrades = upgrades;
+            save();
+        }
+        ImGui.BeginDisabled(!config.MarkUpgrades);
+        ImGui.Indent();
+        UpgradeSlotCheckboxes();
+        ImGui.Unindent();
+        ImGui.EndDisabled();
         ImGui.Unindent();
 
         ImGui.Spacing();
@@ -163,6 +191,31 @@ internal sealed class SettingsWindow : Window
             save();
         }
         Describe("Gear tooltips say which jobs' gear sets use the item, e.g. \"Equipped - NIN\".");
+    }
+
+    private void UpgradeSlotCheckboxes()
+    {
+        var style = ImGui.GetStyle();
+        var column = UpgradeSlots.SelectMany(row => row).Max(s => ImGui.CalcTextSize(s.Name).X) +
+                     ImGui.GetFrameHeight() + style.ItemInnerSpacing.X + style.ItemSpacing.X * 2;
+        foreach (var row in UpgradeSlots)
+        {
+            var start = ImGui.GetCursorPosX();
+            for (var i = 0; i < row.Length; i++)
+            {
+                if (i > 0)
+                    ImGui.SameLine(start + i * column);
+                var (name, slot) = row[i];
+                var shown = !config.HiddenUpgradeSlots.Contains((int)slot);
+                if (!ImGui.Checkbox(name, ref shown))
+                    continue;
+                if (shown)
+                    config.HiddenUpgradeSlots.Remove((int)slot);
+                else
+                    config.HiddenUpgradeSlots.Add((int)slot);
+                save();
+            }
+        }
     }
 
     private static bool LevelSlider(string before, string after, ref int value)
