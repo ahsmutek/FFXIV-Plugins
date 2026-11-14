@@ -458,7 +458,7 @@ internal sealed class JobsTab(Configuration config, JobGroups groups, IPlayerSta
         }
         ImGui.EndChild();
 
-        var anything = copyButtons || (page != All && (copyHud || copyMounts || copyMinions));
+        var anything = copyButtons || (page != All && copyFrom != All && (copyHud || copyMounts || copyMinions));
         ImGui.BeginDisabled(copyFrom == null || !anything);
         if (ImGui.Button("Copy"))
         {

@@ -77,9 +77,9 @@ over other places, over Anywhere.
 
 ## Settings tab
 
-- **Auto-apply on job change** turns the Jobs tab on or off; **Apply on login** also applies your
-  job's settings a few seconds after you log in. **Apply for my current job now** (or
-  `/jobprofiles apply`) applies them again.
+- **Auto-apply on job change** turns HUD layouts, mounts and minions on or off; **Apply on login**
+  also applies your job's settings a few seconds after you log in. **Apply for my current job now**
+  (or `/jobprofiles apply`) applies them again, even with auto-apply off.
 - **Use controller buttons and keys** turns everything on the Buttons tab on or off.
 
 ## Buttons tab

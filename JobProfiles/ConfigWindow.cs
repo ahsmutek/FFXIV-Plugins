@@ -36,6 +36,9 @@ internal sealed class ConfigWindow : Window
 
     public override void Draw()
     {
+        if (buttons.Record())
+            save();
+
         if (!ImGui.BeginTabBar("tabs"))
             return;
 

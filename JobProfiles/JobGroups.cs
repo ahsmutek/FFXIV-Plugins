@@ -66,7 +66,8 @@ internal sealed class JobGroups(IDataManager data)
                     if (Job(abbreviation) is not { } job)
                         continue;
                     byRow[job.RowId] = (abbreviation, group);
-                    if (HasParent(job))
+                    // Arcanist is the base class of both Summoner and Scholar; it plays as Summoner, whose role it shares.
+                    if (HasParent(job) && job.Role == job.ClassJobParent.Value.Role)
                         byRow.TryAdd(job.ClassJobParent.RowId, (abbreviation, group));
                 }
             }

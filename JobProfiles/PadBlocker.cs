@@ -65,7 +65,7 @@ internal sealed unsafe class PadBlocker : IDisposable
 
     private GamepadButtons Hidden()
     {
-        if (!config.BindingsEnabled || watcher.Paused || watcher.Navigating || config.Bindings.Count == 0)
+        if (!watcher.Listening)
             return GamepadButtons.None;
 
         var held = watcher.HeldButtons();
@@ -79,10 +79,10 @@ internal sealed unsafe class PadBlocker : IDisposable
             if (single)
             {
                 // Hidden even when not pressed, so the game never sees it go down.
-                if (watcher.Match(binding) is { } rule && (rule.OpensWheel || rule.ActsAsKey || rule.Steps.Count > 0))
+                if (watcher.Match(binding) is { DoesSomething: true })
                     hidden |= binding.Buttons;
             }
-            else if ((held & binding.Buttons) == binding.Buttons && watcher.Match(binding) is not null)
+            else if ((held & binding.Buttons) == binding.Buttons && watcher.Match(binding) is { DoesSomething: true })
             {
                 // Shoulder buttons stay visible; the cross hotbar needs them.
                 hidden |= binding.Buttons & ~Shoulders;

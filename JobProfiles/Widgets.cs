@@ -55,10 +55,10 @@ internal sealed class Widgets(ShortcutCatalog catalog, ShortcutPicker picker, Co
                     ImGui.TextDisabled(label);
             }
 
-            if (editable)
-                ImGui.SameLine();
-            else
-                ImGui.SameLine(removeX);
+            // SameLine's offset counts from the enclosing group, which a button line is, so the X is placed by window position.
+            ImGui.SameLine();
+            if (!editable)
+                ImGui.SetCursorPosX(removeX);
             if (TablerIcons.Button(TablerIcon.X))
                 remove = i;
             if (ImGui.IsItemHovered())
@@ -130,7 +130,7 @@ internal sealed class Widgets(ShortcutCatalog catalog, ShortcutPicker picker, Co
     public string StepNames(List<Step>? list) =>
         list is { Count: > 0 } ? string.Join(", ", list.Select(s => catalog.Describe(s)?.Name ?? "?")) : "—";
 
-    // width is at 100% UI scale; -1 fills the row.
+    // width is at 100% UI scale; a negative one leaves that many pixels at the row's end (-1 fills it).
     public bool Combo<T>(string id, ref T value, List<(T Value, string Label)> options, bool searchable = false,
                           float width = -1)
     {
@@ -201,7 +201,7 @@ internal sealed class Widgets(ShortcutCatalog catalog, ShortcutPicker picker, Co
         return changed;
     }
 
-    private static float ComboWidth(IEnumerable<string> labels, float width)
+    public static float ComboWidth(IEnumerable<string> labels, float width)
     {
         if (width <= 0)
             return width;

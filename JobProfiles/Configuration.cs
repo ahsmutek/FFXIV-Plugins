@@ -70,6 +70,10 @@ public sealed class Rule
     public bool OpensWheel => !string.IsNullOrEmpty(WheelHotkey);
     public List<Step> Steps { get; set; } = new();
 
+    // Steps stay saved while another mode is chosen, so switching back restores them.
+    public bool RunsSteps => WheelHotkey == null && !ActsAsKey && Steps.Count > 0;
+    public bool DoesSomething => OpensWheel || ActsAsKey || RunsSteps;
+
     public Rule CopyFor(string? job, JobGroup? group, long created) => new()
     {
         Created = created, Job = job, Group = group, Places = [.. Places], HoldKey = HoldKey, HoldCtrl = HoldCtrl,

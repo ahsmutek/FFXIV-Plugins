@@ -68,6 +68,9 @@ internal sealed class BindingWatcher : IDisposable
     // The settings window has the pad, so its buttons move through the window instead.
     public bool Navigating { get; set; }
 
+    public bool Listening =>
+        !Paused && !Navigating && config.BindingsEnabled && config.Bindings.Count > 0 && player.IsLoaded;
+
     public GamepadButtons HeldButtons()
     {
         var held = GamepadButtons.None;
@@ -118,7 +121,7 @@ internal sealed class BindingWatcher : IDisposable
 
     private void OnUpdate(IFramework _)
     {
-        if (Paused || Navigating || !config.BindingsEnabled || config.Bindings.Count == 0 || !player.IsLoaded)
+        if (!Listening)
         {
             Release();
             lastHeld = HeldButtons();
@@ -204,7 +207,7 @@ internal sealed class BindingWatcher : IDisposable
                 KeyPresser.Down(rule);
                 holding = (binding, rule);
                 break;
-            case { Steps.Count: > 0 } rule:
+            case { RunsSteps: true } rule:
                 runner.Enqueue(rule.Steps);
                 break;
         }

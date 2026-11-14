@@ -75,7 +75,7 @@ internal sealed class ProfileWatcher : IDisposable
 
     private void OnUpdate(IFramework _)
     {
-        if (!config.Enabled || !player.IsLoaded)
+        if (!player.IsLoaded)
         {
             lastJob = 0;
             applyAt = null;
@@ -84,7 +84,12 @@ internal sealed class ProfileWatcher : IDisposable
 
         var now = Environment.TickCount64;
         var job = player.ClassJob.RowId;
-        if (job != lastJob)
+        // Off, only Apply now applies; turning it back on counts as a login.
+        if (!config.Enabled)
+        {
+            lastJob = 0;
+        }
+        else if (job != lastJob)
         {
             runner.Clear();
             mountPick = null;

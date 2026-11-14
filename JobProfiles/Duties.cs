@@ -42,7 +42,4 @@ internal sealed class Duties(IClientState clientState, IDataManager data)
                     .ToList();
         return kinds;
     }
-
-    public string KindName(uint id) =>
-        Kinds().FirstOrDefault(k => k.Id == id).Name ?? $"Duty type {id}";
 }

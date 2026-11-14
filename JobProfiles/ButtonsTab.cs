@@ -45,6 +45,11 @@ internal sealed class ButtonsTab
     private GamepadButtons heldAtStart;
     private readonly HashSet<VirtualKey> recordedKeys = [];
 
+    private const float ModeWidth = 140f;
+
+    private static readonly List<(Mode Value, string Label)> Modes =
+        [(Mode.Steps, "Do something"), (Mode.Key, "Hold a key"), (Mode.Wheel, "Open Flick Wheel")];
+
     private static readonly VirtualKey[] Modifiers = [VirtualKey.CONTROL, VirtualKey.SHIFT, VirtualKey.MENU];
     private Rule? recordingKey;
     // The line just added: outlined for a moment, and scrolled to once.
@@ -80,8 +85,7 @@ internal sealed class ButtonsTab
 
     public bool DrawButtons()
     {
-        var changed = Record();
-
+        var changed = false;
         ImGui.TextWrapped("Add the controller buttons, button combos and keyboard keys you want to use. What each one " +
                           "does is set per role or job on the Jobs tab.");
         ImGui.PushStyleColor(ImGuiCol.Text, ImGui.GetColorU32(ImGuiCol.TextDisabled));
@@ -176,7 +180,7 @@ internal sealed class ButtonsTab
         {
             { OpensWheel: true } => $"Here and now: opens Flick Wheel's {flickWheel.NameOf(match.WheelHotkey!)} (from {WhoLabel(match)}, {WhereLabel(match)})",
             { ActsAsKey: true } => $"Here and now: holds {KeyPresser.Describe(match)} (from {WhoLabel(match)}, {WhereLabel(match)})",
-            { Steps.Count: > 0 } => $"Here and now: does {widgets.StepNames(match.Steps)} (from {WhoLabel(match)}, {WhereLabel(match)})",
+            { RunsSteps: true } => $"Here and now: does {widgets.StepNames(match.Steps)} (from {WhoLabel(match)}, {WhereLabel(match)})",
             _ => "Here and now: nothing",
         });
 
@@ -194,7 +198,7 @@ internal sealed class ButtonsTab
             {
                 var what = rule.OpensWheel ? $"opens Flick Wheel's {flickWheel.NameOf(rule.WheelHotkey!)}"
                          : rule.ActsAsKey ? $"holds {KeyPresser.Describe(rule)}"
-                         : rule.Steps.Count > 0 ? $"does {widgets.StepNames(rule.Steps)}"
+                         : rule.RunsSteps ? $"does {widgets.StepNames(rule.Steps)}"
                          : "nothing yet";
                 ImGui.BulletText($"{WhoLabel(rule)} · {WhereLabel(rule)}: {what}");
             }
@@ -206,13 +210,13 @@ internal sealed class ButtonsTab
 
     public bool DrawBehaviour(string who)
     {
-        var changed = Record();
-
         if (config.Bindings.Count == 0)
         {
             ImGui.TextDisabled("Add a button or key on the Buttons tab first.");
-            return changed;
+            return false;
         }
+
+        var changed = false;
 
         (Binding Binding, Rule Rule)? remove = null;
         (Binding From, Binding To, Rule Rule)? move = null;
@@ -292,13 +296,15 @@ internal sealed class ButtonsTab
         if (widgets.Combo("##button", ref target, buttons, width: 120f) && target != binding.Uid)
             move = (binding, config.Bindings.First(b => b.Uid == target), rule);
 
+        // Where takes what's left of the line, so the X ends it in line with the steps' X below.
         ImGui.SameLine();
-        changed |= widgets.MultiCombo("##where", rule.Places, PlaceOptions(), "Anywhere", searchable: true, width: 140f);
+        var tail = Widgets.ComboWidth(Modes.Select(m => m.Label), ModeWidth) + ImGui.GetFrameHeight() +
+                   ImGui.GetStyle().ItemSpacing.X * 2;
+        changed |= widgets.MultiCombo("##where", rule.Places, PlaceOptions(), "Anywhere", searchable: true, width: -tail);
 
         ImGui.SameLine();
         var mode = rule.WheelHotkey != null ? Mode.Wheel : rule.ActsAsKey || recordingKey == rule ? Mode.Key : Mode.Steps;
-        if (widgets.Combo("##mode", ref mode, [(Mode.Steps, "Do something"), (Mode.Key, "Hold a key"), (Mode.Wheel, "Open Flick Wheel")],
-                          width: 140f))
+        if (widgets.Combo("##mode", ref mode, Modes, width: ModeWidth))
         {
             rule.HoldKey = 0;
             rule.HoldCtrl = rule.HoldShift = rule.HoldAlt = false;
@@ -394,7 +400,8 @@ internal sealed class ButtonsTab
         watcher.Paused = true;
     }
 
-    private bool Record()
+    // Every frame the window is drawn, whichever tab or card is showing.
+    public bool Record()
     {
         if (recordingKey is { } keyRule)
             return RecordKey(keyRule);
