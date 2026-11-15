@@ -191,6 +191,16 @@ internal sealed class SettingsWindow : Window
             save();
         }
         Describe("Gear tooltips say which jobs' gear sets use the item, e.g. \"Equipped - NIN\".");
+
+        ImGui.Spacing();
+        var compareAs = config.CompareAsEnabled;
+        if (ImGui.Checkbox("Compare as Another Job", ref compareAs))
+        {
+            config.CompareAsEnabled = compareAs;
+            save();
+        }
+        Describe("Item Comparison uses the gear set of a job that can wear the item when yours can't. Arrows on the window",
+                 "(or L1/R1) flip through the jobs that can wear it.");
     }
 
     private void UpgradeSlotCheckboxes()

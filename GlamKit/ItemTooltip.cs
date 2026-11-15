@@ -56,14 +56,14 @@ internal sealed unsafe class ItemTooltip : IDisposable
     private byte[] lastJobLine = [];
 
     public ItemTooltip(IGameInteropProvider interop, IAddonLifecycle lifecycle, IDataManager data, IGameGui gameGui,
-                       IPluginLog log, Configuration config)
+                       IPluginLog log, Configuration config, JobLevels jobLevels)
     {
         this.lifecycle = lifecycle;
         this.data = data;
         this.gameGui = gameGui;
         this.log = log;
         this.config = config;
-        jobLevels = new JobLevels(data, config);
+        this.jobLevels = jobLevels;
         purple = Nearest(data, Purple);
         teal = Nearest(data, Teal);
         pink = Nearest(data, Pink);

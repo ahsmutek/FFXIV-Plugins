@@ -60,6 +60,7 @@ public sealed class Plugin : IDalamudPlugin
     private readonly NativeTooltip tooltip;
     private readonly SlotHighlight highlight;
     private readonly ItemTooltip itemTooltip;
+    private readonly CompareAs compareAs;
     private readonly Stored stored;
     private readonly Locations locations;
     private readonly PadNav padNav;
@@ -73,7 +74,9 @@ public sealed class Plugin : IDalamudPlugin
         menu = new KeeperMenu(ContextMenu, GameGui, DataManager, config, SetKept, SetLater, SetWished);
         tooltip = new NativeTooltip(AddonLifecycle);
         highlight = new SlotHighlight(GameGui, DataManager, config);
-        itemTooltip = new ItemTooltip(GameInterop, AddonLifecycle, DataManager, GameGui, Log, config);
+        var jobLevels = new JobLevels(DataManager, config);
+        itemTooltip = new ItemTooltip(GameInterop, AddonLifecycle, DataManager, GameGui, Log, config, jobLevels);
+        compareAs = new CompareAs(GameInterop, GameGui, AddonLifecycle, Framework, Gamepad, Log, config, jobLevels);
         stored = new Stored(Framework, ClientState, ChatGui, DataManager, config, Save);
         locations = new Locations(Framework, ClientState, PluginInterface, Log, config);
 
@@ -129,6 +132,7 @@ public sealed class Plugin : IDalamudPlugin
         padNav.Update();
         windows.Draw();
         highlight.Draw();
+        compareAs.Draw();
         tooltip.EndFrame();
     }
 
@@ -140,6 +144,7 @@ public sealed class Plugin : IDalamudPlugin
         glamOff.Dispose();
         menu.Dispose();
         itemTooltip.Dispose();
+        compareAs.Dispose();
         stored.Dispose();
         locations.Dispose();
         PluginInterface.UiBuilder.Draw -= Draw;

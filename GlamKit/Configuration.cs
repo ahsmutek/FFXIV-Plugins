@@ -39,6 +39,8 @@ public sealed class Configuration : IPluginConfiguration
 
     public bool GearsetsEnabled { get; set; } = true;
 
+    public bool CompareAsEnabled { get; set; } = true;
+
     public bool WishlistEnabled { get; set; } = true;
 
     public Vector4 WishColor { get; set; } = DefaultWishColor;

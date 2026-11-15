@@ -80,6 +80,19 @@ colours it only when your job can wear it (optional). It all works on any job an
 A gear tooltip says which jobs' gear sets use the item, e.g. "Equipped - NIN, MNK".
 Sets are matched by item, so any copy of it counts.
 
+## Compare as Another Job
+
+The game's **Item Comparison** compares an item with what your current job is wearing, even when that job can't wear
+it. GlamKit compares it with a job that can instead: one the item is an upgrade for (Job Levels' ▲), or else your
+highest-level one.
+The window's slot name says which job, e.g. "Body · WAR".
+
+The arrows on the window's top edge, e.g. "◀ WAR 90 ▶", flip through every job of yours that can wear the item and has a
+gear set, your current one included; on a controller, L1 and R1 do the same while they're shown.
+
+The item is compared with the piece from that job's best gear set, as long as it's in your bags, Armoury Chest or equipped.
+If it's somewhere else, e.g. with a retainer, there's nothing to compare it with.
+
 ## How it works
 
 Glam Off calls the Fitting Room the same way the menu's **Try On** does, with the glamour left out.
@@ -92,6 +105,10 @@ Market Board lists.
 
 Job Levels reads your levels, gear sets and equipped gear from the client and rewrites the tooltip's job line
 through that same hook. The equip level is recoloured just before the tooltip draws.
+
+Compare as Another Job hooks the game's comparison and, after the game reads your equipped piece, swaps in the gear set's
+copy from your Armoury Chest or bags. A comparison the game opens some other way is redone the same way once it opens,
+keeping the item's own materia and dye. If a patch breaks the hook, Item Comparison works as it always has.
 
 `/glamkit debug` writes what each inventory window shows to the Dalamud log, for when a border is
 missing or misplaced.

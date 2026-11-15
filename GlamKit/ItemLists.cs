@@ -82,8 +82,15 @@ internal static unsafe class ItemLists
         return first;
     }
 
+    private delegate bool Match(InventoryItem* item);
+
     // The lists show copies of the gear without its glamour; this is the one in the bags or Armoury Chest.
-    public static InventoryItem* GlamouredCopy(uint baseItemId)
+    public static InventoryItem* GlamouredCopy(uint baseItemId) => Find(baseItemId, item => item->GlamourId != 0);
+
+    public static InventoryItem* HeldCopy(uint baseItemId, bool hq) =>
+        Find(baseItemId, item => item->Flags.HasFlag(InventoryItem.ItemFlags.HighQuality) == hq);
+
+    private static InventoryItem* Find(uint baseItemId, Match match)
     {
         var inventory = InventoryManager.Instance();
         if (baseItemId == 0 || inventory == null)
@@ -96,7 +103,7 @@ internal static unsafe class ItemLists
             for (var i = 0; i < container->Size; i++)
             {
                 var item = container->GetInventorySlot(i);
-                if (item != null && item->GlamourId != 0 && item->GetBaseItemId() == baseItemId)
+                if (item != null && item->GetBaseItemId() == baseItemId && match(item))
                     return item;
             }
         }

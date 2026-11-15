@@ -23,6 +23,8 @@ internal sealed unsafe class JobLevels
 
     private readonly record struct Job(string Abbreviation, int ExpIndex, uint MainStat, uint Id, uint ClassId);
 
+    public sealed record CompareJob(string Abbreviation, uint Id, uint ClassId, int Level, bool Upgrade, Gearsets.Piece[] Pieces);
+
     private readonly IDataManager data;
     private readonly ExcelSheet<Item> items;
     private readonly Configuration config;
@@ -79,8 +81,7 @@ internal sealed unsafe class JobLevels
     public SeString? Line(uint itemId, bool hq, SeString original)
     {
         var player = PlayerState.Instance();
-        if (player == null || !items.TryGetRow(itemId, out var item) ||
-            item.EquipSlotCategory.RowId == 0 || !categories.TryGetValue(item.ClassJobCategory.RowId, out var jobs))
+        if (player == null || Wearers(itemId, out var item) is not { } jobs)
             return null;
 
         // Every started job can wear it, so the levels would say nothing.
@@ -88,12 +89,12 @@ internal sealed unsafe class JobLevels
         if (wide && item.LevelEquip <= 1)
             return null;
 
-        var slots = config.MarkUpgrades ? Gearsets.Slots(item.EquipSlotCategory.Value) : [];
-        var held = slots.Any(config.HiddenUpgradeSlots.Contains) ? [] : Gearsets.Held(slots);
+        var slots = Gearsets.Slots(item.EquipSlotCategory.Value);
+        var held = MarksUpgrades(slots) ? Gearsets.Held(slots) : [];
         var levels = jobs.Select(j =>
         {
             var level = (int)player->ClassJobLevels[j.ExpIndex];
-            return (j.Abbreviation, Level: level, Upgrade: level >= item.LevelEquip && IsUpgrade(item, hq, j, held));
+            return (j.Abbreviation, Level: level, Upgrade: IsUpgrade(item, hq, j, level, BestSet(item, j, held)));
         }).ToList();
         var builder = new SeStringBuilder();
 
@@ -124,15 +125,44 @@ internal sealed unsafe class JobLevels
         return builder.Build();
     }
 
-    // Main stat, then item level, as Recommended Gear appears to judge.
-    private bool IsUpgrade(Item item, bool hq, Job job, List<(uint ClassJob, Gearsets.Piece[] Pieces)> held)
+    // Jobs that can wear the item and have a gear set, each with its best set's pieces for the item's slots.
+    public List<CompareJob> CompareJobs(uint itemId, bool hq)
     {
-        var sets = held.Where(h => h.ClassJob == job.Id || h.ClassJob == job.ClassId).ToList();
-        if (sets.Count == 0)
-            return false;
-        var best = sets.Max(s => SetScore(s.Pieces, item.RowId, job.MainStat));
-        return Score(item, hq, job.MainStat).CompareTo(best) > 0;
+        var player = PlayerState.Instance();
+        if (player == null || Wearers(itemId, out var item) is not { } jobs)
+            return [];
+
+        var slots = Gearsets.Slots(item.EquipSlotCategory.Value);
+        var held = Gearsets.Held(slots);
+        var marks = MarksUpgrades(slots);
+        var compared = new List<CompareJob>();
+        foreach (var job in jobs)
+        {
+            if (BestSet(item, job, held) is not { } best)
+                continue;
+            var level = (int)player->ClassJobLevels[job.ExpIndex];
+            compared.Add(new CompareJob(job.Abbreviation, job.Id, job.ClassId, level,
+                                        marks && IsUpgrade(item, hq, job, level, best), best));
+        }
+        return compared;
     }
+
+    private Job[]? Wearers(uint itemId, out Item item) =>
+        items.TryGetRow(itemId, out item) && item.EquipSlotCategory.RowId != 0 &&
+        categories.TryGetValue(item.ClassJobCategory.RowId, out var jobs) ? jobs : null;
+
+    private bool MarksUpgrades(int[] slots) =>
+        config.MarkUpgrades && slots.Length > 0 && !slots.Any(config.HiddenUpgradeSlots.Contains);
+
+    private Gearsets.Piece[]? BestSet(Item item, Job job, List<(uint ClassJob, Gearsets.Piece[] Pieces)> held) =>
+        held.Where(h => h.ClassJob == job.Id || h.ClassJob == job.ClassId)
+            .Select(h => h.Pieces)
+            .MaxBy(p => SetScore(p, item.RowId, job.MainStat));
+
+    // Main stat, then item level, as Recommended Gear appears to judge.
+    private bool IsUpgrade(Item item, bool hq, Job job, int level, Gearsets.Piece[]? best) =>
+        best != null && level >= item.LevelEquip &&
+        Score(item, hq, job.MainStat).CompareTo(SetScore(best, item.RowId, job.MainStat)) > 0;
 
     // An item already in the set only replaces its own copy: a second may be unique, and the hovered one may be worn.
     private (int MainStat, uint ItemLevel) SetScore(Gearsets.Piece[] pieces, uint itemId, uint mainStat)
