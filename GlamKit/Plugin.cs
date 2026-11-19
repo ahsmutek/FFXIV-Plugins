@@ -76,7 +76,7 @@ public sealed class Plugin : IDalamudPlugin
         highlight = new SlotHighlight(GameGui, DataManager, config);
         var jobLevels = new JobLevels(DataManager, config);
         itemTooltip = new ItemTooltip(GameInterop, AddonLifecycle, DataManager, GameGui, Log, config, jobLevels);
-        compareAs = new CompareAs(GameInterop, GameGui, AddonLifecycle, Framework, Gamepad, Log, config, jobLevels);
+        compareAs = new CompareAs(GameInterop, GameGui, AddonLifecycle, Framework, Gamepad, Log, config, Save, jobLevels);
         stored = new Stored(Framework, ClientState, ChatGui, DataManager, config, Save);
         locations = new Locations(Framework, ClientState, PluginInterface, Log, config);
 

@@ -108,7 +108,9 @@ through that same hook. The equip level is recoloured just before the tooltip dr
 
 Compare as Another Job hooks the game's comparison and, after the game reads your equipped piece, swaps in the gear set's
 copy from your Armoury Chest or bags. A comparison the game opens some other way is redone the same way once it opens,
-keeping the item's own materia and dye. If a patch breaks the hook, Item Comparison works as it always has.
+keeping the item's own materia and dye. If a patch breaks the hook, Item Comparison works as it always has. The game
+colours equip levels for your current job, so they're recoloured for the job shown, in the colours GlamKit has seen
+the game use: after your first comparison of gear your current job can wear, they're right from then on.
 
 `/glamkit debug` writes what each inventory window shows to the Dalamud log, for when a border is
 missing or misplaced.

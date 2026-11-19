@@ -41,6 +41,9 @@ public sealed class Configuration : IPluginConfiguration
 
     public bool CompareAsEnabled { get; set; } = true;
 
+    // How Item Comparison shows each equip state, as seen in the game's own comparisons.
+    public Dictionary<byte, ComparisonLook> ComparisonLooks { get; set; } = [];
+
     public bool WishlistEnabled { get; set; } = true;
 
     public Vector4 WishColor { get; set; } = DefaultWishColor;
@@ -56,6 +59,13 @@ public sealed class Configuration : IPluginConfiguration
     public bool IsKeptForLater(uint itemId) => itemId != 0 && LaterItems.Exists(i => i.ItemId == itemId);
 
     public bool IsWished(uint itemId) => itemId != 0 && WishItems.Exists(i => i.ItemId == itemId);
+}
+
+public sealed class ComparisonLook
+{
+    public int Timeline { get; set; }
+
+    public int LevelColor { get; set; }
 }
 
 public sealed class KeptItem

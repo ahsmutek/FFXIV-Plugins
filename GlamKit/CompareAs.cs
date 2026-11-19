@@ -26,6 +26,11 @@ internal sealed unsafe class CompareAs : IDisposable
     private const int EquippedEntry = 2;
     private const uint HqModifier = 1_000_000;
 
+    // The agent's equip states for an item.
+    private const byte Wearable = 1;
+    private const byte LevelTooLow = 3;
+    private const byte NotForJob = 4;
+
     private const ImGuiWindowFlags BarFlags =
         ImGuiWindowFlags.NoDecoration | ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoMove |
         ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.NoFocusOnAppearing | ImGuiWindowFlags.NoNav;
@@ -38,6 +43,7 @@ internal sealed unsafe class CompareAs : IDisposable
     private readonly IFramework framework;
     private readonly IPluginLog log;
     private readonly Configuration config;
+    private readonly Action save;
     private readonly JobLevels jobLevels;
     private readonly Hook<AgentItemComp.Delegates.CompareItem>? hook;
     private readonly ComparePad pad;
@@ -53,7 +59,7 @@ internal sealed unsafe class CompareAs : IDisposable
     private int page = -1;
 
     public CompareAs(IGameInteropProvider interop, IGameGui gameGui, IAddonLifecycle lifecycle, IFramework framework,
-                     IGamepadState gamepad, IPluginLog log, Configuration config, JobLevels jobLevels)
+                     IGamepadState gamepad, IPluginLog log, Configuration config, Action save, JobLevels jobLevels)
     {
         pad = new ComparePad(interop, gamepad, log);
         this.gameGui = gameGui;
@@ -61,6 +67,7 @@ internal sealed unsafe class CompareAs : IDisposable
         this.framework = framework;
         this.log = log;
         this.config = config;
+        this.save = save;
         this.jobLevels = jobLevels;
         try
         {
@@ -73,15 +80,15 @@ internal sealed unsafe class CompareAs : IDisposable
             log.Warning(e, "Couldn't find the item comparison, so it won't compare with other jobs.");
         }
         framework.Update += OnFrameworkUpdate;
-        lifecycle.RegisterListener(AddonEvent.PreSetup, Addon, Relabel);
-        lifecycle.RegisterListener(AddonEvent.PreRefresh, Addon, Relabel);
+        lifecycle.RegisterListener(AddonEvent.PreSetup, Addon, OnValues);
+        lifecycle.RegisterListener(AddonEvent.PreRefresh, Addon, OnValues);
     }
 
     public void Dispose()
     {
         framework.Update -= OnFrameworkUpdate;
-        lifecycle.UnregisterListener(AddonEvent.PreSetup, Addon, Relabel);
-        lifecycle.UnregisterListener(AddonEvent.PreRefresh, Addon, Relabel);
+        lifecycle.UnregisterListener(AddonEvent.PreSetup, Addon, OnValues);
+        lifecycle.UnregisterListener(AddonEvent.PreRefresh, Addon, OnValues);
         hook?.Dispose();
         pad.Dispose();
     }
@@ -238,28 +245,82 @@ internal sealed unsafe class CompareAs : IDisposable
         }
     }
 
-    // The slot name gets the job, e.g. "Body · WAR"; a refresh that read the current job's gear again is left alone.
-    private void Relabel(AddonEvent type, AddonArgs args)
+    // A refresh that read the current job's gear again is left alone.
+    private void OnValues(AddonEvent type, AddonArgs args)
     {
         var agent = AgentItemComp.Instance();
-        if (shown == null || agent == null || agent->ItemData == null ||
-            agent->ItemData->Items[0].CurrentClassJobId != shown.Id)
+        var values = Values(args);
+        if (agent == null || agent->ItemData == null || values == null)
             return;
 
+        var data = agent->ItemData;
+        var panes = (AddonItemDetailCompare.AtkValuesArray.ComparedItem*)values;
+        if (type == AddonEvent.PreSetup)
+            Learn(data, panes);
+        if (shown == null || data->Items[0].CurrentClassJobId != shown.Id)
+            return;
+        Restate(data, panes, shown);
+        Relabel(ref values->SlotName, shown);
+    }
+
+    private static AddonItemDetailCompare.AtkValuesArray* Values(AddonArgs args)
+    {
         var (values, count) = args switch
         {
             AddonSetupArgs setup => (setup.AtkValues, setup.AtkValueCount),
             AddonRefreshArgs refresh => (refresh.AtkValues, refresh.AtkValueCount),
             _ => ((nint)0, 0u),
         };
-        if (values == 0 || count * sizeof(AtkValue) < sizeof(AddonItemDetailCompare.AtkValuesArray))
-            return;
+        return values == 0 || count * sizeof(AtkValue) < sizeof(AddonItemDetailCompare.AtkValuesArray)
+                   ? null
+                   : (AddonItemDetailCompare.AtkValuesArray*)values;
+    }
 
-        ref var slot = ref ((AddonItemDetailCompare.AtkValuesArray*)values)->SlotName;
+    // Read only as a window opens, before Restate, so the game's own state and look always match.
+    private void Learn(AgentItemComp.ComparedItemData* data, AddonItemDetailCompare.AtkValuesArray.ComparedItem* panes)
+    {
+        var learned = false;
+        for (var i = 0; i < data->Items.Length; i++)
+        {
+            if (data->Items[i].Item.ItemId == 0)
+                continue;
+            var state = data->ItemData[i].EquippableState;
+            var timeline = panes[i].EquippableStateTimelineId.Int;
+            var levelColor = panes[i].RequiredLevelColor.Int;
+            if (config.ComparisonLooks.TryGetValue(state, out var look) && look.Timeline == timeline &&
+                look.LevelColor == levelColor)
+                continue;
+            config.ComparisonLooks[state] = new ComparisonLook { Timeline = timeline, LevelColor = levelColor };
+            learned = true;
+        }
+        if (learned)
+            save();
+    }
+
+    // The game judges each item for the current job, e.g. a level 70 ring is red on SMN 50 even when shown for WAR 70.
+    private void Restate(AgentItemComp.ComparedItemData* data, AddonItemDetailCompare.AtkValuesArray.ComparedItem* panes,
+                         JobLevels.CompareJob job)
+    {
+        for (var i = 0; i < data->Items.Length; i++)
+        {
+            var itemId = data->Items[i].Item.ItemId;
+            if (itemId == 0 || jobLevels.Requirement(itemId, job.Id) is not { } need)
+                continue;
+            var state = !need.ForJob ? NotForJob : job.Level < need.Level ? LevelTooLow : Wearable;
+            if (state == data->ItemData[i].EquippableState || !config.ComparisonLooks.TryGetValue(state, out var look))
+                continue;
+            panes[i].EquippableStateTimelineId.Int = look.Timeline;
+            panes[i].RequiredLevelColor.Int = look.LevelColor;
+        }
+    }
+
+    // The slot name gets the job, e.g. "Body · WAR".
+    private static void Relabel(ref AtkValue slot, JobLevels.CompareJob job)
+    {
         if (slot.Type is not (ValueType.String or ValueType.ManagedString or ValueType.ConstString) || slot.String.Value == null)
             return;
         var name = SeString.Parse(MemoryMarshal.CreateReadOnlySpanFromNullTerminated(slot.String.Value));
-        var suffix = $" · {shown.Abbreviation}";
+        var suffix = $" · {job.Abbreviation}";
         if (name.TextValue.EndsWith(suffix))
             return;
 

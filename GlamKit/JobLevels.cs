@@ -78,6 +78,15 @@ internal sealed unsafe class JobLevels
                (bool)column.GetValue(item.ClassJobCategory.Value)!;
     }
 
+    // Whether the job's category includes the item and the level it needs, or null when race, sex or Grand Company also decide.
+    public (bool ForJob, int Level)? Requirement(uint itemId, uint jobId)
+    {
+        if (!items.TryGetRow(itemId, out var item) || item.EquipRestriction.RowId > 1 || item.GrandCompany.RowId != 0 ||
+            !item.ClassJobCategory.IsValid || !columns.TryGetValue(jobId, out var column))
+            return null;
+        return ((bool)column.GetValue(item.ClassJobCategory.Value)!, item.LevelEquip);
+    }
+
     public SeString? Line(uint itemId, bool hq, SeString original)
     {
         var player = PlayerState.Instance();
