@@ -51,6 +51,9 @@ public sealed class Plugin : IDalamudPlugin
     [PluginService]
     private static IGamepadState Gamepad { get; set; } = null!;
 
+    [PluginService]
+    private static IPlayerState PlayerState { get; set; } = null!;
+
     private readonly Configuration config;
     private readonly WindowSystem windows = new("GlamKit");
     private readonly SettingsWindow settings;
@@ -63,6 +66,8 @@ public sealed class Plugin : IDalamudPlugin
     private readonly CompareAs compareAs;
     private readonly Stored stored;
     private readonly Locations locations;
+    private readonly Wardrobe wardrobe;
+    private readonly ItemMenu itemMenu;
     private readonly PadNav padNav;
 
     public Plugin()
@@ -71,7 +76,6 @@ public sealed class Plugin : IDalamudPlugin
         config = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
 
         glamOff = new GlamOff(ContextMenu, GameGui, config);
-        menu = new KeeperMenu(ContextMenu, GameGui, DataManager, config, SetKept, SetLater, SetWished);
         tooltip = new NativeTooltip(AddonLifecycle);
         highlight = new SlotHighlight(GameGui, DataManager, config);
         var jobLevels = new JobLevels(DataManager, config);
@@ -79,9 +83,15 @@ public sealed class Plugin : IDalamudPlugin
         compareAs = new CompareAs(GameInterop, GameGui, AddonLifecycle, Framework, Gamepad, Log, config, Save, jobLevels);
         stored = new Stored(Framework, ClientState, ChatGui, DataManager, config, Save);
         locations = new Locations(Framework, ClientState, PluginInterface, Log, config);
+        wardrobe = new Wardrobe(Framework, PlayerState, DataManager, config, Save, jobLevels);
+        itemMenu = new ItemMenu(ContextMenu, GameGui, PluginInterface, DataManager, ChatGui, Log, config,
+                                id => stored.Has(id) || wardrobe.Holds(id), SetKept, SetLater, SetWished);
+        menu = new KeeperMenu(ContextMenu, GameGui, DataManager, config, SetKept, SetLater, SetWished,
+                              () => itemMenu.Opening);
 
         settings = new SettingsWindow(config, Save);
-        window = new KeeperWindow(config, Save, locations, DataManager, TextureProvider, tooltip, () => settings.IsOpen = true);
+        window = new KeeperWindow(config, Save, locations, wardrobe, itemMenu, DataManager, TextureProvider, tooltip,
+                                  () => settings.IsOpen = true);
         windows.AddWindow(window);
         windows.AddWindow(settings);
         padNav = new PadNav(GameInterop, Gamepad, Log, windows);
@@ -129,6 +139,7 @@ public sealed class Plugin : IDalamudPlugin
 
     private void Draw()
     {
+        itemMenu.Update();
         padNav.Update();
         windows.Draw();
         highlight.Draw();
@@ -147,6 +158,8 @@ public sealed class Plugin : IDalamudPlugin
         compareAs.Dispose();
         stored.Dispose();
         locations.Dispose();
+        wardrobe.Dispose();
+        itemMenu.Dispose();
         PluginInterface.UiBuilder.Draw -= Draw;
         PluginInterface.UiBuilder.OpenMainUi -= window.Toggle;
         PluginInterface.UiBuilder.OpenConfigUi -= settings.Toggle;

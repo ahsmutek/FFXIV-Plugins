@@ -43,6 +43,9 @@ internal sealed unsafe class Stored : IDisposable
 
     public void Dispose() => framework.Update -= OnUpdate;
 
+    // Whether a wished item would come straight off the wishlist.
+    public bool Has(uint itemId) => Held(itemId) != null || Stash(InDresser(), itemId) != null;
+
     private void OnUpdate(IFramework _)
     {
         var glam = config.GlamKeeperEnabled && config.Items.Count > 0;

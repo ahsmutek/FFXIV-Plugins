@@ -29,6 +29,9 @@ internal sealed class SettingsWindow : Window
     private readonly Configuration config;
     private readonly Action save;
 
+    public static string SlotName(int slot) =>
+        UpgradeSlots.SelectMany(row => row).FirstOrDefault(s => (int)s.Slot == slot).Name ?? "Other";
+
     public SettingsWindow(Configuration config, Action save)
         : base("GlamKit settings###GlamKitSettings", ImGuiWindowFlags.AlwaysAutoResize)
     {

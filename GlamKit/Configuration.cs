@@ -54,11 +54,46 @@ public sealed class Configuration : IPluginConfiguration
 
     public List<KeptItem> WishItems { get; set; } = [];
 
+    // Each character's glamour dresser and armoire as last seen, by content ID; HQ items are 1,000,000 on.
+    public Dictionary<ulong, List<uint>> Dressers { get; set; } = [];
+
+    public Dictionary<ulong, List<uint>> Armoires { get; set; } = [];
+
+    public UpgradeGrouping UpgradeGrouping { get; set; } = UpgradeGrouping.Job;
+
+    // The jobs the Upgrades tab hides each item for, by item ID.
+    public Dictionary<uint, HashSet<uint>> NotUpgrades { get; set; } = [];
+
     public bool IsKept(uint itemId) => itemId != 0 && Items.Exists(i => i.ItemId == itemId);
 
     public bool IsKeptForLater(uint itemId) => itemId != 0 && LaterItems.Exists(i => i.ItemId == itemId);
 
     public bool IsWished(uint itemId) => itemId != 0 && WishItems.Exists(i => i.ItemId == itemId);
+
+    public bool IsNotUpgrade(uint itemId, uint jobId) =>
+        NotUpgrades.TryGetValue(itemId, out var jobs) && jobs.Contains(jobId);
+
+    public void SetNotUpgrade(uint itemId, uint jobId, bool notUpgrade)
+    {
+        if (notUpgrade)
+        {
+            if (!NotUpgrades.TryGetValue(itemId, out var added))
+                NotUpgrades[itemId] = added = [];
+            added.Add(jobId);
+        }
+        else if (NotUpgrades.TryGetValue(itemId, out var listed) && listed.Remove(jobId) && listed.Count == 0)
+        {
+            NotUpgrades.Remove(itemId);
+        }
+    }
+}
+
+public enum UpgradeGrouping
+{
+    Job,
+    Slot,
+    Place,
+    None,
 }
 
 public sealed class ComparisonLook

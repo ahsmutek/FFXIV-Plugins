@@ -28,7 +28,10 @@ Open the item menu on gear and choose **Keep for Glam** (or **Stop Keeping for G
   what's in them once you've opened them this session.
 
 `/glamkit` lists everything kept and where it is now (Equipped, Armoury Chest, Inventory, and with
-Allagan Tools, Saddlebag and Retainer).
+Allagan Tools, Saddlebag and Retainer). Right-click an item there (or X on a controller) for the game's item menu,
+beside the window, with **Try On**, **Link**, **Open in Crafting Log** for crafted gear, **Vendor location** with Item
+Vendor Location, **Copy Item Name**, and the keep and wishlist entries. Link prints the item's link in your chat log,
+only for you; the game's menu on that link puts it in the chat box.
 
 Gear is kept by item, so every copy of the same item counts as kept.
 
@@ -93,6 +96,16 @@ gear set, your current one included; on a controller, L1 and R1 do the same whil
 The item is compared with the piece from that job's best gear set, as long as it's in your bags, Armoury Chest or equipped.
 If it's somewhere else, e.g. with a retainer, there's nothing to compare it with.
 
+## Upgrades
+
+`/glamkit`'s Upgrades tab lists gear in your glamour dresser and armoire that's an upgrade for one of your jobs, by Job
+Levels' ▲ and its settings, so you can take it out and wear it. A gear set's piece left there counts too, as the set is
+missing it. Group the list by job, slot, dresser or armoire, or not at all; your current job comes first. It comes from
+the last time you opened each, kept for each character.
+
+If a piece isn't really an upgrade for a job, choose **Not an Upgrade for WAR** (or whichever job) in its item menu to
+take it off the list for that job. **Show hidden** brings those back, and **Show as Upgrade for WAR** undoes it.
+
 ## How it works
 
 Glam Off calls the Fitting Room the same way the menu's **Try On** does, with the glamour left out.
@@ -111,6 +124,12 @@ copy from your Armoury Chest or bags. A comparison the game opens some other way
 keeping the item's own materia and dye. If a patch breaks the hook, Item Comparison works as it always has. The game
 colours equip levels for your current job, so they're recoloured for the job shown, in the colours GlamKit has seen
 the game use: after your first comparison of gear your current job can wear, they're right from then on.
+
+Upgrades reads the dresser's and armoire's contents from the client once you've opened them and saves the item lists
+in GlamKit's settings file on your PC.
+
+`/glamkit`'s item menu is the game's context menu, opened empty and filled through Dalamud the way plugins add to the
+game's menus. If it doesn't open, an ImGui menu with the same entries shows instead.
 
 `/glamkit debug` writes what each inventory window shows to the Dalamud log, for when a border is
 missing or misplaced.

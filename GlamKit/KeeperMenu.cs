@@ -8,6 +8,9 @@ namespace GlamKit;
 
 internal sealed class KeeperMenu : IDisposable
 {
+    public const ushort GlamColor = 37;
+    public const ushort LaterColor = 45;
+
     private const uint SoulCrystal = 62;
 
     private readonly IContextMenu contextMenu;
@@ -17,10 +20,12 @@ internal sealed class KeeperMenu : IDisposable
     private readonly Action<uint, bool> setKept;
     private readonly Action<uint, bool> setLater;
     private readonly Action<uint, bool> setWished;
+    private readonly Func<bool> ownMenuOpening;
     private readonly ushort pink;
 
     public KeeperMenu(IContextMenu contextMenu, IGameGui gameGui, IDataManager data, Configuration config,
-                      Action<uint, bool> setKept, Action<uint, bool> setLater, Action<uint, bool> setWished)
+                      Action<uint, bool> setKept, Action<uint, bool> setLater, Action<uint, bool> setWished,
+                      Func<bool> ownMenuOpening)
     {
         this.contextMenu = contextMenu;
         this.gameGui = gameGui;
@@ -29,6 +34,7 @@ internal sealed class KeeperMenu : IDisposable
         this.setKept = setKept;
         this.setLater = setLater;
         this.setWished = setWished;
+        this.ownMenuOpening = ownMenuOpening;
         pink = ItemTooltip.Nearest(data, ItemTooltip.Pink);
         contextMenu.OnMenuOpened += OnMenuOpened;
     }
@@ -37,6 +43,9 @@ internal sealed class KeeperMenu : IDisposable
 
     private void OnMenuOpened(IMenuOpenedArgs args)
     {
+        // /glamkit's menu has no window, which the venture report's check would take for the report's.
+        if (ownMenuOpening())
+            return;
         if (ItemLists.IsShop(args.AddonName))
             AddWish(args, ItemLists.MenuItemId(args, gameGui), true);
         else if (ItemLists.ChatLinkItemId(args) is var linked and not 0)
@@ -70,7 +79,7 @@ internal sealed class KeeperMenu : IDisposable
             {
                 Name = kept ? "Stop Keeping for Glam" : "Keep for Glam",
                 Prefix = SeIconChar.BoxedLetterG,
-                PrefixColor = 37,
+                PrefixColor = GlamColor,
                 OnClicked = _ => setKept(itemId, !kept),
             });
         }
@@ -81,7 +90,7 @@ internal sealed class KeeperMenu : IDisposable
             {
                 Name = later ? "Stop Keeping for Later" : "Keep for Later",
                 Prefix = SeIconChar.BoxedLetterL,
-                PrefixColor = 45,
+                PrefixColor = LaterColor,
                 OnClicked = _ => setLater(itemId, !later),
             });
         }

@@ -53,6 +53,14 @@ internal sealed unsafe class NativeTooltip : IDisposable
         screen = ImGui.GetMainViewport().Size;
     }
 
+    public void Hide()
+    {
+        hoveredThisFrame = 0;
+        if (shown != 0)
+            Close();
+        shown = 0;
+    }
+
     public void EndFrame()
     {
         var hovered = hoveredThisFrame;
@@ -98,9 +106,15 @@ internal sealed unsafe class NativeTooltip : IDisposable
             return;
 
         var size = new Vector2(addon->RootNode->Width, addon->RootNode->Height) * addon->Scale;
+        var position = Beside(size, cursor.Y - size.Y / 2, avoidMin, avoidMax, screen);
+        addon->SetPosition((short)position.X, (short)position.Y);
+    }
+
+    // Right of the window if there's room, else left of it, and on screen.
+    public static Vector2 Beside(Vector2 size, float top, Vector2 avoidMin, Vector2 avoidMax, Vector2 screen)
+    {
         var x = avoidMax.X + Gap + size.X <= screen.X ? avoidMax.X + Gap : avoidMin.X - Gap - size.X;
-        var y = Math.Clamp(cursor.Y - size.Y / 2, 0, Math.Max(0, screen.Y - size.Y));
-        addon->SetPosition((short)Math.Max(0, x), (short)y);
+        return new Vector2(Math.Max(0, x), Math.Clamp(top, 0, Math.Max(0, screen.Y - size.Y)));
     }
 
     public void Dispose()

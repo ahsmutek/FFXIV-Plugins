@@ -137,13 +137,39 @@ internal sealed unsafe class JobLevels
     // Jobs that can wear the item and have a gear set, each with its best set's pieces for the item's slots.
     public List<CompareJob> CompareJobs(uint itemId, bool hq)
     {
+        if (Wearers(itemId, out var item) is not { } jobs)
+            return [];
+        var slots = Gearsets.Slots(item.EquipSlotCategory.Value);
+        return Compare(item, hq, jobs, Gearsets.Held(slots), MarksUpgrades(slots));
+    }
+
+    // The jobs each piece is an upgrade for, reading the gear sets once per slot rather than once per piece.
+    public List<List<CompareJob>> Upgrades(IEnumerable<(uint Id, bool Hq)> pieces)
+    {
+        var heldBySlot = new Dictionary<int, List<(uint ClassJob, Gearsets.Piece[] Pieces)>>();
+        return pieces.Select(p => UpgradesFor(p.Id, p.Hq, heldBySlot)).ToList();
+    }
+
+    private List<CompareJob> UpgradesFor(uint itemId, bool hq,
+                                         Dictionary<int, List<(uint ClassJob, Gearsets.Piece[] Pieces)>> heldBySlot)
+    {
+        if (Wearers(itemId, out var item) is not { } jobs)
+            return [];
+        var slots = Gearsets.Slots(item.EquipSlotCategory.Value);
+        if (!MarksUpgrades(slots))
+            return [];
+        if (!heldBySlot.TryGetValue(slots[0], out var held))
+            heldBySlot[slots[0]] = held = Gearsets.Held(slots);
+        return Compare(item, hq, jobs, held, true).Where(j => j.Upgrade).ToList();
+    }
+
+    private List<CompareJob> Compare(Item item, bool hq, Job[] jobs, List<(uint ClassJob, Gearsets.Piece[] Pieces)> held,
+                                     bool marks)
+    {
         var player = PlayerState.Instance();
-        if (player == null || Wearers(itemId, out var item) is not { } jobs)
+        if (player == null)
             return [];
 
-        var slots = Gearsets.Slots(item.EquipSlotCategory.Value);
-        var held = Gearsets.Held(slots);
-        var marks = MarksUpgrades(slots);
         var compared = new List<CompareJob>();
         foreach (var job in jobs)
         {
