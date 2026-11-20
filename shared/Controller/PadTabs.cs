@@ -10,10 +10,10 @@ internal sealed class PadTabs
     private int current;
     private int select = -1;
 
-    public bool Item(string label)
+    public bool Item(string label, bool selectNow = false)
     {
         var index = count++;
-        var open = ImGui.BeginTabItem(label, index == select ? ImGuiTabItemFlags.SetSelected : ImGuiTabItemFlags.None);
+        var open = ImGui.BeginTabItem(label, index == select || selectNow ? ImGuiTabItemFlags.SetSelected : ImGuiTabItemFlags.None);
         if (open)
             current = index;
         return open;

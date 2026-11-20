@@ -72,6 +72,11 @@ borders the mount you're riding in the Mount Guide and the minion you have out i
 **Minimap Zoom** lets the minimap zoom out past the game's 1.25 limit, down to 0.25, and keeps your zoom
 across job changes, zoning and logins. `/sundries`
 
+### [Commendable](Commendable/)
+Remembers what other players chose to do for you during a duty (raises, partners, protection, cards, Esuna) and who
+used limit breaks, and shows it when the duty ends, so commending is easy. Bookmark players with a note from their
+right-click menu. `/commendable`
+
 ### [Icon Atlas](IconAtlas/)
 Every game icon ID range, from job actions to map markers and plate frames, with the icons
 drawn from your game files. Search ranges or jump to an ID, then inspect and copy an icon's

@@ -1,0 +1,14 @@
+{
+  "Author": "Kotanna",
+  "Name": "Commendable",
+  "Punchline": "Remembers who helped you in a duty, for the player commendation.",
+  "Description": "Records what other players chose to do for you during a duty: raises, Dance Partner, Kardia, Synastry and Fey Union, protection, cards, Esuna and more. When the duty ends it shows a per-player summary beside the game's commendation window, with an event log for each player. Bookmark players with a note from their right-click menu. A memory aid only: no scores, and it never commends for you. /commendable",
+  "ApplicableVersion": "any",
+  "IconUrl": "https://raw.githubusercontent.com/ahsmutek/FFXIV-Plugins/main/Commendable/images/icon.png",
+  "Tags": [
+    "commendation",
+    "duty",
+    "party",
+    "ui"
+  ]
+}
