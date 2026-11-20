@@ -196,7 +196,8 @@ internal sealed class WheelOverlay(WheelInput input, WheelSet wheels, IconCache 
         if (entry.Glyph is { } pluginGlyph)
             DrawGlyph(dl, pluginGlyph, pos, size, shade);
         else
-            icons.Get(entry.IconId, entry.KeyOutIcon).Draw(dl, min, max, ImGui.GetColorU32(new Vector4(shade, shade, shade, 1f)));
+            (entry.IconFile is { } file ? icons.FromFile(file) : icons.Get(entry.IconId, entry.KeyOutIcon))
+                .Draw(dl, min, max, ImGui.GetColorU32(new Vector4(shade, shade, shade, 1f)));
 
         if (entry.Count is { } count)
             DrawOutlinedText(dl, count.ToString(), max, size * 0.34f, Align.BottomRight);

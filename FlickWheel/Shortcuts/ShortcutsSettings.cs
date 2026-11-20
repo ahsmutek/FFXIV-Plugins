@@ -61,7 +61,7 @@ internal sealed class ShortcutsSettings(Configuration config, ShortcutsModule mo
             picker.Open(addTo.Name, shortcut => addTo.Entries.Add(new ShortcutEntry
             {
                 Kind = shortcut.Kind, RowId = shortcut.RowId, Command = shortcut.Command, Label = shortcut.Label,
-                IconId = shortcut.IconId,
+                IconId = shortcut.IconId, IconPlugin = shortcut.IconPlugin,
             }));
         changed |= picker.Draw();
 
@@ -288,7 +288,8 @@ internal sealed class ShortcutsSettings(Configuration config, ShortcutsModule mo
         };
         if (info.IconId == 0 && pluginIcons.Of(entry) is { } glyph)
             return new RowIcon(entry.Uid, null, glyph.Glyph.ToString(), tooltip, !available, IconFont: true);
-        var texture = info.IconId != 0 ? icons.Get(info.IconId, info.KeyOutIcon) : (GameIcon?)null;
+        var texture = pluginIcons.FileOf(entry) is { } file ? icons.FromFile(file)
+                      : info.IconId != 0 ? icons.Get(info.IconId, info.KeyOutIcon) : (GameIcon?)null;
         return new RowIcon(entry.Uid, texture, Short(info.Name), tooltip, !available);
     }
 
@@ -311,17 +312,14 @@ internal sealed class ShortcutsSettings(Configuration config, ShortcutsModule mo
             iconPicker.Button("Choose icon…", entry.Label ?? "a Flick Wheel shortcut", entry.IconId, picked =>
             {
                 entry.IconId = picked;
+                entry.IconPlugin = null;
+                iconPicked = true;
+            }, pluginIcons.PluginOf(entry), plugin =>
+            {
+                entry.IconId = 0;
+                entry.IconPlugin = plugin;
                 iconPicked = true;
             });
-            if (entry.IconId != 0)
-            {
-                ImGui.SameLine();
-                if (ImGui.Button("Default icon"))
-                {
-                    entry.IconId = 0;
-                    changed = true;
-                }
-            }
         }
         else
         {
@@ -330,9 +328,16 @@ internal sealed class ShortcutsSettings(Configuration config, ShortcutsModule mo
             if (ImGui.InputInt("Icon ID (0 = default)", ref icon))
             {
                 entry.IconId = (uint)Math.Max(0, icon);
+                entry.IconPlugin = null;
                 changed = true;
             }
             ImGui.TextDisabled("Load Icon Atlas to choose from every icon.");
+        }
+        if (ImGui.MenuItem("Use default icon", false, entry.IconId != 0 || entry.IconPlugin != null))
+        {
+            entry.IconId = 0;
+            entry.IconPlugin = null;
+            changed = true;
         }
 
         if (entry.Kind is ShortcutKind.Command or ShortcutKind.Text)

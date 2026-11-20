@@ -28,4 +28,4 @@ public interface IShortcut
 }
 
 public readonly record struct PickedShortcut(ShortcutKind Kind, uint RowId, string? Command = null, string? Label = null,
-                                             uint IconId = 0);
+                                             uint IconId = 0, string? IconPlugin = null);

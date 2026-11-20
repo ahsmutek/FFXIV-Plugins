@@ -9,7 +9,9 @@ using IconAtlasClient;
 
 namespace Shortcuts;
 
-internal sealed class ShortcutPicker(ShortcutCatalog catalog, IconCache icons, IconPicker? iconPicker = null)
+// With pluginIconFile (a plugin's internal name → its icon file), plugins' own icons can be chosen for commands.
+internal sealed class ShortcutPicker(ShortcutCatalog catalog, IconCache icons, IconPicker? iconPicker = null,
+                                     Func<string, string?>? pluginIconFile = null)
 {
     private const string Popup = "##addShortcut";
 
@@ -22,6 +24,7 @@ internal sealed class ShortcutPicker(ShortcutCatalog catalog, IconCache icons, I
     private string newLabel = string.Empty;
     private string newCommand = string.Empty;
     private int newIcon;
+    private string? newIconPlugin;
     private List<ShortcutChoice>? menus;
     private List<ShortcutChoice>? actions;
     private List<ShortcutChoice> items = [];
@@ -193,13 +196,22 @@ internal sealed class ShortcutPicker(ShortcutCatalog catalog, IconCache icons, I
             iconPicker.Button("Choose icon…", purpose, (uint)newIcon, picked =>
             {
                 newIcon = (int)picked;
+                newIconPlugin = null;
+                reopen = true;
+            }, newIconPlugin, pluginIconFile == null ? null : plugin =>
+            {
+                newIcon = 0;
+                newIconPlugin = plugin;
                 reopen = true;
             });
-            if (newIcon > 0)
+            if (newIcon > 0 || newIconPlugin != null)
             {
                 ImGui.SameLine();
                 if (ImGui.Button("Default icon"))
+                {
                     newIcon = 0;
+                    newIconPlugin = null;
+                }
             }
         }
         else
@@ -215,15 +227,21 @@ internal sealed class ShortcutPicker(ShortcutCatalog catalog, IconCache icons, I
             icons.Get((uint)newIcon, false).Image(new Vector2(40f));
             ImGui.SameLine();
         }
+        else if (newIconPlugin != null && pluginIconFile?.Invoke(newIconPlugin) is { } file)
+        {
+            icons.FromFile(file).Image(new Vector2(40f));
+            ImGui.SameLine();
+        }
 
         ImGui.BeginDisabled(newCommand.Trim().Length == 0 || !newCommand.TrimStart().StartsWith('/'));
         if (ImGui.Button("Add"))
         {
             var command = newCommand.Trim();
             add!(new PickedShortcut(catalog.IsPluginCommand(command) ? ShortcutKind.Command : ShortcutKind.Text, 0, command,
-                                    newLabel.Trim().Length > 0 ? newLabel.Trim() : null, (uint)newIcon));
+                                    newLabel.Trim().Length > 0 ? newLabel.Trim() : null, (uint)newIcon, newIconPlugin));
             newCommand = newLabel = string.Empty;
             newIcon = 0;
+            newIconPlugin = null;
             changed = true;
             ImGui.CloseCurrentPopup();
         }

@@ -22,6 +22,8 @@ internal sealed class IconCache(IDataManager data, ITextureProvider textures) : 
             : textures.GetFromGame($"ui/icon/{iconId / 1000 * 1000:D6}/{iconId:D6}.tex").GetWrapOrEmpty());
     }
 
+    public GameIcon FromFile(string path) => GameIcon.Of(textures.GetFromFile(path).GetWrapOrEmpty());
+
     public void Dispose()
     {
         foreach (var wrap in keyed.Values)

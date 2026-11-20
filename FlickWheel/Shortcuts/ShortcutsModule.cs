@@ -28,8 +28,8 @@ internal sealed class ShortcutsModule : IWheelModule
             save();
         }
 
-        settings = new ShortcutsSettings(config, this, catalog, icons, overlay, new ShortcutPicker(catalog, icons, iconPicker), iconPicker,
-                                         pluginIcons);
+        var picker = new ShortcutPicker(catalog, icons, iconPicker, pluginIcons.FileOfPlugin);
+        settings = new ShortcutsSettings(config, this, catalog, icons, overlay, picker, iconPicker, pluginIcons);
     }
 
     public IReadOnlyList<IWheel> Wheels => AllWheels().Select(Wrap).ToList();
@@ -141,7 +141,8 @@ internal sealed class ShortcutsModule : IWheelModule
                 var count = module.catalog.Count(entry);
                 entries.Add(new WheelEntry(slot, info.Name, info.IconId, () => module.catalog.Run(entry),
                                            KeyOutIcon: info.KeyOutIcon, Faded: !available || count == 0, Count: count,
-                                           Glyph: info.IconId == 0 ? module.pluginIcons.Of(entry) : null));
+                                           Glyph: info.IconId == 0 ? module.pluginIcons.Of(entry) : null,
+                                           IconFile: module.pluginIcons.FileOf(entry)));
             }
 
             return entries;

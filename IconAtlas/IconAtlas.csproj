@@ -7,6 +7,11 @@
     <IsPackable>false</IsPackable>
   </PropertyGroup>
 
+  <!-- Finding plugins' own icons, shared with the plugins that choose icons here. -->
+  <ItemGroup>
+    <Compile Include="../shared/IconAtlas/PluginIconFile.cs" LinkBase="shared/IconAtlas" />
+  </ItemGroup>
+
   <!-- Controller navigation in the windows, shared by most plugins. -->
   <ItemGroup>
     <Compile Include="../shared/Controller/*.cs" LinkBase="shared/Controller" />

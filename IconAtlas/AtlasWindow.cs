@@ -11,13 +11,17 @@ using Dalamud.Interface.Textures;
 using Dalamud.Interface.Textures.TextureWraps;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Windowing;
+using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
+using IconAtlasClient;
 
 namespace IconAtlas;
 
 internal sealed class AtlasWindow : Window, IDisposable
 {
-    private enum View { Range, Group, Favorites }
+    private enum View { Range, Group, Favorites, Plugins }
+
+    private sealed record PluginIcon(string InternalName, string Name, string Path);
 
     private static readonly Vector4 Dim = new(0.6f, 0.6f, 0.6f, 1f);
     private static readonly Vector4 Gold = new(0.85f, 0.7f, 0.37f, 1f);
@@ -27,6 +31,7 @@ internal sealed class AtlasWindow : Window, IDisposable
     private readonly Configuration config;
     private readonly Action save;
     private readonly ITextureProvider textures;
+    private readonly IDalamudPluginInterface pluginInterface;
 
     // Range index → the IDs in it that have an icon file, filled in the background.
     private readonly ConcurrentDictionary<int, uint[]> existing = new();
@@ -44,20 +49,23 @@ internal sealed class AtlasWindow : Window, IDisposable
     private string goTo = string.Empty;
     private bool scrollToSelected = true;
     private bool scrollToRange = true;
-    // Set while another plugin asked for an icon, through the IconAtlas.Pick IPC.
-    private (string Token, string Purpose)? picking;
+    // Set while another plugin asked for an icon, through the IconAtlas.Pick IPC; Plugins when it takes plugin icons too.
+    private (string Token, string Purpose, bool Plugins)? picking;
     private int columns = 1;
+    private List<PluginIcon> pluginIcons = [];
+    private string? selectedPlugin;
 
     private string idsKey = string.Empty;
     private uint[] ids = [];
     private int favoritesVersion;
 
-    public AtlasWindow(Configuration config, Action save, ITextureProvider textures)
+    public AtlasWindow(Configuration config, Action save, ITextureProvider textures, IDalamudPluginInterface pluginInterface)
         : base("Icon Atlas###IconAtlas")
     {
         this.config = config;
         this.save = save;
         this.textures = textures;
+        this.pluginInterface = pluginInterface;
         Size = new Vector2(1000, 660);
         SizeCondition = ImGuiCond.FirstUseEver;
         range = Ranges.Find(config.LastId) ?? Ranges.All[0];
@@ -76,18 +84,34 @@ internal sealed class AtlasWindow : Window, IDisposable
             group = found.Group;
             Expand(found.Group);
         }
+        else if (view == View.Plugins)
+            view = View.Range;
         scrollToSelected = scrollToRange = true;
     }
 
     public event Action<string, uint>? Picked;
 
-    public void Pick(string token, string purpose, uint current)
+    public event Action<string, string>? PickedPlugin;
+
+    public void Pick(string token, string purpose, uint current) => Pick(token, purpose, current, string.Empty, false);
+
+    public void PickWithPlugins(string token, string purpose, uint current, string currentPlugin) =>
+        Pick(token, purpose, current, currentPlugin, true);
+
+    private void Pick(string token, string purpose, uint current, string currentPlugin, bool plugins)
     {
-        picking = (token, purpose);
+        picking = (token, purpose, plugins);
+        IsOpen = true;
+        if (plugins && currentPlugin.Length > 0 && LoadPluginIcons().Any(p => p.InternalName == currentPlugin))
+        {
+            view = View.Plugins;
+            selectedPlugin = currentPlugin;
+            return;
+        }
+        if (!plugins && view == View.Plugins)
+            view = View.Range;
         if (current > 0)
             Show(current);
-        else
-            IsOpen = true;
     }
 
     public void Search(string text)
@@ -126,10 +150,20 @@ internal sealed class AtlasWindow : Window, IDisposable
         var detailHeight = PreviewSize * scale + ImGui.GetStyle().WindowPadding.Y * 2;
         var gridHeight = ImGui.GetContentRegionAvail().Y - detailHeight - ImGui.GetStyle().ItemSpacing.Y;
         if (ImGui.BeginChild("##grid", new Vector2(0, gridHeight), true, ImGuiWindowFlags.NavFlattened))
-            DrawGrid();
+        {
+            if (view == View.Plugins)
+                DrawPluginGrid();
+            else
+                DrawGrid();
+        }
         ImGui.EndChild();
         if (ImGui.BeginChild("##detail", Vector2.Zero, true, ImGuiWindowFlags.NavFlattened))
-            DrawDetail();
+        {
+            if (view == View.Plugins)
+                DrawPluginDetail();
+            else
+                DrawDetail();
+        }
         ImGui.EndChild();
         ImGui.EndGroup();
 
@@ -160,7 +194,11 @@ internal sealed class AtlasWindow : Window, IDisposable
         ImGui.PushStyleColor(ImGuiCol.Text, Gold);
         if (ImGui.Selectable("Favorites##favorites", view == View.Favorites))
             ShowFavorites();
+        if (ImGui.Selectable("Plugins##plugins", view == View.Plugins))
+            ShowPlugins();
         ImGui.PopStyleColor();
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip("Plugins' own icons, for the plugins on this PC that have one");
 
         var searching = query.Trim().Length > 0;
         if (!searching && (config.PinnedGroups.Count > 0 || config.PinnedRanges.Count > 0))
@@ -288,10 +326,20 @@ internal sealed class AtlasWindow : Window, IDisposable
             return;
         ImGui.TextColored(Gold, $"Choosing an icon for {pick.Purpose}");
         ImGui.SameLine();
-        ImGui.BeginDisabled(!textures.TryGetIconPath(new GameIconLookup(selected), out _));
+        var plugins = view == View.Plugins;
+        ImGui.BeginDisabled(plugins
+                                ? !pick.Plugins || SelectedPluginIcon() == null
+                                : !textures.TryGetIconPath(new GameIconLookup(selected), out _));
         if (ImGui.Button("Use this icon"))
-            Use(selected);
+        {
+            if (plugins)
+                UsePlugin(selectedPlugin!);
+            else
+                Use(selected);
+        }
         ImGui.EndDisabled();
+        if (plugins && !pick.Plugins && ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+            ImGui.SetTooltip($"Only game icons can be used for {pick.Purpose}.");
         ImGui.SameLine();
         if (ImGui.Button("Cancel"))
             IsOpen = false;
@@ -306,6 +354,14 @@ internal sealed class AtlasWindow : Window, IDisposable
         IsOpen = false;
     }
 
+    private void UsePlugin(string internalName)
+    {
+        if (picking is not { Plugins: true } pick)
+            return;
+        PickedPlugin?.Invoke(pick.Token, internalName);
+        IsOpen = false;
+    }
+
     private void DrawHeader()
     {
         switch (view)
@@ -315,6 +371,10 @@ internal sealed class AtlasWindow : Window, IDisposable
                 ImGui.TextColored(Dim, config.Favorites.Count == 0
                                            ? "Right-click an icon, or use Favorite below it, to add it here."
                                            : $"{config.Favorites.Count:N0} icons · right-click one to remove it");
+                break;
+            case View.Plugins:
+                ImGui.TextUnformatted("Plugins");
+                ImGui.TextColored(Dim, $"{pluginIcons.Count} with an icon on this PC");
                 break;
             case View.Group:
                 var inGroup = InGroup(group);
@@ -332,16 +392,19 @@ internal sealed class AtlasWindow : Window, IDisposable
                 break;
         }
 
-        var onlyExisting = config.OnlyExisting;
-        if (ImGui.Checkbox("Only IDs with an icon", ref onlyExisting))
+        if (view != View.Plugins)
         {
-            config.OnlyExisting = onlyExisting;
-            scrollToSelected = true;
-            save();
+            var onlyExisting = config.OnlyExisting;
+            if (ImGui.Checkbox("Only IDs with an icon", ref onlyExisting))
+            {
+                config.OnlyExisting = onlyExisting;
+                scrollToSelected = true;
+                save();
+            }
+            ImGui.SameLine();
         }
 
         var scale = ImGuiHelpers.GlobalScale;
-        ImGui.SameLine();
         ImGui.SetNextItemWidth(120 * scale);
         var size = config.TileSize;
         if (ImGui.SliderInt("Size", ref size, 32, 96))
@@ -448,13 +511,7 @@ internal sealed class AtlasWindow : Window, IDisposable
         if (view != View.Range && Ranges.Find(id) is { } described)
             ImGui.TextColored(Dim, described.Description);
         if (wrap != null)
-        {
-            var preview = PreviewSize * ImGuiHelpers.GlobalScale;
-            var pos = ImGui.GetCursorScreenPos();
-            ImGui.Dummy(new Vector2(preview));
-            DrawFitted(ImGui.GetWindowDrawList(), wrap, pos, pos + new Vector2(preview));
-            ImGui.TextColored(Dim, $"{wrap.Width}×{wrap.Height}");
-        }
+            TooltipPreview(wrap);
         else
             ImGui.TextColored(Dim, "No icon");
         var pad = PadNav.Navigating;
@@ -464,17 +521,89 @@ internal sealed class AtlasWindow : Window, IDisposable
         ImGui.EndTooltip();
     }
 
+    private void DrawPluginGrid()
+    {
+        if (pluginIcons.Count == 0)
+        {
+            ImGui.TextColored(Dim, "No plugin has its icon on this PC. Dev plugins keep theirs at images/icon.png beside the DLL.");
+            return;
+        }
+
+        var tile = config.TileSize * ImGuiHelpers.GlobalScale;
+        var spacing = ImGui.GetStyle().ItemSpacing.X;
+        columns = Math.Max(1, (int)((ImGui.GetContentRegionAvail().X + spacing) / (tile + spacing)));
+        var drawList = ImGui.GetWindowDrawList();
+        for (var i = 0; i < pluginIcons.Count; i++)
+        {
+            if (i % columns != 0)
+                ImGui.SameLine();
+            DrawPluginTile(drawList, pluginIcons[i], tile);
+        }
+    }
+
+    private void DrawPluginTile(ImDrawListPtr drawList, PluginIcon plugin, float size)
+    {
+        var min = ImGui.GetCursorScreenPos();
+        var max = min + new Vector2(size);
+        var tileId = ImGui.GetID($"##p{plugin.InternalName}");
+        if (ImGui.InvisibleButton($"##p{plugin.InternalName}", new Vector2(size)) ||
+            ImGui.GetCurrentContext().NavJustMovedToId == tileId)
+            selectedPlugin = plugin.InternalName;
+        var usable = picking is { Plugins: true };
+        if (usable && ((ImGui.IsItemHovered() && ImGui.IsMouseDoubleClicked(ImGuiMouseButton.Left)) ||
+                       (ImGui.IsItemFocused() && ImGui.IsKeyPressed(ImGuiKey.GamepadFaceLeft, false))))
+            UsePlugin(plugin.InternalName);
+        var hovered = ImGui.IsItemHovered();
+
+        var rounding = ImGui.GetStyle().FrameRounding;
+        drawList.AddRectFilled(min, max, ImGui.GetColorU32(hovered ? ImGuiCol.FrameBgHovered : ImGuiCol.FrameBg),
+                               rounding);
+        var wrap = PluginWrap(plugin);
+        if (wrap != null)
+            DrawFitted(drawList, wrap, min + new Vector2(3), max - new Vector2(3));
+        if (plugin.InternalName == selectedPlugin)
+            drawList.AddRect(min, max, ImGui.GetColorU32(Gold), rounding, ImDrawFlags.None, 2f);
+
+        if (!hovered)
+            return;
+        ImGui.BeginTooltip();
+        ImGui.TextUnformatted(plugin.Name);
+        if (wrap != null)
+            TooltipPreview(wrap);
+        if (usable)
+            ImGui.TextColored(Dim, PadNav.Navigating ? "X to use" : "Double-click to use");
+        ImGui.EndTooltip();
+    }
+
+    private void DrawPluginDetail()
+    {
+        var plugin = SelectedPluginIcon();
+        var wrap = plugin != null ? PluginWrap(plugin) : null;
+        DrawPreview(wrap);
+        if (plugin == null)
+            return;
+
+        ImGui.SameLine();
+        ImGui.BeginGroup();
+        ImGui.TextUnformatted(plugin.Name);
+        ImGui.SameLine();
+        ImGui.TextColored(Dim, plugin.InternalName);
+        ImGui.TextColored(Dim, "Path");
+        ImGui.SameLine();
+        ImGui.TextUnformatted(plugin.Path);
+        ImGui.SameLine();
+        if (ImGui.SmallButton("Copy path"))
+            ImGui.SetClipboardText(plugin.Path);
+        ImGui.TextColored(Dim, "Size");
+        ImGui.SameLine();
+        ImGui.TextUnformatted(wrap != null ? $"{wrap.Width}×{wrap.Height}" : "–");
+        ImGui.EndGroup();
+    }
+
     private void DrawDetail()
     {
-        var preview = PreviewSize * ImGuiHelpers.GlobalScale - ImGui.GetStyle().WindowPadding.Y * 2;
-        var min = ImGui.GetCursorScreenPos();
-        var max = min + new Vector2(preview);
-        var drawList = ImGui.GetWindowDrawList();
-        drawList.AddRectFilled(min, max, ImGui.GetColorU32(ImGuiCol.FrameBg), ImGui.GetStyle().FrameRounding);
         var wrap = Wrap(selected, hq);
-        if (wrap != null)
-            DrawFitted(drawList, wrap, min + new Vector2(4), max - new Vector2(4));
-        ImGui.Dummy(new Vector2(preview));
+        DrawPreview(wrap);
 
         ImGui.SameLine();
         ImGui.BeginGroup();
@@ -531,12 +660,26 @@ internal sealed class AtlasWindow : Window, IDisposable
 
     private void Step(int by)
     {
+        if (view == View.Plugins)
+        {
+            StepPlugin(by);
+            return;
+        }
+
         var visible = Ids();
         if (visible.Length == 0)
             return;
         var index = Array.BinarySearch(visible, selected);
         selected = visible[Math.Clamp(index < 0 ? 0 : index + by, 0, visible.Length - 1)];
         scrollToSelected = true;
+    }
+
+    private void StepPlugin(int by)
+    {
+        if (pluginIcons.Count == 0)
+            return;
+        var index = pluginIcons.FindIndex(p => p.InternalName == selectedPlugin);
+        selectedPlugin = pluginIcons[Math.Clamp(index < 0 ? 0 : index + by, 0, pluginIcons.Count - 1)].InternalName;
     }
 
     private void Select(IconRange r)
@@ -565,6 +708,25 @@ internal sealed class AtlasWindow : Window, IDisposable
             selected = config.Favorites[0];
         scrollToSelected = true;
     }
+
+    private void ShowPlugins()
+    {
+        view = View.Plugins;
+        LoadPluginIcons();
+        if (SelectedPluginIcon() == null)
+            selectedPlugin = pluginIcons.FirstOrDefault()?.InternalName;
+    }
+
+    // Read again whenever it's shown, since plugins come and go; finding their files is too slow for every frame.
+    private List<PluginIcon> LoadPluginIcons() =>
+        pluginIcons = pluginInterface.InstalledPlugins
+                                     .Select(p => PluginIconFile.Of(p) is { } path ? new PluginIcon(p.InternalName, p.Name, path) : null)
+                                     .OfType<PluginIcon>()
+                                     .DistinctBy(p => p.InternalName)
+                                     .OrderBy(p => p.Name, StringComparer.OrdinalIgnoreCase)
+                                     .ToList();
+
+    private PluginIcon? SelectedPluginIcon() => pluginIcons.FirstOrDefault(p => p.InternalName == selectedPlugin);
 
     private void Expand(string g)
     {
@@ -641,6 +803,29 @@ internal sealed class AtlasWindow : Window, IDisposable
 
     private IDalamudTextureWrap? Wrap(uint id, bool itemHq) =>
         textures.TryGetFromGameIcon(new GameIconLookup(id, itemHq), out var texture) ? texture.GetWrapOrDefault() : null;
+
+    private IDalamudTextureWrap? PluginWrap(PluginIcon plugin) => textures.GetFromFile(plugin.Path).GetWrapOrDefault();
+
+    private static void DrawPreview(IDalamudTextureWrap? wrap)
+    {
+        var preview = PreviewSize * ImGuiHelpers.GlobalScale - ImGui.GetStyle().WindowPadding.Y * 2;
+        var min = ImGui.GetCursorScreenPos();
+        var max = min + new Vector2(preview);
+        var drawList = ImGui.GetWindowDrawList();
+        drawList.AddRectFilled(min, max, ImGui.GetColorU32(ImGuiCol.FrameBg), ImGui.GetStyle().FrameRounding);
+        if (wrap != null)
+            DrawFitted(drawList, wrap, min + new Vector2(4), max - new Vector2(4));
+        ImGui.Dummy(new Vector2(preview));
+    }
+
+    private static void TooltipPreview(IDalamudTextureWrap wrap)
+    {
+        var preview = PreviewSize * ImGuiHelpers.GlobalScale;
+        var pos = ImGui.GetCursorScreenPos();
+        ImGui.Dummy(new Vector2(preview));
+        DrawFitted(ImGui.GetWindowDrawList(), wrap, pos, pos + new Vector2(preview));
+        ImGui.TextColored(Dim, $"{wrap.Width}×{wrap.Height}");
+    }
 
     private static void DrawFitted(ImDrawListPtr drawList, IDalamudTextureWrap wrap, Vector2 min, Vector2 max)
     {

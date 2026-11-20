@@ -13,13 +13,15 @@ and X the double-click.
 
 Right-click an icon, or press **Favorite** in the inspector, to add it to **Favorites** at the top of the list; favorites are marked with a gold dot and saved between sessions.
 
+**Plugins**, below Favorites, shows plugins' own icons, for those that have one on this PC: dev plugins keep theirs at `images\icon.png` beside the DLL, while repository plugins' icons are only online.
+
 **Only IDs with an icon** hides the gaps in a range (on by default). **Size** sets the tile size.
 
-Flick Wheel and Retainer Cooldown open the atlas when you change an icon: pick one and press **Use this icon**, or double-click it, to send it back. Other plugins can do the same over IPC: call `IconAtlas.Pick(token, purpose, currentIcon)` and listen on `IconAtlas.Picked(token, icon)`.
+Flick Wheel and Retainer Cooldown open the atlas when you change an icon: pick one and press **Use this icon**, or double-click it, to send it back; Flick Wheel shortcuts can take a plugin icon too. Other plugins can do the same over IPC: call `IconAtlas.Pick(token, purpose, currentIcon)` and listen on `IconAtlas.Picked(token, icon)`. `IconAtlas.PickWithPlugins(token, purpose, currentIcon, currentPlugin)` also offers plugin icons, opening on `currentPlugin`'s, and answers those on `IconAtlas.PickedPlugin(token, internalName)`.
 
 ## How it works
 
-Range descriptions come from [fae-industries/ffxiv-icons](https://github.com/fae-industries/ffxiv-icons), which calls itself incomplete, with a few overlapping ranges evened out. Opening a range checks each of its IDs for an icon file in the background; icons load through Dalamud's texture provider, HD where the game has it.
+Range descriptions come from [fae-industries/ffxiv-icons](https://github.com/fae-industries/ffxiv-icons), which calls itself incomplete, with a few overlapping ranges evened out. Opening a range checks each of its IDs for an icon file in the background; icons load through Dalamud's texture provider, HD where the game has it. Plugins load from memory, so their folders are read from Dalamud's internal record of each plugin's DLL.
 
 ## Build
 

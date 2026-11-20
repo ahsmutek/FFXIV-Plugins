@@ -94,10 +94,11 @@ editor, **+** adds shortcuts to a group: tick as many as you like, on any tab, t
 - **Macros** – your individual and shared macros, by slot.
 - **Commands** – any chat command with your own label and icon, e.g. `/gs change 3`. A
   plugin's command only shows while that plugin is loaded. Without an icon of your own, a
-  plugin can supply one (CatProof shows your chosen cat icon, lit while locked).
+  plugin can supply one (CatProof shows your chosen cat icon, lit while locked); otherwise
+  it shows the plugin's own icon, if that's on this PC (dev plugins).
 
 Drag a shortcut to reorder it (or **Move left/right** in its right-click menu); right-click it to relabel, change its icon (chosen in [Icon Atlas](../IconAtlas/) when
-it's loaded, otherwise by ID), move or remove it. Groups can be renamed, recolored, moved or copied to another wheel, pinned to the top and deleted (Ctrl if not
+it's loaded, plugins' own icons included, otherwise by ID) or go back with **Use default icon**, move or remove it. Groups can be renamed, recolored, moved or copied to another wheel, pinned to the top and deleted (Ctrl if not
 empty). Wheels can be renamed, and deleted except Shortcuts (Ctrl if not empty). Entries
 you can't use yet leave their spot empty.
 

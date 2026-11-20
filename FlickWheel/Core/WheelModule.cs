@@ -13,7 +13,8 @@ internal sealed record WheelEntry(
     bool Faded = false,
     bool IsCurrent = false,
     int? Count = null,
-    PluginGlyph? Glyph = null);
+    PluginGlyph? Glyph = null,
+    string? IconFile = null);
 
 internal interface IWheel
 {

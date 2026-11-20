@@ -36,8 +36,13 @@ public sealed class ShortcutEntry : IShortcut
     public string? Command { get; set; }
     public string? Label { get; set; }
     public uint IconId { get; set; }
+    // Internal name of the plugin whose own icon was chosen instead of a game icon.
+    public string? IconPlugin { get; set; }
 
-    public ShortcutEntry Copy() => new() { Kind = Kind, RowId = RowId, Command = Command, Label = Label, IconId = IconId };
+    public ShortcutEntry Copy() => new()
+    {
+        Kind = Kind, RowId = RowId, Command = Command, Label = Label, IconId = IconId, IconPlugin = IconPlugin,
+    };
 }
 
 public sealed class ShortcutGroup

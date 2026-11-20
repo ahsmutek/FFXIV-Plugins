@@ -70,6 +70,7 @@ public sealed class Plugin : IDalamudPlugin
     private readonly IFontHandle glyphFont;
     private readonly ChatLogToggle chatLog;
     private readonly IconPicker iconPicker;
+    private readonly PluginIcons pluginIcons;
     private readonly PadNav padNav;
     private readonly ICallGateProvider<(string Uid, string Name)[]> hotkeysIpc;
     private readonly ICallGateProvider<string, bool, object> holdIpc;
@@ -94,8 +95,9 @@ public sealed class Plugin : IDalamudPlugin
         wheels.Add(new JobsModule(config, catalog, switcher, icons, overlay));
         chatLog = new ChatLogToggle(Framework);
         iconPicker = new IconPicker(PluginInterface, "FlickWheel");
+        pluginIcons = new PluginIcons(PluginInterface, CommandManager);
         var shortcuts = new ShortcutsModule(config, Save, new ShortcutCatalog(Data, CommandManager, Buddies, chatLog), icons,
-                                            overlay, iconPicker, new PluginIcons(PluginInterface));
+                                            overlay, iconPicker, pluginIcons);
         wheels.Add(shortcuts);
 
         configWindow = new ConfigWindow(config, Save, wheels, shortcuts, overlay, input, KeyState);
@@ -146,6 +148,7 @@ public sealed class Plugin : IDalamudPlugin
         blocker.Dispose();
         chatLog.Dispose();
         iconPicker.Dispose();
+        pluginIcons.Dispose();
         PluginInterface.UiBuilder.OpenConfigUi -= configWindow.Toggle;
         PluginInterface.UiBuilder.OpenMainUi -= configWindow.Toggle;
         windows.RemoveAllWindows();
