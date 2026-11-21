@@ -23,8 +23,8 @@ only: no scores or rankings, and it never commends for you.
   (or press Y) to add a short note.
 - `/commendable` shows the summary or brings it back from the game; run it while you're using it to hide it. Until
   the duty is complete it only shows or hides it, and the controller and keyboard stay with the game even if you
-  click it. It closes by itself when you commend someone (or close the game's commendation window) and when you
-  leave the duty; `/commendable last` shows that duty again, `/commendable config` the settings.
+  click it. It closes by itself when you commend someone and when you leave the duty; `/commendable last` shows
+  that duty again, `/commendable config` the settings.
 - Sort by party order, bookmarks first, most recent or name. Settings turn each kind of help on or off, and add
   compact rows, waiting for the game's commendation window before opening, and chat lines when someone raises or
   selects you (only you see them).
@@ -53,7 +53,8 @@ From this folder, `dotnet run --project Replay -- [n] [--log] [--raw]` prints th
 - Everything is saved as observed, then turned into the summary by code that doesn't need the game, the same code
   replays use.
 - Nothing is sent anywhere: no network access, no actions, no messages to other players, no clicks in game windows.
-  The commendation window is only watched for opening and closing, and read for its position.
+  The commendation window and its icon are only watched for opening and closing, and the window read for its
+  position.
 
 ## Build
 

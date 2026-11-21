@@ -18,6 +18,8 @@ public sealed class Plugin : IDalamudPlugin
 {
     private const string CommandName = "/commendable";
     private const uint WheelIconColor = 0xFF4CC8F0;
+    // The game removes this icon, its reminder to commend, once you've commended someone.
+    private const string CommendationIcon = "_NotificationIcMvp";
 
     [PluginService]
     private static IDalamudPluginInterface PluginInterface { get; set; } = null!;
@@ -102,7 +104,7 @@ public sealed class Plugin : IDalamudPlugin
         sessions.Completed += OnCompleted;
         sessions.Left += OnLeft;
         AddonLifecycle.RegisterListener(AddonEvent.PostSetup, SummaryWindow.CommendationWindow, OnCommendationWindow);
-        AddonLifecycle.RegisterListener(AddonEvent.PreFinalize, SummaryWindow.CommendationWindow, OnCommendationWindowClosed);
+        AddonLifecycle.RegisterListener(AddonEvent.PreFinalize, CommendationIcon, OnCommended);
         PluginInterface.UiBuilder.Draw += Draw;
         PluginInterface.UiBuilder.OpenMainUi += Cycle;
         PluginInterface.UiBuilder.OpenConfigUi += settings.Toggle;
@@ -206,8 +208,7 @@ public sealed class Plugin : IDalamudPlugin
 
     private void OnLeft(DutySession session) => summary.IsOpen = false;
 
-    // Commending closes the game's window; the game logs no message for it.
-    private void OnCommendationWindowClosed(AddonEvent type, AddonArgs args) => summary.IsOpen = false;
+    private void OnCommended(AddonEvent type, AddonArgs args) => summary.IsOpen = false;
 
     private void OnCommendationWindow(AddonEvent type, AddonArgs args)
     {
@@ -232,7 +233,7 @@ public sealed class Plugin : IDalamudPlugin
         CommandManager.RemoveHandler(CommandName);
         wheelIcon.UnregisterFunc();
         AddonLifecycle.UnregisterListener(AddonEvent.PostSetup, SummaryWindow.CommendationWindow, OnCommendationWindow);
-        AddonLifecycle.UnregisterListener(AddonEvent.PreFinalize, SummaryWindow.CommendationWindow, OnCommendationWindowClosed);
+        AddonLifecycle.UnregisterListener(AddonEvent.PreFinalize, CommendationIcon, OnCommended);
         sessions.Completed -= OnCompleted;
         sessions.Left -= OnLeft;
         PluginInterface.UiBuilder.Draw -= Draw;

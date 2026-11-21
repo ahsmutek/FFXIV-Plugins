@@ -27,7 +27,7 @@ internal sealed class SummaryWindow : Window
 {
     private const uint JobIconBase = 62000;
     private const string PlayerMenu = "##player";
-    public const string CommendationWindow = "VoteMvp";
+    public const string CommendationWindow = "BannerMIP";
     private static readonly Vector4 OutgoingColor = new(0.55f, 0.8f, 1f, 1f);
     private static readonly Vector4 BookmarkColor = new(1f, 0.8f, 0.3f, 1f);
     private static readonly Vector4 HighlightColor = new(0.55f, 0.9f, 0.55f, 1f);
