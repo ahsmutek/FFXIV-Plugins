@@ -34,6 +34,8 @@ internal sealed class KeeperWindow : Window
     private Vector2 windowMin;
     private Vector2 windowMax;
     private bool showHidden;
+    // Only on the first frame, as until the saved tab is selected ImGui shows the first one.
+    private bool selectTab = true;
     private string search = "";
     private List<(uint Id, string Name)>? allItems;
 
@@ -91,6 +93,7 @@ internal sealed class KeeperWindow : Window
                     off = "Marking upgrades is off in settings.";
             }
         }
+        selectTab = false;
         itemMenu.DrawFallback();
 
         ImGui.Separator();
@@ -108,11 +111,17 @@ internal sealed class KeeperWindow : Window
     }
 
     // Returns whether the tab is the one shown.
-    private static bool DrawTab(string label, int count, float footer, Action body, Action? header = null)
+    private bool DrawTab(string label, int count, float footer, Action body, Action? header = null)
     {
-        using var tab = ImRaii.TabItem($"{label} ({count})###{label}");
+        var flags = selectTab && config.KeeperTab == label ? ImGuiTabItemFlags.SetSelected : ImGuiTabItemFlags.None;
+        using var tab = ImRaii.TabItem($"{label} ({count})###{label}", flags);
         if (!tab)
             return false;
+        if (!selectTab && config.KeeperTab != label)
+        {
+            config.KeeperTab = label;
+            save();
+        }
         header?.Invoke();
         using var list = ImRaii.Child("##list", new Vector2(0, -footer));
         if (list)

@@ -61,6 +61,8 @@ public sealed class Configuration : IPluginConfiguration
 
     public UpgradeGrouping UpgradeGrouping { get; set; } = UpgradeGrouping.Job;
 
+    public string KeeperTab { get; set; } = "";
+
     // The jobs the Upgrades tab hides each item for, by item ID.
     public Dictionary<uint, HashSet<uint>> NotUpgrades { get; set; } = [];
 
