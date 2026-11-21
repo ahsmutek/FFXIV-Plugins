@@ -212,11 +212,22 @@ internal sealed unsafe class SlotHighlight
         return kept;
     }
 
-    // A list's or tree list's rows in use. Rows past the end of a shorter list keep their old text.
+    // A list's or tree list's rows in use. Rows past the end of a shorter list keep their old text, so a tree
+    // list's rows are the ones its current items are shown in.
     private static List<Pointer<AtkComponentListItemRenderer>> Rows(AtkComponentList* list)
     {
         var rows = new List<Pointer<AtkComponentListItemRenderer>>();
-        var isList = list->GetComponentType() == ComponentType.List;
+        if (list->GetComponentType() == ComponentType.TreeList)
+        {
+            foreach (var item in ((AtkComponentTreeList*)list)->Items)
+            {
+                var renderer = item.Value == null || item.Value->IsHidden ? null : item.Value->Renderer;
+                if (renderer != null && !rows.Contains(renderer))
+                    rows.Add(renderer);
+            }
+            return rows;
+        }
+
         ref var uld = ref list->AtkComponentBase.UldManager;
         for (var i = 0; i < uld.NodeListCount; i++)
         {
@@ -227,7 +238,7 @@ internal sealed unsafe class SlotHighlight
             if (component == null || component->GetComponentType() != ComponentType.ListItemRenderer)
                 continue;
             var renderer = (AtkComponentListItemRenderer*)component;
-            if (isList && (renderer->ListItemIndex < 0 || renderer->ListItemIndex >= list->ListLength))
+            if (renderer->ListItemIndex < 0 || renderer->ListItemIndex >= list->ListLength)
                 continue;
             rows.Add(renderer);
         }
