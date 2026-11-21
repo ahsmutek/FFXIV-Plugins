@@ -13,6 +13,8 @@ public sealed class Configuration : IPluginConfiguration
 
     public static readonly Vector4 DefaultWishColor = new(1f, 0.55f, 0.7f, 1f);
 
+    public static readonly Vector4 DefaultOutgrownColor = new(1f, 0.3f, 0.3f, 1f);
+
     public int Version { get; set; } = 1;
 
     public bool GlamOffEnabled { get; set; } = true;
@@ -38,6 +40,10 @@ public sealed class Configuration : IPluginConfiguration
     public HashSet<int> HiddenUpgradeSlots { get; set; } = [];
 
     public bool GearsetsEnabled { get; set; } = true;
+
+    public bool OutgrownEnabled { get; set; } = true;
+
+    public Vector4 OutgrownColor { get; set; } = DefaultOutgrownColor;
 
     public bool CompareAsEnabled { get; set; } = true;
 

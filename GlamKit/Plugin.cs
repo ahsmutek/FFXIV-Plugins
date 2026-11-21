@@ -77,8 +77,8 @@ public sealed class Plugin : IDalamudPlugin
 
         glamOff = new GlamOff(ContextMenu, GameGui, config);
         tooltip = new NativeTooltip(AddonLifecycle);
-        highlight = new SlotHighlight(GameGui, DataManager, config);
         var jobLevels = new JobLevels(DataManager, config);
+        highlight = new SlotHighlight(GameGui, DataManager, config, jobLevels);
         itemTooltip = new ItemTooltip(GameInterop, AddonLifecycle, DataManager, GameGui, Log, config, jobLevels);
         compareAs = new CompareAs(GameInterop, GameGui, AddonLifecycle, Framework, Gamepad, Log, config, Save, jobLevels);
         stored = new Stored(Framework, ClientState, ChatGui, DataManager, config, Save);

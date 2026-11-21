@@ -196,6 +196,36 @@ internal sealed class SettingsWindow : Window
         Describe("Gear tooltips say which jobs' gear sets use the item, e.g. \"Equipped - NIN\".");
 
         ImGui.Spacing();
+        var outgrown = config.OutgrownEnabled;
+        if (ImGui.Checkbox("Outgrown Gear", ref outgrown))
+        {
+            config.OutgrownEnabled = outgrown;
+            save();
+        }
+        Describe("Gear no job of yours will use is bordered in your bags and Armoury Chest: it's in no gear set, not kept",
+                 "or wished for, and no better than the gear sets of your jobs that can wear it, even at their level.");
+
+        ImGui.Indent();
+        var outgrownColor = config.OutgrownColor;
+        if (ImGui.ColorEdit4("Border colour##outgrown", ref outgrownColor, ColorFlags))
+        {
+            config.OutgrownColor = outgrownColor;
+            save();
+        }
+        if (config.OutgrownColor != Configuration.DefaultOutgrownColor)
+        {
+            ImGui.SameLine();
+            if (TablerIcons.Button(TablerIcon.ArrowBackUp, "outgrown"))
+            {
+                config.OutgrownColor = Configuration.DefaultOutgrownColor;
+                save();
+            }
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip("Reset");
+        }
+        ImGui.Unindent();
+
+        ImGui.Spacing();
         var compareAs = config.CompareAsEnabled;
         if (ImGui.Checkbox("Compare as Another Job", ref compareAs))
         {

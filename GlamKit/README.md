@@ -83,6 +83,14 @@ colours it only when your job can wear it (optional). It all works on any job an
 A gear tooltip says which jobs' gear sets use the item, e.g. "Equipped - NIN, MNK".
 Sets are matched by item, so any copy of it counts.
 
+## Outgrown Gear
+
+Gear none of your jobs will use any more is bordered in red in your bags, saddlebag, retainer and Armoury Chest windows
+(colour in settings). That's gear no gear set has, that isn't kept or wished for, and that's no better than the gear
+set of each job you've started that can wear it, by Job Levels' rule, even if the job hasn't reached the item's level
+yet. A started job without a gear set still counts as using it until it's past the item's green levels, and jobs
+you've marked it Not an Upgrade for don't count. Every piece is judged as if HQ, and level 1 gear is left alone.
+
 ## Compare as Another Job
 
 The game's **Item Comparison** compares an item with what your current job is wearing, even when that job can't wear

@@ -25,14 +25,16 @@ internal sealed unsafe class SlotHighlight
     private readonly IGameGui gameGui;
     private readonly IDataManager data;
     private readonly Configuration config;
+    private readonly JobLevels jobLevels;
     private readonly InventorySlots slots;
     private readonly Dictionary<uint, string> names = [];
 
-    public SlotHighlight(IGameGui gameGui, IDataManager data, Configuration config)
+    public SlotHighlight(IGameGui gameGui, IDataManager data, Configuration config, JobLevels jobLevels)
     {
         this.gameGui = gameGui;
         this.data = data;
         this.config = config;
+        this.jobLevels = jobLevels;
         slots = new InventorySlots(gameGui, data);
     }
 
@@ -41,7 +43,7 @@ internal sealed unsafe class SlotHighlight
         var anyGlam = config.GlamKeeperEnabled && config.Items.Count > 0;
         var anyLater = config.KeepForLaterEnabled && config.LaterItems.Count > 0;
         var anyWish = config.WishlistEnabled && config.WishItems.Count > 0;
-        if (!anyGlam && !anyLater && !anyWish)
+        if (!anyGlam && !anyLater && !anyWish && !config.OutgrownEnabled)
             return;
 
         var found = slots.BagSlots();
@@ -62,6 +64,7 @@ internal sealed unsafe class SlotHighlight
         var drawList = ImGui.GetBackgroundDrawList();
         var color = ImGui.GetColorU32(config.KeeperColor);
         var laterColor = ImGui.GetColorU32(config.LaterColor);
+        var outgrownColor = ImGui.GetColorU32(config.OutgrownColor);
         foreach (var slot in found)
         {
             var glam = KeptForGlam(slot.ItemId);
@@ -70,8 +73,15 @@ internal sealed unsafe class SlotHighlight
                 InventorySlots.DrawBorder(drawList, slot, color);
             if (later)
                 InventorySlots.DrawBorder(drawList, slot, laterColor, glam ? 1 : 0);
+            if (Outgrown(slot.ItemId))
+                InventorySlots.DrawBorder(drawList, slot, outgrownColor);
         }
     }
+
+    // Anything kept or wished for is wanted, whatever its stats, even with those features off.
+    private bool Outgrown(uint itemId) =>
+        config.OutgrownEnabled && !config.IsKept(itemId) && !config.IsKeptForLater(itemId) && !config.IsWished(itemId) &&
+        jobLevels.IsOutgrown(itemId);
 
     private void DrawItemList(string addonName)
     {

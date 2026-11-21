@@ -16,6 +16,7 @@ internal sealed unsafe class JobLevels
     private const int MostClosest = 5;
     private const string UpgradeMark = "▲";
     private const uint HqBonus = 1;
+    private static readonly TimeSpan OutgrownFor = TimeSpan.FromSeconds(2);
 
     private const uint Green = 0x8CE36B;
     private const uint Yellow = 0xF2D75A;
@@ -33,6 +34,9 @@ internal sealed unsafe class JobLevels
     private readonly ushort green;
     private readonly ushort yellow;
     private readonly ushort grey;
+    private readonly Dictionary<uint, bool> outgrown = [];
+    private readonly Dictionary<int, List<(uint ClassJob, Gearsets.Piece[] Pieces)>> outgrownHeld = [];
+    private DateTime outgrownUntil;
 
     public JobLevels(IDataManager data, Configuration config)
     {
@@ -161,6 +165,57 @@ internal sealed unsafe class JobLevels
         if (!heldBySlot.TryGetValue(slots[0], out var held))
             heldBySlot[slots[0]] = held = Gearsets.Held(slots);
         return Compare(item, hq, jobs, held, true).Where(j => j.Upgrade).ToList();
+    }
+
+    // Asked for every bag slot each frame, so answers are kept a moment.
+    public bool IsOutgrown(uint itemId)
+    {
+        if (DateTime.UtcNow >= outgrownUntil)
+        {
+            outgrown.Clear();
+            outgrownHeld.Clear();
+            outgrownUntil = DateTime.UtcNow + OutgrownFor;
+        }
+        if (!outgrown.TryGetValue(itemId, out var result))
+            outgrown[itemId] = result = Outgrown(itemId);
+        return result;
+    }
+
+    // No gear set has it, and every started job that can wear it has as good in its gear sets, even before reaching the
+    // item's level, or has no gear set and is past the item's green levels. Judged as HQ, so a useful copy is never marked.
+    private bool Outgrown(uint itemId)
+    {
+        var player = PlayerState.Instance();
+        if (player == null || Wearers(itemId, out var item) is not { } jobs || item.LevelEquip <= 1)
+            return false;
+        var slots = Gearsets.Slots(item.EquipSlotCategory.Value);
+        if (slots.Length == 0)
+            return false;
+        if (!outgrownHeld.TryGetValue(slots[0], out var held))
+            outgrownHeld[slots[0]] = held = Gearsets.Held(slots);
+        if (held.Any(h => h.Pieces.Any(p => p.ItemId == itemId)))
+            return false;
+
+        var started = false;
+        foreach (var job in jobs)
+        {
+            var level = (int)player->ClassJobLevels[job.ExpIndex];
+            if (level <= 0)
+                continue;
+            started = true;
+            if (config.IsNotUpgrade(itemId, job.Id))
+                continue;
+            if (BestSet(item, job, held) is not { } best)
+            {
+                if (level <= item.LevelEquip + config.GreenAbove)
+                    return false;
+            }
+            else if (Score(item, true, job.MainStat).CompareTo(SetScore(best, itemId, job.MainStat)) > 0)
+            {
+                return false;
+            }
+        }
+        return started;
     }
 
     private List<CompareJob> Compare(Item item, bool hq, Job[] jobs, List<(uint ClassJob, Gearsets.Piece[] Pieces)> held,
